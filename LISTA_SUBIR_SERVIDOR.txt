@@ -1,0 +1,14 @@
+SUBIR (panel administrador):
+----------------------------
+resources/views/admin/catalogo_sersop.blade.php
+resources/views/admin/registro.blade.php
+resources/views/admin/users.blade.php
+app/Http/Controllers/SeguridadController.php
+app/Http/Controllers/AdminUsersController.php
+config/app.php
+routes/web.php
+
+.env en servidor:
+APP_TIMEZONE=America/Mexico_City
+
+Después: borrar bootstrap/cache/config.php y storage/framework/views/*

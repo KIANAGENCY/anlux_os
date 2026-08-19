@@ -1,0 +1,1 @@
+ALTER TABLE `login` ADD COLUMN `last_seen_at` DATETIME NULL;

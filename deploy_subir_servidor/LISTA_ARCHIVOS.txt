@@ -1,0 +1,75 @@
+EXACTO — Archivos para subir al servidor
+Generado: 2026-08-12
+
+CAMBIO: modo de mantenimiento controlado por administradores
+- Los técnicos ven una ventana de mantenimiento al iniciar sesión
+- Los administradores conservan acceso al panel para activarlo/desactivarlo
+- Las APIs bloqueadas responden HTTP 503
+
+CAMBIO: Eliminar Soporte WhatsApp (chat) + tablas wa_*
+- Se quita tarjeta/banner/chip de Soporte WhatsApp
+- Se eliminan rutas /soporte/whatsapp y APIs del chat
+- Migración DROP: wa_messages, wa_conversations
+- Las notificaciones automáticas de orden por WhatsApp (plantillas) se mantienen
+
+ARCHIVOS A SUBIR
+----------------
+routes/web.php
+bootstrap/app.php
+app/Http/Controllers/AdminController.php
+app/Http/Controllers/MaintenanceController.php
+app/Http/Middleware/EnsureApplicationIsAvailable.php
+app/Services/MaintenanceModeService.php
+resources/views/admin/index.blade.php
+resources/views/maintenance.blade.php
+app/Services/OrderWhatsappService.php
+app/Services/RegistrarOrdenService.php
+app/Console/Commands/ExactoWipeDominioCommand.php
+resources/views/index.blade.php
+resources/views/partials/header-flujo-tres.blade.php
+resources/views/partials/nav-app.blade.php
+resources/views/legal/terminos.blade.php
+resources/views/legal/privacidad.blade.php
+public/docheck.php
+database/migrations/2026_07_31_193000_drop_whatsapp_chat_tables.php
+
+(si aún no subiste el fix de técnico al conectar cuenta)
+app/Support/ExactoAuthContext.php
+
+ARCHIVOS A BORRAR EN EL SERVIDOR (si existen)
+--------------------------------------------
+app/Http/Controllers/WhatsappChatController.php
+app/Services/WhatsappChatService.php
+resources/views/soporte/whatsapp.blade.php
+resources/views/partials/wa-nav-badge-assets.blade.php
+public/legacy/assets/js/whatsapp_chat.js
+public/legacy/assets/css/whatsapp_chat.css
+public/legacy/assets/js/wa_nav_badge.js
+public/legacy/assets/css/wa_nav_badge.css
+public/wa_tables.sql
+public/wa_test_inbound.php
+public/wa_soporte_check.php
+public/wa_inbound_status.php
+
+Después en servidor:
+1. Subir / borrar archivos de arriba
+2. php artisan migrate --force
+3. composer dump-autoload -o
+4. php artisan optimize:clear
+5. php artisan route:list --name=maintenance
+   Debe mostrar maintenance.show y admin.maintenance.update
+6. Confirmar que existen estos archivos antes de iniciar sesión:
+   app/Services/MaintenanceModeService.php
+   app/Http/Middleware/EnsureApplicationIsAvailable.php
+   app/Http/Controllers/MaintenanceController.php
+   app/Http/Controllers/AdminController.php
+   resources/views/maintenance.blade.php
+   resources/views/admin/index.blade.php
+   bootstrap/app.php
+   routes/web.php
+7. (opcional) rm -rf storage/app/wa_chat
+8. Ctrl+F5
+
+SQL manual (si no puedes correr migrate):
+DROP TABLE IF EXISTS wa_messages;
+DROP TABLE IF EXISTS wa_conversations;

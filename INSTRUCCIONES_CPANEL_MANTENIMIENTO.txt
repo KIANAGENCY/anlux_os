@@ -1,0 +1,24 @@
+ACTUALIZACION DEL MODO DE MANTENIMIENTO
+
+1. En cPanel > Administrador de archivos, abre:
+   /home/joses16/soporte.exactolp.mx
+
+2. Carga exacto-mantenimiento-cpanel.zip en esa carpeta.
+
+3. Extrae el ZIP en /home/joses16/soporte.exactolp.mx y acepta reemplazar
+   los archivos incluidos. No lo extraigas dentro de public/.
+
+4. Abre storage/framework/views y elimina solamente los archivos .php
+   que contiene. No elimines la carpeta views ni su archivo .gitignore.
+
+5. Si existe bootstrap/cache/config.php, elimínalo.
+   Si existe bootstrap/cache/routes-v7.php, elimínalo.
+   No elimines bootstrap/cache/packages.php ni services.php.
+
+6. Borra public/diagnose-hosting.php.
+
+7. Prueba con una cuenta administradora:
+   - /admin debe mostrar la sección "Modo de mantenimiento".
+   - /mantenimiento debe mostrar "Desactivar mantenimiento" cuando esté activo.
+
+Los técnicos pueden ver el aviso, pero no pueden desactivar el mantenimiento.

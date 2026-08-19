@@ -1,0 +1,13 @@
+-- =============================================================================
+-- VACIAR dominio — admin@soporte.exactolp.mx (misma contraseña)
+--
+-- Borra: órdenes, plantillas WA por orden, bandeja WA (wa_messages / wa_conversations),
+-- locks, impersonación, jobs y log de seguridad. Conserva solo el admin en `login`.
+--
+-- Si phpMyAdmin falla al pegar todo junto, usa los pasos separados:
+--   1) database/scripts/vaciar_paso_1_ordenes.sql
+--   2) database/scripts/vaciar_paso_2_solo_admin.sql
+--
+-- O en el servidor (cPanel Terminal / SSH):
+--   php artisan exacto:wipe-dominio --force
+-- =============================================================================

@@ -1,0 +1,19 @@
+.exacto-account-switch-wrap .exacto-dot {
+    display: inline-block;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 9999px;
+    margin-right: 0.2rem;
+    vertical-align: middle;
+}
+.exacto-account-switch-wrap .exacto-dot--online { background: #16a34a; }
+.exacto-account-switch-wrap .exacto-dot--offline { background: #9ca3af; }
+.exacto-account-switch-wrap .exacto-dot--inactive { background: #dc2626; }
+.exacto-account-switch { color: #1e3a8a; background-color: #fff; }
+.exacto-account-switch option { color: #1e3a8a; background-color: #fff; }
+.exacto-account-switch option.exacto-opt-online { color: #166534; font-weight: 600; }
+.exacto-account-switch option.exacto-opt-in_use { color: #c2410c; font-weight: 600; }
+.exacto-account-switch option.exacto-opt-offline { color: #6b7280; }
+.exacto-account-switch option.exacto-opt-inactive { color: #991b1b; }
+.exacto-account-switch option.exacto-opt-self { color: #1d4ed8; font-style: italic; }
+.exacto-account-switch option:disabled { color: #9ca3af; }

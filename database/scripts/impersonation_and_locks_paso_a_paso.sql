@@ -1,0 +1,8 @@
+-- NO ejecutes este archivo completo en phpMyAdmin.
+-- Usa los archivos separados:
+--   paso_01_login_activo.sql
+--   paso_02_login_last_seen.sql
+--   paso_03_impersonation_requests.sql
+--   paso_04_orden_edit_locks.sql
+-- O un solo pegado: impersonation_and_locks_cpanel.sql
+-- Instrucciones: LEEME_SQL.txt

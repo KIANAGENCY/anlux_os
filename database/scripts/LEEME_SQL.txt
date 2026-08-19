@@ -1,0 +1,39 @@
+EXACTO - SQL para phpMyAdmin (cPanel)
+=====================================
+
+ANTES DE EMPEZAR
+----------------
+1. En phpMyAdmin, clic en la base: joses16_exacto (lado izquierdo).
+2. Debe quedar seleccionada (nombre en negrita).
+3. Pestaña SQL.
+
+OPCION A (recomendada): 4 archivos, uno por uno
+-----------------------------------------------
+Ejecuta SOLO el contenido de cada archivo (sin comentarios de otros pasos):
+
+  paso_01_login_activo.sql
+  paso_02_login_last_seen.sql
+  paso_03_impersonation_requests.sql
+  paso_04_orden_edit_locks.sql
+
+Si en el paso 1 o 2 sale error "Duplicate column name":
+  -> Esa columna ya existe. Pasa al siguiente archivo.
+
+OPCION B: un solo pegado (si tu hosting lo permite)
+---------------------------------------------------
+Abre: impersonation_and_locks_cpanel.sql
+Copia TODO el archivo, pega en SQL, Continuar.
+(No uses impersonation_and_locks_paso_a_paso.sql: tiene varias consultas mezcladas.)
+
+SI NADA FUNCIONA
+----------------
+1. Confirma que la tabla se llama "login" (Estructura -> busca login).
+2. Si la tabla tiene otro nombre, avisa.
+3. Copia el mensaje de error EXACTO (texto rojo) de phpMyAdmin.
+
+VERIFICAR
+---------
+En Estructura de joses16_exacto debes ver:
+  - login -> columnas: activo, last_seen_at
+  - impersonation_requests
+  - orden_servicio_edit_locks
