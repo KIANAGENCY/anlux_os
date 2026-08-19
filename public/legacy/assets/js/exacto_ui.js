@@ -39,6 +39,11 @@
                 iconCircleEl.classList.add('bg-amber-100');
                 iconEl.className = 'fas fa-exclamation text-2xl text-amber-600';
             }
+            // Fuera de la nav sticky (z-index 9999); si no, queda detrás de otros modales.
+            if (modal.parentNode !== document.body) {
+                document.body.appendChild(modal);
+            }
+            modal.style.zIndex = '20000';
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             document.body.style.overflow = 'hidden';

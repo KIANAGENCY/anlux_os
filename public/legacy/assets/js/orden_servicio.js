@@ -1266,6 +1266,11 @@ function exactoAplicarConversionNetoASinIva(input) {
                         inputEl.value = '';
                     }
                 }
+                // Fuera de la nav sticky (z-index 9999); si no, queda detrás de liquidar/entrega.
+                if (modal.parentNode !== document.body) {
+                    document.body.appendChild(modal);
+                }
+                modal.style.zIndex = '20000';
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
                 document.body.style.overflow = 'hidden';
@@ -2996,9 +3001,28 @@ function exactoAplicarConversionNetoASinIva(input) {
                 eliminarAnticipo(t.closest('.anticipo-row'));
                 marcarSucioSiOrdenForm();
             }
-            if (t.closest('#btnPagarSaldoPendiente')) {
+            if (t.closest('#btnPagarSaldoPendiente') || t.closest('#btnLiquidarSaldo') || t.closest('#btnLiquidarAhora')) {
                 e.preventDefault();
-                void exactoPagarSaldoPendiente();
+                if (t.closest('#btnLiquidarAhora')) {
+                    const modalEntrega = document.getElementById('modalEntregaEquipo');
+                    if (modalEntrega) {
+                        modalEntrega.classList.add('hidden');
+                        modalEntrega.classList.remove('flex');
+                        modalEntrega.style.display = 'none';
+                    }
+                }
+                exactoAbrirModalLiquidarSaldo();
+                return;
+            }
+            if (t.closest('#btnCancelarLiquidarSaldo')) {
+                e.preventDefault();
+                exactoCerrarModalLiquidarSaldo();
+                return;
+            }
+            if (t.closest('#btnConfirmarLiquidarSaldo')) {
+                e.preventDefault();
+                void exactoConfirmarLiquidarSaldo();
+                return;
             }
         });
 
@@ -3477,6 +3501,14 @@ function exactoAplicarConversionNetoASinIva(input) {
                 abono.id = 'abonoSaldoAplicado';
                 abono.value = '0';
                 form.appendChild(abono);
+            }
+            if (!document.getElementById('abonoSaldoEquiposJson')) {
+                const abonoEq = document.createElement('input');
+                abonoEq.type = 'hidden';
+                abonoEq.name = 'abono_saldo_equipos';
+                abonoEq.id = 'abonoSaldoEquiposJson';
+                abonoEq.value = '{}';
+                form.appendChild(abonoEq);
             }
             if (!document.getElementById('saldoPagadoConfirmado')) {
                 const conf = document.createElement('input');
@@ -4049,37 +4081,215 @@ function exactoAplicarConversionNetoASinIva(input) {
             elSal.textContent = saldo.toFixed(2);
         }
 
-        async function exactoPagarSaldoPendiente() {
-            calcularTotalFactura();
-            const saldo = exactoSaldoPendienteActual();
-            if (saldo <= 0.009) {
-                await exactoShowAlert('No hay saldo pendiente por pagar.', { title: 'Saldo pendiente' });
+        function exactoIdEquipoDeFilaLiquidar(row) {
+            return Number(row.querySelector('select[name*="[id_equipo]"]')?.value) || 1;
+        }
+
+        function exactoCalcularSaldoEquipo(numEquipo) {
+            let trabajos = 0;
+            document.querySelectorAll('#trabajosTableBody .trabajo-row').forEach((row) => {
+                if (exactoIdEquipoDeFilaLiquidar(row) !== numEquipo) return;
+                trabajos += parseFloat(row.querySelector('.importe-input')?.value) || 0;
+            });
+            let materiales = 0;
+            document.querySelectorAll('#materialesTableBody .material-row').forEach((row) => {
+                if (exactoIdEquipoDeFilaLiquidar(row) !== numEquipo) return;
+                materiales += parseFloat(row.querySelector('.importe-calc')?.textContent) || 0;
+            });
+            let anticipos = 0;
+            document.querySelectorAll('#anticiposTableBody .anticipo-row').forEach((row) => {
+                if (exactoIdEquipoDeFilaLiquidar(row) !== numEquipo) return;
+                const input = row.querySelector('.anticipo-input');
+                let monto = parseFloat(input?.value) || 0;
+                if (input && input.dataset.exactoNetoEditing === '1') {
+                    monto = exactoMontoSinIvaDesdeTotal(monto);
+                }
+                anticipos += monto;
+            });
+            const map = exactoLeerAbonoEquiposMap();
+            const yaLiquidado = parseFloat(map[String(numEquipo)] || map[numEquipo] || 0) || 0;
+            const saldoSinIva = Math.max(0, exactoRound2(trabajos + materiales - anticipos - yaLiquidado));
+            return exactoMontoConIva(saldoSinIva);
+        }
+
+        function exactoLeerEquiposParaLiquidar() {
+            const filas = document.querySelectorAll('#equiposTableBody .equipo-row');
+            if (filas.length) {
+                return Array.from(filas).map((fila, idx) => {
+                    const num = idx + 1;
+                    return {
+                        num,
+                        marca: String(fila.querySelector('[name*="[marca]"]')?.value || '').trim() || 'Sin marca',
+                        modelo: String(fila.querySelector('[name*="[modelo]"]')?.value || '').trim() || 'Sin modelo',
+                        serie: String(fila.querySelector('[name*="[serie]"]')?.value || '').trim(),
+                        saldo: exactoCalcularSaldoEquipo(num),
+                    };
+                });
+            }
+            let ordenJson = {};
+            const jsonEl = document.getElementById('ordenExistenteJson');
+            if (jsonEl) {
+                try { ordenJson = JSON.parse(jsonEl.textContent || '{}'); } catch (e) { ordenJson = {}; }
+            }
+            return (ordenJson.equipos || []).map((eq, idx) => {
+                const num = idx + 1;
+                return {
+                    num,
+                    marca: eq.marca || 'Sin marca',
+                    modelo: eq.modelo || 'Sin modelo',
+                    serie: eq.serie || '',
+                    saldo: exactoCalcularSaldoEquipo(num),
+                };
+            });
+        }
+
+        function exactoCerrarModalLiquidarSaldo() {
+            const modal = document.getElementById('modalLiquidarSaldo');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function exactoAbrirModalLiquidarSaldo() {
+            const modal = document.getElementById('modalLiquidarSaldo');
+            if (!modal) {
+                void exactoShowAlert('No se encontró la ventana de liquidar saldo.', { title: 'Error', icon: 'error' });
                 return;
             }
+            if (modal.parentNode !== document.body) {
+                document.body.appendChild(modal);
+            }
+            const container = document.getElementById('equiposLiquidarSaldoContainer');
+            if (container) {
+                container.innerHTML = '';
+                const equipos = exactoLeerEquiposParaLiquidar();
+                if (!equipos.length) {
+                    container.innerHTML = '<p class="text-slate-500">No hay equipos registrados en esta orden.</p>';
+                } else {
+                    equipos.forEach((eq) => {
+                        const serieTxt = eq.serie ? ` · Serie: ${exactoEscapeHtml(eq.serie)}` : '';
+                        const row = document.createElement('div');
+                        row.className = 'p-3 border-2 border-blue-200 rounded-lg bg-blue-50';
+                        row.innerHTML = `
+                            <label class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between cursor-pointer">
+                                <span class="flex items-start gap-2 min-w-0">
+                                    <input type="checkbox" class="mt-1 w-4 h-4 rounded border-blue-600" name="equipo_liquidar[]" value="${eq.num}" data-saldo="${eq.saldo}">
+                                    <span class="text-sm text-blue-900">
+                                        <span class="font-bold">Equipo ${eq.num}:</span> ${exactoEscapeHtml(eq.marca)} - ${exactoEscapeHtml(eq.modelo)}${serieTxt}
+                                    </span>
+                                </span>
+                                <span class="rounded-lg bg-red-600 px-3 py-2 text-center text-sm font-bold text-white sm:min-w-[10rem]">
+                                    SALDO: $${eq.saldo.toFixed(2)}
+                                </span>
+                            </label>
+                        `;
+                        container.appendChild(row);
+                    });
+                }
+            }
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.style.cssText = 'position:fixed;inset:0;z-index:20000;display:flex !important;align-items:center;justify-content:center;padding:1rem;background:rgba(2,6,23,0.8);';
+            document.body.style.overflow = 'hidden';
+        }
 
-            const clientePago = await exactoShowConfirm(
-                `¿Cliente pagó el saldo pendiente completo ($${saldo.toFixed(2)})?`,
+        async function exactoConfirmarLiquidarSaldo() {
+            const checkboxes = document.querySelectorAll('#modalLiquidarSaldo input[name="equipo_liquidar[]"]:checked');
+            const items = Array.from(checkboxes).map((c) => ({
+                num: Number(c.value),
+                saldoConIva: parseFloat(c.dataset.saldo) || 0,
+            }));
+            if (!items.length) {
+                await exactoShowAlert('Selecciona al menos un equipo', { title: 'Error', icon: 'error' });
+                return;
+            }
+            const saldoSeleccionado = items.reduce((acc, it) => acc + it.saldoConIva, 0);
+            const confirmar = await exactoShowConfirm(
+                `¿Liquidar el saldo de $${saldoSeleccionado.toFixed(2)} de ${items.length} equipo(s) seleccionado(s)? El resto de la orden puede seguir con saldo.`,
                 {
-                    title: 'Confirmar pago',
-                    confirmText: 'Sí, liquidar saldo',
+                    title: 'Confirmar liquidación',
+                    confirmText: 'Sí, liquidar',
                     cancelText: 'Cancelar',
+                    icon: 'warning',
                 }
             );
-            if (!clientePago) {
-                await exactoShowAlert('Pago cancelado. No se modificó el saldo pendiente.', {
-                    title: 'Operación cancelada',
-                });
+            if (!confirmar) {
                 return;
             }
+            const ok = await window.exactoAplicarLiquidacionEquipos(items);
+            if (ok) {
+                exactoCerrarModalLiquidarSaldo();
+            }
+        }
 
-            const confirmado = document.getElementById('saldoPagadoConfirmado');
-            if (confirmado) confirmado.value = '1';
-            exactoSetAbonoSaldo(exactoTotalAbonoSaldo() + exactoMontoSinIvaDesdeTotal(saldo));
+        window.exactoBtnLiquidarSaldo = exactoAbrirModalLiquidarSaldo;
 
-            calcularSaldoPendiente();
-            await exactoShowAlert('Pago del cliente registrado. El saldo pendiente quedó liquidado.', {
-                title: 'Pago aplicado',
+        function exactoLeerAbonoEquiposMap() {
+            const el = document.getElementById('abonoSaldoEquiposJson');
+            if (!el) return {};
+            try {
+                const parsed = JSON.parse(String(el.value || '{}'));
+                return parsed && typeof parsed === 'object' ? parsed : {};
+            } catch (e) {
+                return {};
+            }
+        }
+
+        function exactoGuardarAbonoEquiposMap(map) {
+            const el = document.getElementById('abonoSaldoEquiposJson');
+            if (el) el.value = JSON.stringify(map || {});
+        }
+
+        window.exactoAbonoLiquidadoEquipoSinIva = function (numEquipo) {
+            const map = exactoLeerAbonoEquiposMap();
+            return parseFloat(map[String(numEquipo)] || map[numEquipo] || 0) || 0;
+        };
+
+        window.exactoAplicarLiquidacionEquipos = async function (items) {
+            calcularTotalFactura();
+            let restanteOrden = exactoSaldoPendienteActual();
+            if (restanteOrden <= 0.009) {
+                await exactoShowAlert('No hay saldo pendiente por pagar.', { title: 'Saldo pendiente' });
+                return false;
+            }
+
+            const map = exactoLeerAbonoEquiposMap();
+            let aAplicar = 0;
+            (items || []).forEach((it) => {
+                const num = Number(it.num) || 0;
+                const pedido = Math.max(0, parseFloat(it.saldoConIva) || 0);
+                const parte = exactoRound2(Math.min(pedido, restanteOrden - aAplicar));
+                if (num <= 0 || parte <= 0.009) return;
+                aAplicar = exactoRound2(aAplicar + parte);
+                const key = String(num);
+                map[key] = exactoRound2((parseFloat(map[key]) || 0) + exactoMontoSinIvaDesdeTotal(parte));
             });
+
+            if (aAplicar <= 0.009) {
+                await exactoShowAlert('El equipo seleccionado no tiene saldo pendiente según sus cálculos.', {
+                    title: 'Sin saldo',
+                });
+                return false;
+            }
+
+            exactoGuardarAbonoEquiposMap(map);
+            exactoSetAbonoSaldo(exactoTotalAbonoSaldo() + exactoMontoSinIvaDesdeTotal(aAplicar));
+            calcularSaldoPendiente();
+            const restante = exactoSaldoPendienteActual();
+            const confirmado = document.getElementById('saldoPagadoConfirmado');
+            if (confirmado) confirmado.value = restante <= 0.009 ? '1' : '0';
+            exactoMarcarOrdenFormSucio();
+            await exactoShowAlert(
+                `Se liquidó $${aAplicar.toFixed(2)} del equipo seleccionado.\nSaldo restante de la orden: $${restante.toFixed(2)}.`,
+                { title: 'Pago aplicado', icon: 'success' }
+            );
+            return true;
+        };
+
+        async function exactoPagarSaldoPendiente() {
+            exactoAbrirModalLiquidarSaldo();
         }
 
         /** Solo dígitos y un punto decimal (evita letras y notación científica en type="number"). */

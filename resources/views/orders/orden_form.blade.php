@@ -938,6 +938,7 @@
             <?php if ($ocultarSeccionesTaller): ?>
             {{-- En recepción/nueva no hay tabla de trabajos; estos campos permiten registrar SERSOP01 + abono. --}}
             <input type="hidden" name="abono_saldo" id="abonoSaldoAplicado" value="0">
+            <input type="hidden" name="abono_saldo_equipos" id="abonoSaldoEquiposJson" value="{}">
             <input type="hidden" name="saldo_pagado_confirmado" id="saldoPagadoConfirmado" value="0">
             <?php endif; ?>
             <?php } ?>
@@ -1522,6 +1523,7 @@
                         style="background-color: #dc2626; color: #ffffff; display: inline-block;"
                     >SALDO PENDIENTE: $<span id="saldoPendiente">0.00</span></strong>
                     <input type="hidden" name="abono_saldo" id="abonoSaldoAplicado" value="0">
+                    <input type="hidden" name="abono_saldo_equipos" id="abonoSaldoEquiposJson" value="{}">
                     <input type="hidden" name="saldo_pagado_confirmado" id="saldoPagadoConfirmado" value="0">
                     <div class="mt-3">
                         <div class="flex flex-col items-end gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
@@ -1529,10 +1531,10 @@
                                 type="button"
                                 id="btnPagarSaldoPendiente"
                                 class="inline-flex items-center justify-center rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                                title="Liquida todo el saldo pendiente"
+                                title="Elige el equipo y liquida solo su saldo"
                             >
                                 <i class="fas fa-cash-register mr-2"></i>
-                                Pagar saldo pendiente
+                                Liquidar saldo por equipo
                             </button>
                         </div>
                     </div>
@@ -1745,25 +1747,6 @@
                 Liquidar Saldo por Equipo
             </button>
 
-            <!-- Modal: Liquidar Saldo - Seleccionar equipos -->
-            <div id="modalLiquidarSaldo" class="hidden fixed inset-0 z-[10150] bg-slate-950/80" role="dialog" aria-modal="true" aria-labelledby="modalLiquidarSaldoTitle" style="display:none;align-items:center;justify-content:center;padding:1rem;z-index:10150;">
-                <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-                    <div class="border-b border-slate-200 px-5 py-4">
-                        <h3 id="modalLiquidarSaldoTitle" class="text-center text-xl font-bold text-blue-900">Liquidar Saldo por Equipo</h3>
-                    </div>
-                    <div class="p-5 space-y-2 max-h-[60vh] overflow-y-auto">
-                        <p class="text-sm text-slate-600 mb-4">Selecciona los equipos a liquidar:</p>
-                        <div id="equiposLiquidarSaldoContainer" class="space-y-1">
-                            <!-- Equipo rows will be populated by JS -->
-                        </div>
-                    </div>
-                    <div class="p-5 border-t border-slate-200 flex justify-end gap-3">
-                        <button type="button" id="btnCancelarLiquidarSaldo" class="rounded-lg border-2 border-slate-300 bg-white px-5 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar</button>
-                        <button type="button" id="btnConfirmarLiquidarSaldo" class="rounded-lg bg-red-600 px-5 py-2 text-sm font-bold text-white hover:bg-red-700">Liquidar Seleccionados</button>
-                    </div>
-                </div>
-            </div>
-
             <!-- Modal: Entrega por Equipo Confirmation -->
             <div id="modalEntregaEquipo" class="hidden fixed inset-0 z-[10160] items-center justify-center bg-slate-950/80" role="dialog" aria-modal="true" aria-labelledby="modalEntregaEquipoTitle" style="display:none;align-items:center;justify-content:center;padding:1rem;z-index:10160;">
                 <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
@@ -1863,6 +1846,22 @@
         </form>
     </div>
 
+    <div id="modalLiquidarSaldo" class="hidden fixed inset-0 z-[20000] bg-slate-950/80" role="dialog" aria-modal="true" aria-labelledby="modalLiquidarSaldoTitle" style="display:none;align-items:center;justify-content:center;padding:1rem;z-index:20000;">
+        <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="border-b border-slate-200 px-5 py-4">
+                <h3 id="modalLiquidarSaldoTitle" class="text-center text-xl font-bold text-blue-900">Liquidar Saldo por Equipo</h3>
+            </div>
+            <div class="p-5 space-y-2 max-h-[60vh] overflow-y-auto">
+                <p class="text-sm text-slate-600 mb-4">Selecciona los equipos a liquidar. El pago se aplica a este equipo, el resto de la orden puede seguir con saldo.</p>
+                <div id="equiposLiquidarSaldoContainer" class="space-y-2"></div>
+            </div>
+            <div class="p-5 border-t border-slate-200 flex justify-end gap-3">
+                <button type="button" id="btnCancelarLiquidarSaldo" class="rounded-lg border-2 border-slate-300 bg-white px-5 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancelar</button>
+                <button type="button" id="btnConfirmarLiquidarSaldo" class="rounded-lg bg-green-600 px-5 py-2 text-sm font-bold text-white hover:bg-green-700">Liquidar seleccionados</button>
+            </div>
+        </div>
+    </div>
+
     {{-- z-index > nav (9999) y toast WA (10050): si no, "Cambiar de cuenta" tapa el motivo en tableta --}}
     <div id="modalSalidaTemporal" class="hidden fixed inset-0 z-[10100] bg-slate-950/75" role="dialog" aria-modal="true" aria-labelledby="modalSalidaTemporalTitle" style="display:none;align-items:center;justify-content:center;padding:0.5rem;z-index:10100;">
         <div id="cardSalidaTemporal" class="flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" style="display:flex;flex-direction:column;width:100%;max-width:48rem;max-height:min(96dvh,96vh);overflow:hidden;background:#fff;">
@@ -1906,7 +1905,7 @@
         </div>
     </div>
 
-    <div id="exactoUiModal" class="hidden fixed inset-0 z-[10110] items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-labelledby="exactoUiModalTitle" style="z-index:10110;">
+    <div id="exactoUiModal" class="hidden fixed inset-0 z-[20000] items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-labelledby="exactoUiModalTitle" style="z-index:20000;">
         <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl">
             <div class="border-b border-slate-200 px-5 py-4">
                 <h3 id="exactoUiModalTitle" class="text-center text-xl font-bold text-blue-900">Aviso</h3>
@@ -2281,98 +2280,6 @@
               });
         }
 
-        // ===== LÓGICA: Liquidar Saldo por Equipo =====
-        window.exactoBtnLiquidarSaldo = function() {
-            const idOrden = Number(document.getElementById('id_orden_c')?.value || 0);
-            if (!idOrden) {
-                exactoShowAlert('No hay orden activa', {title: 'Error', icon: 'error'});
-                return;
-            }
-
-            // Cargar lista de equipos desde el JSON o consultar BD
-            const modal = document.getElementById('modalLiquidarSaldo');
-            if (!modal) return;
-
-            // Obtener equipos de la orden actual
-            const ordenJson = window.EXISTENTE_ORDEN_JSON ?? {};
-            const equipos = ordenJson.equipos || [];
-
-            const container = document.getElementById('equiposLiquidarSaldoContainer');
-            container.innerHTML = '';
-
-            if (!equipos || equipos.length === 0) {
-                container.innerHTML = '<p class="text-slate-500">No hay equipos registrados en esta orden.</p>';
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-                modal.style.display = 'flex';
-                return;
-            }
-
-            equipos.forEach((eq, idx) => {
-                const row = document.createElement('div');
-                row.className = 'p-3 border rounded bg-blue-50';
-                row.innerHTML = `
-                    <label class="flex items-center space-x-2">
-                        <input type="checkbox" class="checkbox-acceso w-4 h-4 rounded border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300" name="equipo_liquidar[]" value="${eq.id_equipo || idx}">
-                        <span class="text-sm text-blue-900 flex-1">${eq.marca || 'Sin marca'} - ${eq.modelo || 'Sin modelo'}</span>
-                    </label>
-                `;
-                container.appendChild(row);
-            });
-
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            modal.style.display = 'flex';
-            modal.style.alignItems = 'center';
-            modal.style.justifyContent = 'center';
-            modal.style.padding = '1rem';
-            modal.style.zIndex = '10150';
-            document.body.style.overflow = 'hidden';
-        };
-
-        document.getElementById('btnCancelarLiquidarSaldo')?.addEventListener('click', function() {
-            const modal = document.getElementById('modalLiquidarSaldo');
-            if (modal) {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-                modal.style.display = 'none';
-                document.body.style.overflow = '';
-            }
-        });
-
-        document.getElementById('btnConfirmarLiquidarSaldo')?.addEventListener('click', function() {
-            const idOrden = Number(document.getElementById('id_orden_c')?.value || 0);
-            const checkboxes = document.querySelectorAll('input[name="equipo_liquidar[]"]:checked');
-            const idsEquipo = Array.from(checkboxes).map(c => Number(c.value));
-
-            if (idsEquipo.length === 0) {
-                exactoShowAlert('Selecciona al menos un equipo', {title: 'Error', icon: 'error'});
-                return;
-            }
-
-            // Llamar al backend para liquidar saldo de los equipos seleccionados
-            fetch('/api/ordenes/liquidar-saldo-equipo', {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': exactoCsrfToken()
-                },
-                body: JSON.stringify({id_orden: idOrden, ids_equipo: idsEquipo})
-            }).then(r => r.json())
-              .then(data => {
-                  if (data.success) {
-                      exactoShowAlert(data.message || 'Saldo liquidado', {title: 'Éxito', icon: 'success'});
-                      modalLiquidarSaldo.classList.add('hidden');
-                      modalLiquidarSaldo.classList.remove('flex');
-                      modalLiquidarSaldo.style.display = 'none';
-                      document.body.style.overflow = '';
-                      window.location.reload();
-                  } else {
-                      exactoShowAlert(data.message || 'Error al liquidar', {title: 'Error', icon: 'error'});
-                  }
-              });
-        });
     </script>
 
   
@@ -2418,8 +2325,9 @@
             display: none !important;
         }
 
-        #exactoUiModal.flex {
-            display: flex;
+        #exactoUiModal.flex,
+        #modalLiquidarSaldo.flex {
+            display: flex !important;
         }
 
         #exactoUiModalMessage,

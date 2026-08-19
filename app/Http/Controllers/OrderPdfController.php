@@ -489,9 +489,9 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;tex
 .sig-box img{display:inline-block;margin:0 auto;max-height:34px;max-width:95%;width:auto;height:auto;vertical-align:middle;object-fit:contain}
 </style></head><body><table class="header-table"><tr><td class="header-col-logo"><div class="logo">'.($logoData !== '' ? '<img src="'.$logoData.'" alt="Logo">' : '&nbsp;').'</div></td><td class="header-col-title"><h1>Orden de Servicio</h1><div><strong>Folio:</strong> '.e((string) ($o['folio'] ?? '')).'</div></td><td class="header-col-client"><div><strong>Cliente:</strong> '.$this->short((string) ($o['nombre_cliente'] ?? ''), 80).'</div><div><strong>Atención (recepción):</strong> '.$this->short($tecnicoAtiende, 55).'</div><div><strong>Entrega al cliente:</strong> '.$this->short($tecnicoEntregaPdf, 55).'</div></td></tr></table>
 <table class="info"><tr><td colspan="2"><strong>Dirección:</strong> '.$this->short((string) ($o['direccion'] ?? ''), 150).'</td></tr><tr><td><strong>Teléfono:</strong> '.$this->short((string) ($o['telefono'] ?? ''), 30).'</td><td><strong>Correo:</strong> '.$this->short((string) ($o['correo'] ?? ''), 70).'</td></tr><tr><td><strong>Población:</strong> '.$this->short((string) ($o['poblacion'] ?? ''), 50).'</td><td><strong>Estatus:</strong> <span class="status '.$statusClass.'">'.e($status !== '' ? $status : '-').'</span></td></tr><tr><td><strong>Fecha entrada:</strong> '.e($fechaEntrada).'</td><td><strong>Fecha terminado:</strong> '.e($fechaTerminada).' | <strong>Fecha entrega:</strong> '.e($fechaSalida).'</td></tr></table>
+<h2>EQUIPOS</h2><table class="section"><thead><tr><th>MARCA</th><th>MODELO</th><th>SERIE</th><th>TIPO DE SERVICIO</th><th>DESCRIPCION</th></tr></thead><tbody>'.$rowsEquipos.'</tbody></table>
 <h2>Observaciones</h2><table class="section"><tbody><tr><td>'.$obsHtml.'</td></tr></tbody></table>
 <h2>Comentarios técnicos</h2><table class="section"><tbody><tr><td>'.$comentariosTecnicoHtml.'</td></tr></tbody></table>
-<h2>EQUIPOS</h2><table class="section"><thead><tr><th>MARCA</th><th>MODELO</th><th>SERIE</th><th>TIPO DE SERVICIO</th><th>DESCRIPCION</th></tr></thead><tbody>'.$rowsEquipos.'</tbody></table>
 <h2>TRABAJOS</h2><table class="section"><thead><tr><th>ID</th><th>CLAVE</th><th>DESCRIPCION</th><th>PRECIO SIN IVA</th><th>TICKET O FACTURA</th></tr></thead><tbody>'.$rowsTrab.'</tbody></table>
 <h2>MATERIALES</h2><table class="section"><thead><tr><th>VALE NO.</th><th>DESCRIPCION</th><th>CANTIDAD</th><th>PRECIO SIN IVA</th><th>IMPORTE</th><th>TICKET O FACTURA</th></tr></thead><tbody>'.$rowsMat.'</tbody></table>
 '.($rowsAnticipos !== '' ? '<h2>ANTICIPOS</h2><table class="section"><thead><tr><th>ID</th><th>FOLIO</th><th>DESCRIPCION</th><th>MONTO SIN IVA</th><th>TICKET/FACTURA</th></tr></thead><tbody>'.$rowsAnticipos.'</tbody></table>' : '').'
@@ -520,7 +520,7 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;tex
             File::makeDirectory($cacheDir, 0755, true);
         }
         // Bump este prefijo al cambiar layout del PDF para invalidar cache en disco.
-        $cacheKey = hash('sha256', 'orden_pdf_v27_salida_gap|'.$id.'|'.$html);
+        $cacheKey = hash('sha256', 'orden_pdf_v28_secciones_orden|'.$id.'|'.$html);
         $cachePath = $cacheDir.'/orden_'.$id.'_'.$cacheKey.'.pdf';
         if (! $refreshCache && File::exists($cachePath)) {
             return (string) File::get($cachePath);
