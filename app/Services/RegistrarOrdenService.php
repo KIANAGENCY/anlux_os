@@ -1076,13 +1076,27 @@ final class RegistrarOrdenService
     /**
      * @param  array<mixed>  $equiposIn
      * @param  list<int>|null  $accionesPorIndice acciones previas 0..N-1 (se preservan al reinsertar)
+     * @param  array<int, array{tipo?: string|null, nombre?: string|null, firma_cliente?: string|null, firma_tecnico?: string|null, tecnico?: string|null, fecha?: string|null}>|null  $entregaPorIndice datos cifrados previos por equipo
      * @return list<array<int, mixed>>
      */
-    private function equipoInsertRows(int $idOrdenC, array $equiposIn, ?array $accionesPorIndice = null): array
+    private function equipoInsertRows(
+        int $idOrdenC,
+        array $equiposIn,
+        ?array $accionesPorIndice = null,
+        ?array $entregaPorIndice = null
+    ): array
     {
         $rows = [];
         $indice = 0;
         $conAcciones = Schema::hasTable('equipos_orden') && Schema::hasColumn('equipos_orden', 'acciones');
+        $conReceptorEquipo = Schema::hasTable('equipos_orden')
+            && Schema::hasColumn('equipos_orden', 'entrega_receptor_tipo')
+            && Schema::hasColumn('equipos_orden', 'entrega_recibido_cliente');
+        $conDetalleEntregaEquipo = Schema::hasTable('equipos_orden')
+            && Schema::hasColumn('equipos_orden', 'entrega_firma_cliente')
+            && Schema::hasColumn('equipos_orden', 'entrega_firma_tecnico')
+            && Schema::hasColumn('equipos_orden', 'entrega_tecnico')
+            && Schema::hasColumn('equipos_orden', 'entrega_fecha');
         foreach ($equiposIn as $equipo) {
             if (! is_array($equipo)) {
                 continue;
@@ -1114,11 +1128,26 @@ final class RegistrarOrdenService
                 $acciones = max($acciones, (int) $equipo['acciones']);
             }
 
+            $row = [$idOrdenC, $marca, $modelo, $serie, $claveEquipo, $tipoServicioEquipo, $descripcionFallaEquipo];
+            $entregaEquipo = is_array($entregaPorIndice[$indice] ?? null)
+                ? $entregaPorIndice[$indice]
+                : [];
             if ($conAcciones) {
-                $rows[] = [$idOrdenC, $marca, $modelo, $serie, $claveEquipo, $tipoServicioEquipo, $descripcionFallaEquipo, $acciones];
-            } else {
-                $rows[] = [$idOrdenC, $marca, $modelo, $serie, $claveEquipo, $tipoServicioEquipo, $descripcionFallaEquipo];
+                $row[] = $acciones;
             }
+            if ($conReceptorEquipo) {
+                $tipoReceptor = mb_strtolower(trim((string) ($entregaEquipo['tipo'] ?? '')), 'UTF-8');
+                $row[] = in_array($tipoReceptor, ['cliente', 'tercero'], true) ? $tipoReceptor : null;
+                $nombreReceptor = trim((string) ($entregaEquipo['nombre'] ?? ''));
+                $row[] = $nombreReceptor !== '' ? $nombreReceptor : null;
+            }
+            if ($conDetalleEntregaEquipo) {
+                foreach (['firma_cliente', 'firma_tecnico', 'tecnico', 'fecha'] as $campoEntrega) {
+                    $valorEntrega = trim((string) ($entregaEquipo[$campoEntrega] ?? ''));
+                    $row[] = $valorEntrega !== '' ? $valorEntrega : null;
+                }
+            }
+            $rows[] = $row;
             $indice++;
         }
 
@@ -1989,17 +2018,52 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
             $folioStr,
             $this->vault->firmaRutaReveal($ex['firma_t_r'] ?? null)
         );
+        $esEntregaIndividual = $entregaPorEquipo
+            && $estatusEquipoSolicitado === 'Entregado'
+            && $equipoIndiceEntrega >= 1;
+        $firmaClienteFinalExistente = $exT
+            ? $this->vault->firmaRutaReveal($exT['firma_c_r'] ?? null)
+            : null;
+        $firmaTecnicoFinalExistente = $exT
+            ? $this->vault->firmaRutaReveal($exT['firma_t_e'] ?? null)
+            : null;
+        if (
+            $esEntregaIndividual
+            && $idEquipoEntregaResuelto
+            && Schema::hasColumn('equipos_orden', 'entrega_firma_cliente')
+            && Schema::hasColumn('equipos_orden', 'entrega_firma_tecnico')
+        ) {
+            $equipoFirmasExistentes = DB::selectOne(
+                'SELECT entrega_firma_cliente, entrega_firma_tecnico
+                 FROM equipos_orden WHERE id_equipo = ? AND id_orden_c = ?',
+                [$idEquipoEntregaResuelto, $idOrdenEditar]
+            );
+            if ($equipoFirmasExistentes) {
+                $firmaClienteEquipo = $this->vault->firmaRutaReveal(
+                    $equipoFirmasExistentes->entrega_firma_cliente ?? null
+                );
+                $firmaTecnicoEquipo = $this->vault->firmaRutaReveal(
+                    $equipoFirmasExistentes->entrega_firma_tecnico ?? null
+                );
+                if ($firmaClienteEquipo !== '') {
+                    $firmaClienteFinalExistente = $firmaClienteEquipo;
+                }
+                if ($firmaTecnicoEquipo !== '') {
+                    $firmaTecnicoFinalExistente = $firmaTecnicoEquipo;
+                }
+            }
+        }
         $firmaClienteFinalPlano = $this->mergeFirma(
             $request->input('firmaCliente'),
-            'firma_cliente_final',
+            $esEntregaIndividual ? 'firma_cliente_equipo_'.$equipoIndiceEntrega.'_final' : 'firma_cliente_final',
             $folioStr,
-            $exT ? $this->vault->firmaRutaReveal($exT['firma_c_r'] ?? null) : null
+            $firmaClienteFinalExistente
         );
         $firmaTecnicoFinalPlano = $this->mergeFirma(
             $request->input('firmaTecnico'),
-            'firma_tecnico_final',
+            $esEntregaIndividual ? 'firma_tecnico_equipo_'.$equipoIndiceEntrega.'_final' : 'firma_tecnico_final',
             $folioStr,
-            $exT ? $this->vault->firmaRutaReveal($exT['firma_t_e'] ?? null) : null
+            $firmaTecnicoFinalExistente
         );
         $firmaClienteInicial = $this->vault->firmaRutaSeal($firmaClienteInicialPlano);
         $firmaTecnicoInicial = $this->vault->firmaRutaSeal($firmaTecnicoInicialPlano);
@@ -2167,24 +2231,87 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
             DB::update($sqlUpd, $values);
 
             $accionesPreviasEquipos = [];
-            if (Schema::hasColumn('equipos_orden', 'acciones')) {
+            $entregaPreviaEquipos = [];
+            $conAccionesEquipo = Schema::hasColumn('equipos_orden', 'acciones');
+            $conReceptorEquipo = Schema::hasColumn('equipos_orden', 'entrega_receptor_tipo')
+                && Schema::hasColumn('equipos_orden', 'entrega_recibido_cliente');
+            $conDetalleEntregaEquipo = Schema::hasColumn('equipos_orden', 'entrega_firma_cliente')
+                && Schema::hasColumn('equipos_orden', 'entrega_firma_tecnico')
+                && Schema::hasColumn('equipos_orden', 'entrega_tecnico')
+                && Schema::hasColumn('equipos_orden', 'entrega_fecha');
+            if ($conAccionesEquipo || $conReceptorEquipo || $conDetalleEntregaEquipo) {
+                $columnasPrevias = ['id_equipo'];
+                if ($conAccionesEquipo) {
+                    $columnasPrevias[] = 'acciones';
+                }
+                if ($conReceptorEquipo) {
+                    $columnasPrevias[] = 'entrega_receptor_tipo';
+                    $columnasPrevias[] = 'entrega_recibido_cliente';
+                }
+                if ($conDetalleEntregaEquipo) {
+                    $columnasPrevias[] = 'entrega_firma_cliente';
+                    $columnasPrevias[] = 'entrega_firma_tecnico';
+                    $columnasPrevias[] = 'entrega_tecnico';
+                    $columnasPrevias[] = 'entrega_fecha';
+                }
                 $eqPrev = DB::select(
-                    'SELECT acciones FROM equipos_orden WHERE id_orden_c = ? ORDER BY id_equipo ASC',
+                    'SELECT '.implode(', ', $columnasPrevias).' FROM equipos_orden WHERE id_orden_c = ? ORDER BY id_equipo ASC',
                     [$idOrdenEditar]
                 );
                 foreach ($eqPrev as $idx => $eqRow) {
-                    $accionesPreviasEquipos[$idx] = (int) ($eqRow->acciones ?? 0);
+                    if ($conAccionesEquipo) {
+                        $accionesPreviasEquipos[$idx] = (int) ($eqRow->acciones ?? 0);
+                    }
+                    if ($conReceptorEquipo) {
+                        $entregaPreviaEquipos[$idx] = [
+                            'tipo' => $eqRow->entrega_receptor_tipo ?? null,
+                            'nombre' => $eqRow->entrega_recibido_cliente ?? null,
+                        ];
+                    }
+                    if ($conDetalleEntregaEquipo) {
+                        $entregaPreviaEquipos[$idx] = array_merge(
+                            $entregaPreviaEquipos[$idx] ?? [],
+                            [
+                                'firma_cliente' => $eqRow->entrega_firma_cliente ?? null,
+                                'firma_tecnico' => $eqRow->entrega_firma_tecnico ?? null,
+                                'tecnico' => $eqRow->entrega_tecnico ?? null,
+                                'fecha' => $eqRow->entrega_fecha ?? null,
+                            ]
+                        );
+                    }
                 }
                 // Aplicar estatus del equipo seleccionado (sin tocar el estatus de la orden).
                 if ($entregaPorEquipo && $estatusEquipoSolicitado !== null && $equipoIndiceEntrega >= 1) {
                     $idxEntrega = $equipoIndiceEntrega - 1;
-                    if ($estatusEquipoSolicitado === 'Terminado') {
+                    if ($estatusEquipoSolicitado === 'Terminado' && $conAccionesEquipo) {
                         $accionesPreviasEquipos[$idxEntrega] = max(
                             (int) ($accionesPreviasEquipos[$idxEntrega] ?? 0),
                             self::EQUIPO_ACCION_TERMINADO
                         );
                     } elseif ($estatusEquipoSolicitado === 'Entregado') {
-                        $accionesPreviasEquipos[$idxEntrega] = self::EQUIPO_ACCION_ENTREGADO;
+                        if ($conAccionesEquipo) {
+                            $accionesPreviasEquipos[$idxEntrega] = self::EQUIPO_ACCION_ENTREGADO;
+                        }
+                        if ($conReceptorEquipo) {
+                            $entregaPreviaEquipos[$idxEntrega] = array_merge(
+                                $entregaPreviaEquipos[$idxEntrega] ?? [],
+                                [
+                                    'tipo' => $entregaQuienRecibe === 'tercero' ? 'tercero' : 'cliente',
+                                    'nombre' => $this->vault->nombreClienteSeal($recibidoClienteTPlano),
+                                ]
+                            );
+                        }
+                        if ($conDetalleEntregaEquipo) {
+                            $entregaPreviaEquipos[$idxEntrega] = array_merge(
+                                $entregaPreviaEquipos[$idxEntrega] ?? [],
+                                [
+                                    'firma_cliente' => $firmaClienteFinal,
+                                    'firma_tecnico' => $firmaTecnicoFinal,
+                                    'tecnico' => $this->vault->tecnicoNombreSeal($tecnicoInvolucrado),
+                                    'fecha' => now()->format('Y-m-d H:i:s'),
+                                ]
+                            );
+                        }
                     }
                 }
             }
@@ -2194,10 +2321,25 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
             if (Schema::hasColumn('equipos_orden', 'acciones')) {
                 $equipoCols[] = 'acciones';
             }
+            if ($conReceptorEquipo) {
+                $equipoCols[] = 'entrega_receptor_tipo';
+                $equipoCols[] = 'entrega_recibido_cliente';
+            }
+            if ($conDetalleEntregaEquipo) {
+                $equipoCols[] = 'entrega_firma_cliente';
+                $equipoCols[] = 'entrega_firma_tecnico';
+                $equipoCols[] = 'entrega_tecnico';
+                $equipoCols[] = 'entrega_fecha';
+            }
             $this->batchInsert(
                 'equipos_orden',
                 $equipoCols,
-                $this->equipoInsertRows($idOrdenEditar, $equiposIn, $accionesPreviasEquipos)
+                $this->equipoInsertRows(
+                    $idOrdenEditar,
+                    $equiposIn,
+                    $accionesPreviasEquipos,
+                    $entregaPreviaEquipos
+                )
             );
 
             // Asegurar acciones del equipo de entrega tras el reinsert (por índice 1..N).
@@ -2221,10 +2363,28 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
                         $accAntes = (int) ($equiposNuevos[$idx]->acciones ?? 0);
                         $accFinal = max($accAntes, $targetAccion);
                         if ($idEqNuevo > 0) {
-                            DB::update(
-                                'UPDATE equipos_orden SET acciones = ? WHERE id_equipo = ? AND id_orden_c = ?',
-                                [$accFinal, $idEqNuevo, $idOrdenEditar]
-                            );
+                            if ($estatusEquipoSolicitado === 'Entregado' && $conDetalleEntregaEquipo) {
+                                DB::update(
+                                    'UPDATE equipos_orden
+                                     SET acciones = ?, entrega_firma_cliente = ?, entrega_firma_tecnico = ?,
+                                         entrega_tecnico = ?, entrega_fecha = ?
+                                     WHERE id_equipo = ? AND id_orden_c = ?',
+                                    [
+                                        $accFinal,
+                                        $firmaClienteFinal,
+                                        $firmaTecnicoFinal,
+                                        $this->vault->tecnicoNombreSeal($tecnicoInvolucrado),
+                                        now()->format('Y-m-d H:i:s'),
+                                        $idEqNuevo,
+                                        $idOrdenEditar,
+                                    ]
+                                );
+                            } else {
+                                DB::update(
+                                    'UPDATE equipos_orden SET acciones = ? WHERE id_equipo = ? AND id_orden_c = ?',
+                                    [$accFinal, $idEqNuevo, $idOrdenEditar]
+                                );
+                            }
                         }
                     }
                 }
@@ -2401,6 +2561,13 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
             'equipo_acciones' => ($entregaPorEquipo && $estatusEquipoSolicitado === 'Entregado')
                 ? self::EQUIPO_ACCION_ENTREGADO
                 : (($entregaPorEquipo && $estatusEquipoSolicitado === 'Terminado') ? self::EQUIPO_ACCION_TERMINADO : null),
+            'reporte_url' => ($entregaPorEquipo && $estatusEquipoSolicitado === 'Entregado' && $equipoIndiceEntrega >= 1)
+                ? url('/pdf/orden/'.$idOrdenEditar).'?'.http_build_query([
+                    'eq' => $equipoIndiceEntrega,
+                    'inline' => 1,
+                    '_' => time(),
+                ])
+                : null,
             'email_notice' => $emailNotice['message'],
             'email_notice_level' => $emailNotice['level'],
             'whatsapp_notice' => $whatsappNotice['message'],
@@ -2513,6 +2680,13 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
                 $equipoColsIns = ['id_orden_c', 'marca', 'modelo', 'serie', 'clave', 'tipo_servicio', 'descripcion_falla'];
                 if (Schema::hasColumn('equipos_orden', 'acciones')) {
                     $equipoColsIns[] = 'acciones';
+                }
+                if (
+                    Schema::hasColumn('equipos_orden', 'entrega_receptor_tipo')
+                    && Schema::hasColumn('equipos_orden', 'entrega_recibido_cliente')
+                ) {
+                    $equipoColsIns[] = 'entrega_receptor_tipo';
+                    $equipoColsIns[] = 'entrega_recibido_cliente';
                 }
                 $this->batchInsert(
                     'equipos_orden',

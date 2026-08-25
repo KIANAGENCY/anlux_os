@@ -2663,6 +2663,8 @@ function exactoAplicarConversionNetoASinIva(input) {
                 const dbId = Number(eq.id_equipo) || 0;
                 row.dataset.idEquipoDb = dbId > 0 ? String(dbId) : '';
                 row.dataset.acciones = String(Number(eq.acciones) || 0);
+                row.dataset.entregaReceptorTipo = String(eq.entrega_receptor_tipo || '');
+                row.dataset.entregaRecibidoCliente = String(eq.entrega_recibido_cliente || '');
                 exactoPintarEstatusEquipoFila(row, Number(eq.acciones) || 0);
                 const btnEntrega = row.querySelector('.btn-entrega-equipo-row');
                 if (btnEntrega) {

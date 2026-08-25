@@ -26,7 +26,7 @@
             <h2 class="mb-6 flex items-center text-xl font-bold text-blue-900 sm:text-2xl">
                 <i class="mr-3 text-blue-600 fas fa-list"></i>Historial de &oacute;rdenes
             </h2>
-            <p class="mb-3 text-sm text-blue-900">Usa el bot&oacute;n <strong class="font-semibold text-blue-700">Abrir pesta&ntilde;a</strong> para ver el PDF de la orden en una nueva pesta&ntilde;a del navegador.</p>
+            <p class="mb-3 text-sm text-blue-900">Abre el PDF completo o despliega <strong class="font-semibold text-emerald-700">Equipos entregados</strong> para consultar receptor, fecha y PDF individual.</p>
             <div class="overflow-x-auto rounded-lg border border-blue-100">
                 <table class="w-full border-collapse text-sm" style="min-width: 720px;">
                     <thead>
@@ -83,8 +83,8 @@
 
     @php
         $historialJsCandidates = [
-            public_path('legacy/assets/js/historial_laravel.js'),
             public_path('legacy/js/historial_laravel.js'),
+            public_path('legacy/assets/js/historial_laravel.js'),
         ];
         $historialJs = null;
         $historialJsAsset = 'legacy/assets/js/historial_laravel.js';

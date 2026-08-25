@@ -2506,8 +2506,22 @@
             if (infoMarca && eqMarca) eqMarca.textContent = infoMarca.textContent;
             if (infoModelo && eqModelo) eqModelo.textContent = infoModelo.textContent;
 
+            const numEquipo = Number(window.exactoEntregaEquipoSeleccionado) || 0;
+            const filaEquipo = numEquipo > 0 ? exactoFilasEquipos()[numEquipo - 1] : null;
+            const receptorTipo = String(filaEquipo?.dataset?.entregaReceptorTipo || '').toLowerCase();
+            const receptorNombre = String(filaEquipo?.dataset?.entregaRecibidoCliente || '').trim();
             const radioCliente = document.getElementById('entregaQuienCliente');
-            if (radioCliente) radioCliente.checked = true;
+            const radioTercero = document.getElementById('entregaQuienTercero');
+            const inputReceptor = document.getElementById('inputRecibidoClienteEntrega');
+            if (receptorTipo === 'tercero') {
+                if (radioTercero) radioTercero.checked = true;
+                if (inputReceptor) inputReceptor.value = receptorNombre.toUpperCase();
+            } else {
+                if (radioCliente) radioCliente.checked = true;
+                if (inputReceptor && receptorNombre !== '') {
+                    inputReceptor.value = receptorNombre.toUpperCase();
+                }
+            }
             exactoSincronizarQuienRecibeEntrega();
 
             // Cerrar modal de confirmación y abrir modal de firmas PRIMERO
@@ -2771,6 +2785,20 @@
                     document.body.style.overflow = '';
                     exactoQuitarResaltadoEquipos();
                     await exactoShowAlert(data.message || 'Orden guardada', {title: 'Éxito', icon: 'success'});
+                    if (estatus === 'Entregado' && numEq > 0) {
+                        const reporteUrl = String(data.reporte_url || '').trim()
+                            || `${window.location.origin}/pdf/orden/${encodeURIComponent(idOrden)}?eq=${encodeURIComponent(numEq)}&inline=1&_=${Date.now()}`;
+                        const reporteTab = window.open(reporteUrl, '_blank');
+                        if (reporteTab) {
+                            reporteTab.opener = null;
+                            window.location.reload();
+                        } else {
+                            // Si el navegador bloquea ventanas emergentes, mostrar el reporte
+                            // en esta misma pestaña en lugar de perderlo con una recarga.
+                            window.location.assign(reporteUrl);
+                        }
+                        return;
+                    }
                     window.location.reload();
                 }
             })

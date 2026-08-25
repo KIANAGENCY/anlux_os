@@ -198,6 +198,10 @@ class OrderFormController extends Controller
                     'tipo_servicio' => $e['tipo_servicio'] ?? '',
                     'descripcion_falla' => $desc,
                     'acciones' => $e['acciones'] ?? 0,
+                    'entrega_receptor_tipo' => $e['entrega_receptor_tipo'] ?? null,
+                    'entrega_recibido_cliente' => isset($e['entrega_recibido_cliente'])
+                        ? $this->vault->nombreClienteReveal($e['entrega_recibido_cliente'])
+                        : null,
                 ];
             }
 

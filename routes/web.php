@@ -65,6 +65,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/ordenes', [OrderController::class, 'index'])->name('ordenes.index');
     Route::get('/api/ordenes', [OrderController::class, 'list'])->name('ordenes.list');
+    Route::get('/api/ordenes/{id}/equipos-entregados', [OrderController::class, 'equiposEntregados'])->whereNumber('id')->name('ordenes.equiposEntregados');
     Route::post('/api/ordenes/estatus', [OrderController::class, 'updateStatus'])->name('ordenes.updateStatus');
     Route::post('/api/ordenes/registrar', [OrderController::class, 'registrar'])->name('orders.registrar');
     Route::post('/api/ordenes/{id}/salida-temporal', [OrderController::class, 'salidaTemporal'])->whereNumber('id')->name('ordenes.salidaTemporal');

@@ -35,13 +35,14 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 
-    const urlPdfInline = (id) => {
+    const urlPdfInline = (id, equipoIndice = 0) => {
         const bust = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        return exactoUrl(`/pdf/orden/${encodeURIComponent(id)}?inline=1&refresh_pdf=1&nocache=1&_=${bust}`);
+        const eq = Number(equipoIndice) > 0 ? `&eq=${encodeURIComponent(equipoIndice)}` : '';
+        return exactoUrl(`/pdf/orden/${encodeURIComponent(id)}?inline=1&refresh_pdf=1&nocache=1${eq}&_=${bust}`);
     };
 
-    async function abrirPdfHistorialSinCache(id) {
-        const url = urlPdfInline(id);
+    async function abrirPdfHistorialSinCache(id, equipoIndice = 0) {
+        const url = urlPdfInline(id, equipoIndice);
         try {
             const res = await fetch(url, {
                 method: 'GET',
@@ -144,14 +145,84 @@
                 </span>
             </td>
             <td class="p-3 border text-center">
+                <div class="flex flex-wrap justify-center gap-2">
                 <button type="button" data-pdf-id="${Number(orden.id_orden_c) || 0}" class="btn-abrir-pesta inline-flex items-center rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-bold text-white hover:bg-blue-700" title="Abrir PDF en nueva pesta\u00f1a">
                     <i class="fas fa-external-link-alt mr-1"></i>Abrir pesta\u00f1a
                 </button>
+                <button type="button" data-entregas-id="${Number(orden.id_orden_c) || 0}" class="btn-equipos-entregados inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-bold text-white" style="background-color:#059669;color:#fff;" aria-expanded="false">
+                    <i class="fas fa-box-open mr-1"></i>Equipos entregados
+                </button>
+                </div>
             </td>
         `;
             tabla.appendChild(tr);
+            const detalle = document.createElement('tr');
+            detalle.id = `equipos-entregados-${Number(orden.id_orden_c) || 0}`;
+            detalle.className = 'hidden bg-slate-50';
+            detalle.innerHTML = '<td colspan="5" class="p-4 border border-blue-100"></td>';
+            tabla.appendChild(detalle);
         });
     };
+
+    const renderEquiposEntregados = (contenedor, equipos, idOrden) => {
+        const lista = normalizarLista(equipos);
+        if (!lista.length) {
+            contenedor.innerHTML = '<p class="text-sm text-slate-600">Esta orden no tiene equipos marcados como entregados.</p>';
+            return;
+        }
+        contenedor.innerHTML = `
+            <div class="grid gap-3 md:grid-cols-2">
+                ${lista.map((equipo) => {
+                    const tipo = equipo.receptor_tipo === 'tercero' ? 'Tercero' : 'Cliente titular';
+                    const fecha = equipo.fecha_entrega
+                        ? new Date(String(equipo.fecha_entrega).replace(' ', 'T')).toLocaleString('es-MX')
+                        : 'Sin fecha';
+                    return `<article class="rounded-lg border border-emerald-200 bg-white p-4 shadow-sm">
+                        <div class="mb-2 flex items-start justify-between gap-2">
+                            <strong class="text-blue-900">${escaparHtml(`${equipo.marca || ''} ${equipo.modelo || ''}`.trim() || `Equipo ${equipo.indice}`)}</strong>
+                            <span class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">Entregado</span>
+                        </div>
+                        <p class="text-sm text-slate-700"><strong>Serie:</strong> ${escaparHtml(equipo.serie || '-')}</p>
+                        <p class="text-sm text-slate-700"><strong>Recibió:</strong> ${escaparHtml(equipo.receptor || '-')} (${tipo})</p>
+                        <p class="text-sm text-slate-700"><strong>Fecha:</strong> ${escaparHtml(fecha)}</p>
+                        <p class="mb-3 text-sm text-slate-700"><strong>Técnico:</strong> ${escaparHtml(equipo.tecnico || '-')}</p>
+                        <button type="button" data-pdf-id="${Number(idOrden) || 0}" data-equipo-indice="${Number(equipo.indice) || 0}" class="btn-abrir-pesta rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-bold text-white hover:bg-blue-700">
+                            <i class="fas fa-file-pdf mr-1"></i>Ver PDF
+                        </button>
+                    </article>`;
+                }).join('')}
+            </div>`;
+    };
+
+    async function alternarEquiposEntregados(btn) {
+        const id = Number(btn.dataset.entregasId || 0);
+        const detalle = document.getElementById(`equipos-entregados-${id}`);
+        const contenedor = detalle?.querySelector('td');
+        if (!detalle || !contenedor || id <= 0) return;
+
+        const seAbrira = detalle.classList.contains('hidden');
+        detalle.classList.toggle('hidden', !seAbrira);
+        btn.setAttribute('aria-expanded', seAbrira ? 'true' : 'false');
+        if (!seAbrira || detalle.dataset.loaded === '1') return;
+
+        contenedor.innerHTML = '<p class="text-sm text-slate-600">Cargando equipos entregados…</p>';
+        try {
+            const response = await fetch(exactoUrl(`/api/ordenes/${encodeURIComponent(id)}/equipos-entregados`), {
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const data = await response.json();
+            if (!response.ok || data?.success !== true) {
+                throw new Error(data?.message || `HTTP ${response.status}`);
+            }
+            renderEquiposEntregados(contenedor, data.data, id);
+            detalle.dataset.loaded = '1';
+        } catch (err) {
+            console.error(err);
+            contenedor.innerHTML = '<p class="text-sm text-red-700">No se pudieron cargar los equipos entregados.</p>';
+        }
+    }
 
     const showTableMessage = (tabla, message) => {
         if (!tabla) return;
@@ -243,6 +314,12 @@
         });
 
         tabla.addEventListener('click', (event) => {
+            const btnEntregas = event.target.closest('.btn-equipos-entregados');
+            if (btnEntregas) {
+                event.preventDefault();
+                void alternarEquiposEntregados(btnEntregas);
+                return;
+            }
             const btn = event.target.closest('.btn-abrir-pesta');
             if (!btn) {
                 return;
@@ -254,8 +331,9 @@
             }
             lastAbrirPestanaAt = now;
             const id = Number(btn.dataset.pdfId || 0);
+            const equipoIndice = Number(btn.dataset.equipoIndice || 0);
             if (id > 0) {
-                void abrirPdfHistorialSinCache(id);
+                void abrirPdfHistorialSinCache(id, equipoIndice);
             }
         });
 

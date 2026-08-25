@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Models\User;
+use App\Services\ExactoVaultService;
 use App\Services\OrdenListService;
 use App\Services\OrdenStatusService;
 use App\Services\RegistrarOrdenService;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class OrderController extends Controller
@@ -355,6 +357,111 @@ class OrderController extends Controller
             'total_recibido' => number_format($totalRecibido, 2),
             'subtotal' => number_format($subtotalNeto, 2),
             'iva' => number_format($ivaTotal, 2),
+        ]);
+    }
+
+    public function equiposEntregados(int $id): JsonResponse
+    {
+        if ($id <= 0) {
+            return response()->json(['success' => false, 'message' => 'Orden inválida.'], 400);
+        }
+
+        Gate::authorize('order-access', $id);
+
+        $orden = DB::selectOne(
+            'SELECT c.fecha_salida, c.nombre_cliente, t.recibido_cliente, t.entregado_por_tecnico
+             FROM orden_servicio_c c
+             LEFT JOIN orden_servicio_t t ON t.id_trabajo = (
+                 SELECT MIN(t2.id_trabajo) FROM orden_servicio_t t2 WHERE t2.id_orden_c = c.id_orden_c
+             )
+             WHERE c.id_orden_c = ?',
+            [$id]
+        );
+        if (! $orden) {
+            return response()->json(['success' => false, 'message' => 'Orden no encontrada.'], 404);
+        }
+
+        $vault = app(ExactoVaultService::class);
+        $equipos = DB::select(
+            'SELECT * FROM equipos_orden WHERE id_orden_c = ? ORDER BY id_equipo ASC',
+            [$id]
+        );
+        $entregasLegacy = [];
+        if (Schema::hasTable('order_whatsapp_notifications')) {
+            $notificaciones = DB::select(
+                'SELECT payload_json, COALESCE(queued_at, created_at, sent_at, delivered_at) AS fecha_evento
+                 FROM order_whatsapp_notifications
+                 WHERE id_orden_c = ? AND estatus = ?
+                 ORDER BY id ASC',
+                [$id, 'Entregado']
+            );
+            foreach ($notificaciones as $notificacion) {
+                $payload = json_decode((string) ($notificacion->payload_json ?? ''), true);
+                $indiceEvento = is_array($payload) ? (int) ($payload['equipo_indice'] ?? 0) : 0;
+                if ($indiceEvento < 1 || isset($entregasLegacy[$indiceEvento])) {
+                    continue;
+                }
+                $entregasLegacy[$indiceEvento] = [
+                    'receptor' => trim((string) ($payload['recibido_cliente'] ?? '')),
+                    'fecha' => $notificacion->fecha_evento ?? null,
+                ];
+            }
+        }
+        $resultado = [];
+        foreach ($equipos as $idx => $equipo) {
+            if ((int) ($equipo->acciones ?? 0) !== 2) {
+                continue;
+            }
+
+            $indice = $idx + 1;
+            $entregaLegacy = $entregasLegacy[$indice] ?? [];
+            $receptor = $vault->nombreClienteReveal($equipo->entrega_recibido_cliente ?? null);
+            if (trim($receptor) === '' && trim((string) ($entregaLegacy['receptor'] ?? '')) !== '') {
+                $receptor = trim((string) $entregaLegacy['receptor']);
+            }
+            if (trim($receptor) === '') {
+                $receptor = $vault->nombreClienteReveal($orden->recibido_cliente ?? null);
+            }
+            if (trim($receptor) === '') {
+                $receptor = $vault->nombreClienteReveal($orden->nombre_cliente ?? null);
+            }
+            $tecnico = $vault->tecnicoNombreReveal($equipo->entrega_tecnico ?? null);
+            if (trim($tecnico) === '') {
+                $tecnico = $vault->tecnicoNombreReveal($orden->entregado_por_tecnico ?? null);
+            }
+            $tipo = mb_strtolower(trim((string) ($equipo->entrega_receptor_tipo ?? '')), 'UTF-8');
+            if (! in_array($tipo, ['cliente', 'tercero'], true)) {
+                $titular = $vault->nombreClienteReveal($orden->nombre_cliente ?? null);
+                $tipo = mb_strtolower(trim($receptor), 'UTF-8') !== mb_strtolower(trim($titular), 'UTF-8')
+                    ? 'tercero'
+                    : 'cliente';
+            }
+            $fechaEntrega = $equipo->entrega_fecha
+                ?? $entregaLegacy['fecha']
+                ?? $orden->fecha_salida
+                ?? null;
+
+            $resultado[] = [
+                'indice' => $indice,
+                'marca' => trim((string) ($equipo->marca ?? '')),
+                'modelo' => trim((string) ($equipo->modelo ?? '')),
+                'serie' => trim((string) ($equipo->serie ?? '')),
+                'receptor' => trim($receptor),
+                'receptor_tipo' => $tipo,
+                'fecha_entrega' => $fechaEntrega,
+                'tecnico' => trim($tecnico),
+                'pdf_url' => route('pdf.orden', [
+                    'id' => $id,
+                    'eq' => $indice,
+                    'inline' => 1,
+                    'refresh_pdf' => 1,
+                    'nocache' => 1,
+                ]),
+            ];
+        }
+        return response()->json([
+            'success' => true,
+            'data' => $resultado,
         ]);
     }
 

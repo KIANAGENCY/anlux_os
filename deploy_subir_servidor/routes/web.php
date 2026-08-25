@@ -13,7 +13,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderEditLockController;
 use App\Http\Controllers\OrderFormController;
 use App\Http\Controllers\OrderPdfController;
-use App\Http\Controllers\ProfileController; 
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SeguridadController;
 use App\Http\Controllers\WhatsappWebhookController;
 use App\Http\Middleware\ExactoUpdatePresence;
@@ -65,6 +65,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/ordenes', [OrderController::class, 'index'])->name('ordenes.index');
     Route::get('/api/ordenes', [OrderController::class, 'list'])->name('ordenes.list');
+    Route::get('/api/ordenes/{id}/equipos-entregados', [OrderController::class, 'equiposEntregados'])->whereNumber('id')->name('ordenes.equiposEntregados');
     Route::post('/api/ordenes/estatus', [OrderController::class, 'updateStatus'])->name('ordenes.updateStatus');
     Route::post('/api/ordenes/registrar', [OrderController::class, 'registrar'])->name('orders.registrar');
     Route::post('/api/ordenes/{id}/salida-temporal', [OrderController::class, 'salidaTemporal'])->whereNumber('id')->name('ordenes.salidaTemporal');
@@ -73,6 +74,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/ordenes/{id}/reenviar', [OrderController::class, 'reenviar'])->whereNumber('id')->name('ordenes.reenviar');
     Route::post('/api/ordenes/{id}/lock/heartbeat', [OrderEditLockController::class, 'heartbeat'])->whereNumber('id')->name('ordenes.lock.heartbeat');
     Route::post('/api/ordenes/{id}/lock/release', [OrderEditLockController::class, 'release'])->whereNumber('id')->name('ordenes.lock.release');
+
+    Route::post('/api/ordenes/validar-saldo', [OrderController::class, 'validarSaldo'])->name('ordenes.validarSaldo');
+    Route::post('/api/ordenes/liquidar-saldo-equipo', [OrderController::class, 'liquidarSaldoEquipo'])->name('ordenes.liquidarSaldoEquipo');
 
     Route::get('/api/impersonacion/cuentas', [ImpersonationController::class, 'cuentas'])->name('impersonacion.cuentas');
     Route::get('/api/usuarios/tecnicos-activos', [ImpersonationController::class, 'tecnicosActivos'])->name('impersonacion.tecnicos');
