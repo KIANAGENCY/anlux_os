@@ -471,6 +471,10 @@
                                     border
                                   "
                                 >TIPO DE SERVICIO</th>
+                                @php $mostrarAcciones = $idEditar > 0 && in_array($estatusFormValor, ['En proceso', 'Terminado'], true); @endphp
+                                @if ($mostrarAcciones)
+                                <th class="p-3 text-center border">ESTATUS</th>
+                                @endif
 <th
                                   class="
                                     p-3
@@ -478,7 +482,6 @@
                                     border
                                   "
 >ANADIR</th>
-                                   @php $mostrarAcciones = $idEditar > 0 && in_array($estatusFormValor, ['En proceso', 'Terminado'], true); @endphp
                                    @if ($mostrarAcciones)
                                    <th
                                      class="
@@ -495,6 +498,7 @@
                               class="
                                 equipo-row hover:bg-blue-100
                               "
+                              data-acciones="0"
                             >
                                 <td
                                   class="
@@ -576,6 +580,12 @@
                                     <option value="{{ $tipoServicio }}">{{ $tipoServicio }}</option>
                                     @endforeach
                                   </select></td>
+@if ($mostrarAcciones)
+                                <td class="p-3 text-center border equipo-estatus-cell">
+                                    <input type="hidden" name="equipos[0][acciones]" class="equipo-acciones-input" value="0">
+                                    <span class="equipo-estatus-badge inline-flex items-center rounded-full bg-slate-400 px-2.5 py-1 text-xs font-bold text-white" style="background-color:#64748b;color:#ffffff;">Pendiente</span>
+                                </td>
+@endif
 <td
                                    class="
                                      p-3
@@ -609,7 +619,7 @@
                                            font-bold text-green-600 hover:text-green-800 btn-entrega-equipo-row mr-2
                                          "
                                          title="Terminar y entregar este equipo"
-                                         data-id-equipo="0">
+                                         data-id-equipo="1">
                                          <i class="fas fa-truck"></i>
                                        </button>
                                       <button type="button"
@@ -625,18 +635,6 @@
                     </table>
                 </div>
             </section>
-
-            {{-- Botón Entrega por equipo: solo en editor de orden y estatus "En proceso" o "Terminado" --}}
-            <?php if ($idEditar > 0 && in_array($estatusFormValor, ['En proceso', 'Terminado'], true)): ?>
-            <div class="mt-4 p-3 border rounded bg-green-50 text-sm">
-                <button type="button"
-                    class="btn-entrega-equipo text-green-600 font-bold hover:text-green-800 block w-full text-left mb-2"
-                    title="Entrega por equipo">
-                    <i class="fas fa-truck mr-1"></i>Entrega por equipo
-                </button>
-                <p class="text-xs text-green-700">Solo visible cuando la orden está en <strong>En proceso</strong>.</p>
-            </div>
-            <?php endif; ?>
 
             <!-- SECCION 4: CONDICIONES DE ENTREGA DEL EQUIPO -->
             <section
@@ -1757,14 +1755,17 @@
                     </div>
                     <div class="p-5 space-y-4">
                         <p class="text-center text-sm text-slate-600">¿Estás seguro de entregar este equipo individualmente?</p>
+                        <p id="entregaEquipoFlujoHint" class="text-center text-xs text-slate-500">
+                            Estado del equipo: se actualizar&aacute; al abrir. <strong>Terminado</strong> (uso interno) habilita <strong>Entregado</strong>.
+                        </p>
                         <div class="grid grid-cols-2 gap-2">
-                            <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2.5 cursor-pointer transition hover:border-blue-400 hover:bg-blue-50">
+                            <label id="labelChkTerminado" class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2.5 cursor-pointer transition hover:border-blue-400 hover:bg-blue-50">
                                 <input type="checkbox" id="chkTerminado" class="checkbox-acceso w-4 h-4 rounded border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                                <span class="text-sm font-medium text-blue-900">Marcar como Terminado</span>
+                                <span class="text-sm font-medium text-blue-900">Marcar como Terminado<br><span class="text-[10px] font-normal text-slate-500">(uso interno)</span></span>
                             </label>
-                            <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2.5 cursor-pointer transition hover:border-blue-400 hover:bg-blue-50">
+                            <label id="labelChkEntregado" class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2.5 cursor-pointer transition hover:border-blue-400 hover:bg-blue-50">
                                 <input type="checkbox" id="chkEntregado" class="checkbox-acceso w-4 h-4 rounded border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                                <span class="text-sm font-medium text-blue-900">Marcar como Entregado</span>
+                                <span class="text-sm font-medium text-blue-900">Marcar como Entregado<br><span class="text-[10px] font-normal text-slate-500">(notifica cliente)</span></span>
                             </label>
                         </div>
                         <div id="validacionSaldoPendiente" class="p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800 hidden">
@@ -1800,45 +1801,139 @@
             </div>
 
             <!-- Modal: Firmas para Entrega (expandida) -->
+            <style>
+                #modalFirmasEntrega .exacto-entrega-receptor-selector {
+                    display: flex;
+                    gap: 0.25rem;
+                    padding: 0.25rem;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 0.5rem;
+                    background: #f1f5f9;
+                }
+                #modalFirmasEntrega .exacto-entrega-receptor-option {
+                    position: relative;
+                    display: flex;
+                    min-height: 2.5rem;
+                    flex: 1 1 0%;
+                    cursor: pointer;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 0.375rem;
+                    padding: 0.5rem 0.75rem;
+                    color: #475569;
+                    font-size: 0.875rem;
+                    font-weight: 700;
+                    transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+                }
+                #modalFirmasEntrega .exacto-entrega-receptor-option input {
+                    position: absolute;
+                    width: 1px;
+                    height: 1px;
+                    opacity: 0;
+                }
+                #modalFirmasEntrega .exacto-entrega-receptor-option:has(input:checked) {
+                    background: #ffffff;
+                    color: #1d4ed8;
+                    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.14);
+                }
+                #modalFirmasEntrega .exacto-entrega-receptor-option--tercero:has(input:checked) {
+                    color: #b45309;
+                }
+                #modalFirmasEntrega .exacto-entrega-receptor-option:has(input:focus-visible) {
+                    outline: 2px solid #60a5fa;
+                    outline-offset: 2px;
+                }
+                #modalFirmasEntrega .exacto-firma-canvas-wrap {
+                    height: clamp(11rem, 29vh, 14rem);
+                    min-height: 11rem;
+                    background: #ffffff;
+                }
+                @media (max-width: 767px) {
+                    #modalFirmasEntrega .exacto-firma-canvas-wrap {
+                        height: 12rem;
+                    }
+                }
+            </style>
             <div id="modalFirmasEntrega" class="hidden fixed inset-0 z-[10170] items-center justify-center bg-slate-950/80" role="dialog" aria-modal="true" aria-labelledby="modalFirmasEntregaTitle" style="display:none;align-items:center;justify-content:center;padding:1rem;z-index:10170;">
-                <div class="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden">
-                    <div class="bg-blue-600 px-5 py-3">
-                        <h3 id="modalFirmasEntregaTitle" class="text-center text-lg font-bold text-white flex items-center justify-center gap-2">
-                            <i class="fas fa-file-signature"></i> Firmas de Entrega
-                        </h3>
+                <div class="flex w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl" style="width:min(56rem,calc(100vw - 2rem));max-height:90vh;">
+                    <div class="flex shrink-0 flex-col gap-3 bg-blue-600 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                        <div>
+                            <h3 id="modalFirmasEntregaTitle" class="flex items-center gap-2 text-lg font-bold text-white">
+                                <i class="fas fa-file-signature" aria-hidden="true"></i>
+                                Firmas de Entrega
+                            </h3>
+                            <p class="mt-0.5 text-xs text-blue-100 sm:text-sm">Confirma la entrega y registra las firmas correspondientes.</p>
+                        </div>
+                        <div class="inline-flex max-w-full items-center gap-2 self-start rounded-lg border border-blue-400 px-3 py-2 text-xs text-white sm:self-auto" style="background:rgba(29,78,216,.62);">
+                            <span class="shrink-0 font-semibold text-blue-100"><i class="fas fa-microchip mr-1" aria-hidden="true"></i>Equipo:</span>
+                            <span class="min-w-0 truncate font-bold">
+                                <span id="equipoEntregaMarca">-</span>
+                                <span id="equipoEntregaModelo">-</span>
+                            </span>
+                        </div>
                     </div>
-                    <div class="p-4 space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
+                                <div>
+                                    <p class="mb-2 text-sm font-bold text-slate-800">¿Quién recoge el equipo?</p>
+                                    <div class="exacto-entrega-receptor-selector">
+                                        <label class="exacto-entrega-receptor-option">
+                                            <input type="radio" name="entrega_quien_recibe" id="entregaQuienCliente" value="cliente" checked>
+                                            <span><i class="fas fa-user mr-1.5 text-xs" aria-hidden="true"></i>Cliente titular</span>
+                                        </label>
+                                        <label class="exacto-entrega-receptor-option exacto-entrega-receptor-option--tercero">
+                                            <input type="radio" name="entrega_quien_recibe" id="entregaQuienTercero" value="tercero">
+                                            <span><i class="fas fa-user-shield mr-1.5 text-xs" aria-hidden="true"></i>Tercero</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="inputRecibidoClienteEntrega" class="mb-2 block text-sm font-bold text-slate-800">Nombre de quien recibe <span class="text-red-600">*</span></label>
+                                    <input type="text" id="inputRecibidoClienteEntrega" maxlength="255"
+                                        class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold uppercase text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        placeholder="Nombre completo de quien recoge"
+                                        autocomplete="name">
+                                    <p id="hintRecibidoTercero" class="mt-1.5 hidden text-xs font-medium text-amber-700"><i class="fas fa-circle-info mr-1" aria-hidden="true"></i>Captura el nombre completo del tercero; se confirmará antes de guardar.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <!-- Firma Cliente -->
-                            <div>
-                                <label class="block text-sm font-bold text-blue-900">Firma del Cliente</label>
-                                <div class="bg-white border-2 border-blue-300 rounded-lg overflow-hidden" style="height: 170px;">
+                            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                                <div class="flex min-h-[3rem] items-center justify-between gap-3 border-b border-slate-200 bg-blue-50 px-4 py-2.5">
+                                    <label class="text-sm font-bold text-blue-900"><i class="fas fa-signature mr-1.5 text-blue-600" aria-hidden="true"></i>Firma de quien recibe</label>
+                                    <button type="button" id="btnLimpiarFirmaClienteEntrega" class="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600">
+                                        <i class="fas fa-eraser" aria-hidden="true"></i> Limpiar
+                                    </button>
+                                </div>
+                                <div class="exacto-firma-canvas-wrap overflow-hidden">
                                     <canvas id="firmaClienteEntrega" class="w-full h-full rounded-lg cursor-crosshair" style="display: block; background: white;"></canvas>
                                 </div>
-                                <button type="button" id="btnLimpiarFirmaClienteEntrega" class="mt-2 inline-flex items-center gap-1 rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100">
-                                    <i class="fas fa-eraser"></i> Limpiar firma
-                                </button>
                             </div>
                             <!-- Firma Tecnico -->
-                            <div>
-                                <label class="block text-sm font-bold text-blue-900">Firma del Tecnico</label>
-                                <div class="bg-white border-2 border-blue-300 rounded-lg overflow-hidden" style="height: 170px;">
+                            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                                <div class="flex min-h-[3rem] items-center justify-between gap-3 border-b border-slate-200 bg-blue-50 px-4 py-2.5">
+                                    <label class="text-sm font-bold text-blue-900"><i class="fas fa-user-gear mr-1.5 text-blue-600" aria-hidden="true"></i>Firma del Técnico</label>
+                                    <button type="button" id="btnLimpiarFirmaTecnicoEntrega" class="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600">
+                                        <i class="fas fa-eraser" aria-hidden="true"></i> Limpiar
+                                    </button>
+                                </div>
+                                <div class="exacto-firma-canvas-wrap overflow-hidden">
                                     <canvas id="firmaTecnicoEntrega" class="w-full h-full rounded-lg cursor-crosshair" style="display: block; background: white;"></canvas>
                                 </div>
-                                <button type="button" id="btnLimpiarFirmaTecnicoEntrega" class="mt-2 inline-flex items-center gap-1 rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100">
-                                    <i class="fas fa-eraser"></i> Limpiar firma
-                                </button>
                             </div>
                         </div>
-                        <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm">
-                            <span class="font-bold text-blue-700"><i class="fas fa-microchip mr-1"></i>Equipo:</span>
-                            <span id="equipoEntregaMarca" class="font-semibold text-slate-800">-</span>
-                            <span id="equipoEntregaModelo" class="font-semibold text-slate-800">-</span>
-                        </div>
                     </div>
-                    <div class="p-4 border-t border-slate-200 flex justify-end gap-2">
-                        <button type="button" id="btnCancelarFirmasEntrega" class="rounded-lg border-2 border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancelar</button>
-                        <button type="button" id="btnGuardarFirmasEntrega" class="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 shadow-sm">Guardar y Enviar (WhatsApp/Correo)</button>
+                    <div class="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
+                        <button type="button" id="btnCancelarFirmasEntrega" class="min-h-[2.75rem] rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">Cancelar</button>
+                        <button type="button" id="btnGuardarFirmasEntrega" class="inline-flex min-h-[2.75rem] items-center justify-center gap-2 rounded-lg bg-green-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-green-700">
+                            <span>Guardar y Enviar</span>
+                            <span class="ml-1 inline-flex items-center gap-1.5 border-l border-green-500 pl-3" aria-label="WhatsApp y correo">
+                                <i class="fab fa-whatsapp" aria-hidden="true"></i>
+                                <i class="far fa-envelope" aria-hidden="true"></i>
+                            </span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1905,7 +2000,7 @@
         </div>
     </div>
 
-    <div id="exactoUiModal" class="hidden fixed inset-0 z-[20000] items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-labelledby="exactoUiModalTitle" style="z-index:20000;">
+    <div id="exactoUiModal" class="hidden fixed inset-0 z-[30000] items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-labelledby="exactoUiModalTitle" style="z-index:30000;">
         <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl">
             <div class="border-b border-slate-200 px-5 py-4">
                 <h3 id="exactoUiModalTitle" class="text-center text-xl font-bold text-blue-900">Aviso</h3>
@@ -1948,81 +2043,229 @@
 
     <script>
         // ===== LÓGICA: Entrega por Equipo =====
+        window.exactoEntregaEquipoSeleccionado = null;
+        window.exactoEntregaEquipoDbId = null;
+
         function exactoQuitarResaltadoEquipos() {
             document.querySelectorAll('#equiposTableBody .equipo-row').forEach(f => {
                 f.classList.remove('exacto-equipo-seleccionado', 'bg-blue-50', 'ring-2', 'ring-blue-300');
             });
         }
 
-        function exactoResaltarEquipoRow(idEquipo) {
+        function exactoFilasEquipos() {
+            return Array.from(document.querySelectorAll('#equiposTableBody .equipo-row'));
+        }
+
+        /** Número de equipo 1..N (igual que la columna EQUIPO en trabajos/materiales). */
+        function exactoResolverNumeroEquipoDesdeBoton(btn) {
+            const filas = exactoFilasEquipos();
+            if (!filas.length) {
+                return 0;
+            }
+            const fila = btn && btn.closest ? btn.closest('.equipo-row') : null;
+            if (fila) {
+                const idx = filas.indexOf(fila);
+                if (idx >= 0) {
+                    return idx + 1;
+                }
+            }
+            const raw = btn && btn.dataset ? Number(btn.dataset.idEquipo) : NaN;
+            if (Number.isFinite(raw) && raw >= 1 && raw <= filas.length) {
+                return raw;
+            }
+            // data-id-equipo legado en base 0
+            if (Number.isFinite(raw) && raw >= 0 && raw < filas.length) {
+                return raw + 1;
+            }
+            if (filas.length === 1) {
+                return 1;
+            }
+            return 0;
+        }
+
+        function exactoResolverIdEquipoDb(numEquipo) {
+            const filas = exactoFilasEquipos();
+            const fila = filas[numEquipo - 1] || null;
+            if (fila) {
+                const fromRow = Number(fila.dataset.idEquipoDb || 0);
+                if (fromRow > 0) return fromRow;
+                const fromBtn = Number(fila.querySelector('.btn-entrega-equipo-row')?.dataset?.idEquipoDb || 0);
+                if (fromBtn > 0) return fromBtn;
+            }
+            let ordenJson = {};
+            const jsonEl = document.getElementById('ordenExistenteJson');
+            if (jsonEl) {
+                try { ordenJson = JSON.parse(jsonEl.textContent || '{}'); } catch (e) { ordenJson = {}; }
+            }
+            const equipos = Array.isArray(ordenJson.equipos) ? ordenJson.equipos : [];
+            const dbId = Number((equipos[numEquipo - 1] || {}).id_equipo || 0);
+            return dbId > 0 ? dbId : 0;
+        }
+
+        function exactoDatosEquipoPorNumero(numEquipo) {
+            const filas = exactoFilasEquipos();
+            const fila = filas[numEquipo - 1] || null;
+            let marca = '';
+            let modelo = '';
+            let serie = '';
+            if (fila) {
+                marca = String(fila.querySelector('[name*="[marca]"]')?.value || '').trim();
+                modelo = String(fila.querySelector('[name*="[modelo]"]')?.value || '').trim();
+                serie = String(fila.querySelector('[name*="[serie]"]')?.value || '').trim();
+            }
+            if (!marca && !modelo && !serie) {
+                let ordenJson = {};
+                const jsonEl = document.getElementById('ordenExistenteJson');
+                if (jsonEl) {
+                    try { ordenJson = JSON.parse(jsonEl.textContent || '{}'); } catch (e) { ordenJson = {}; }
+                }
+                const equipos = Array.isArray(ordenJson.equipos) ? ordenJson.equipos : [];
+                const equipo = equipos[numEquipo - 1] || {};
+                marca = String(equipo.marca || '').trim();
+                modelo = String(equipo.modelo || '').trim();
+                serie = String(equipo.serie || '').trim();
+            }
+            return {
+                marca: marca || 'Sin marca',
+                modelo: modelo || 'Sin modelo',
+                serie: serie || '-',
+            };
+        }
+
+        function exactoResaltarEquipoRow(numEquipo) {
             exactoQuitarResaltadoEquipos();
-            const filas = document.querySelectorAll('#equiposTableBody .equipo-row');
-            const fila = filas[idEquipo];
+            const fila = exactoFilasEquipos()[numEquipo - 1];
             if (fila) {
                 fila.classList.add('exacto-equipo-seleccionado', 'bg-blue-50', 'ring-2', 'ring-blue-300');
                 fila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         }
 
-        window.exactoBtnEntregaEquipo = function() {
-            const idEquipo = Number(this.dataset.idEquipo ?? 0);
-            if (Number.isNaN(idEquipo)) return;
-            // Guardar el equipo seleccionado para el guardado de la entrega
-            window.exactoEntregaEquipoSeleccionado = idEquipo;
+        function exactoEstatusOrdenFormulario() {
+            const el = document.getElementById('inputEstatus') || document.querySelector('[name="estatus"]');
+            const raw = String(el?.value || '').trim();
+            if (typeof exactoNormalizarEstatusOrden === 'function') {
+                return exactoNormalizarEstatusOrden(raw);
+            }
+            const k = raw.toLowerCase().replace(/\s+/g, '');
+            if (k.includes('entreg')) return 'Entregado';
+            if (k.includes('termin')) return 'Terminado';
+            if (k.includes('proceso')) return 'En proceso';
+            return 'Recepcion';
+        }
 
-            // Resaltar la fila del equipo que se va a entregar
-            exactoResaltarEquipoRow(idEquipo);
+        /** 0=pendiente, 1=terminado, 2=entregado (tabla ESTATUS / dataset; legado orden global). */
+        function exactoAccionesEquipoSeleccionado() {
+            const num = Number(window.exactoEntregaEquipoSeleccionado) || 0;
+            if (num < 1) return 0;
+            const fila = exactoFilasEquipos()[num - 1];
+            const fromHidden = Number(fila?.querySelector?.('.equipo-acciones-input')?.value || NaN);
+            let acc = Number.isFinite(fromHidden)
+                ? fromHidden
+                : (Number(fila?.dataset?.acciones || 0) || 0);
+            if (acc >= 2) return 2;
+            if (acc >= 1) return 1;
+            // Legado: órdenes marcadas Terminado/Entregado a nivel global antes del flujo por equipo.
+            const est = exactoEstatusOrdenFormulario();
+            if (est === 'Entregado') return 2;
+            if (est === 'Terminado') return 1;
+            return 0;
+        }
 
-            // Mostrar modal de confirmación
+        function exactoEquipoPuedeEntregarse() {
+            if (exactoAccionesEquipoSeleccionado() >= 1) return true;
+            const chkTerminado = document.getElementById('chkTerminado');
+            return Boolean(chkTerminado && chkTerminado.checked && !chkTerminado.disabled);
+        }
+
+        function exactoMarcarAccionesEquipoLocal(numEquipo, acciones) {
+            const fila = exactoFilasEquipos()[numEquipo - 1];
+            if (!fila) return;
+            if (typeof window.exactoPintarEstatusEquipoFila === 'function') {
+                window.exactoPintarEstatusEquipoFila(fila, acciones);
+            } else {
+                const acc = Math.max(0, Number(acciones) || 0);
+                fila.dataset.acciones = String(acc);
+            }
+        }
+
+        function exactoAplicarBloqueoEntregaCheckboxes() {
+            const chkTerminado = document.getElementById('chkTerminado');
+            const chkEntregado = document.getElementById('chkEntregado');
+            const labelTerm = document.getElementById('labelChkTerminado');
+            const labelEnt = document.getElementById('labelChkEntregado');
+            const hint = document.getElementById('entregaEquipoFlujoHint');
+            const acciones = exactoAccionesEquipoSeleccionado();
+            const yaTerminadoDb = acciones >= 1;
+            const yaEntregado = acciones >= 2;
+            const puedeEntregar = yaTerminadoDb || Boolean(chkTerminado && chkTerminado.checked);
+
+            if (chkTerminado) {
+                chkTerminado.disabled = yaTerminadoDb;
+                if (yaTerminadoDb) chkTerminado.checked = true;
+            }
+            if (chkEntregado) {
+                chkEntregado.disabled = !puedeEntregar || yaEntregado;
+                if (yaEntregado) {
+                    chkEntregado.checked = true;
+                } else if (!puedeEntregar) {
+                    chkEntregado.checked = false;
+                }
+            }
+
+            const lockClass = ['opacity-50', 'cursor-not-allowed', 'bg-slate-100', 'pointer-events-none'];
+            if (labelTerm) {
+                lockClass.forEach((c) => labelTerm.classList.toggle(c, yaTerminadoDb));
+            }
+            if (labelEnt) {
+                lockClass.forEach((c) => labelEnt.classList.toggle(c, !puedeEntregar || yaEntregado));
+            }
+            if (hint) {
+                if (yaEntregado) {
+                    hint.innerHTML = 'Este equipo ya está en <strong>Entregado</strong>. No se cambia el estatus global de la orden.';
+                } else if (yaTerminadoDb) {
+                    hint.innerHTML = 'Este equipo ya pasó a <strong>Terminado</strong> (uso interno). Ahora marca <strong>Entregado</strong> para firmar y notificar al cliente (OS solo de este equipo).';
+                } else if (puedeEntregar) {
+                    hint.innerHTML = 'Terminado marcado. Ya puedes pulsar <strong>Entregado</strong> (o Guardar solo Terminado y continuar después).';
+                } else {
+                    hint.innerHTML = 'Estado actual: <strong>pendiente</strong>. Marca <strong>Terminado</strong> (uso interno). <strong>Entregado</strong> se habilita al marcar Terminado.';
+                }
+            }
+        }
+
+        function exactoAbrirModalEntregaEquipo(numEquipo) {
+            const total = exactoFilasEquipos().length;
+            if (!numEquipo || numEquipo < 1 || numEquipo > total) {
+                exactoShowAlert('Selecciona el equipo a entregar desde el ícono de camión.', {
+                    title: 'Entrega por Equipo',
+                    icon: 'error',
+                });
+                return;
+            }
+
+            window.exactoEntregaEquipoSeleccionado = numEquipo;
+            window.exactoEntregaEquipoDbId = exactoResolverIdEquipoDb(numEquipo);
+            exactoResaltarEquipoRow(numEquipo);
+
             const modal = document.getElementById('modalEntregaEquipo');
             if (!modal) return;
-
-            // Obtener datos del equipo: desde la fila de la tabla o del JSON embebido
-            let marca = '';
-            let modelo = '';
-            let serie = '';
-            const fila = this.closest ? this.closest('.equipo-row') : null;
-            if (fila) {
-                const inpMarca = fila.querySelector('[name*="[marca]"]');
-                const inpModelo = fila.querySelector('[name*="[modelo]"]');
-                const inpSerie = fila.querySelector('[name*="[serie]"]');
-                marca = inpMarca ? String(inpMarca.value || '').trim() : '';
-                modelo = inpModelo ? String(inpModelo.value || '').trim() : '';
-                serie = inpSerie ? String(inpSerie.value || '').trim() : '';
+            if (modal.parentNode !== document.body) {
+                document.body.appendChild(modal);
             }
-            if (!marca && !modelo && !serie) {
-                const ordenJson = window.EXISTENTE_ORDEN_JSON ?? {};
-                const equipos = Array.isArray(ordenJson.equipos) ? ordenJson.equipos : [];
-                const equipo = equipos[idEquipo] || {};
-                marca = String(equipo.marca || '').trim();
-                modelo = String(equipo.modelo || '').trim();
-                serie = String(equipo.serie || '').trim();
-            }
-            marca = marca || '<?php echo htmlspecialchars((string)($cab['marca'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>';
-            modelo = modelo || '<?php echo htmlspecialchars((string)($cab['modelo'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>';
 
-            document.getElementById('equipoInfoMarca').textContent = marca;
-            document.getElementById('equipoInfoModelo').textContent = modelo;
-            document.getElementById('equipoInfoSerie').textContent = serie || '-';
-            document.getElementById('equipoInfo').classList.remove('hidden');
+            const datos = exactoDatosEquipoPorNumero(numEquipo);
+            const elMarca = document.getElementById('equipoInfoMarca');
+            const elModelo = document.getElementById('equipoInfoModelo');
+            const elSerie = document.getElementById('equipoInfoSerie');
+            const elInfo = document.getElementById('equipoInfo');
+            if (elMarca) elMarca.textContent = datos.marca;
+            if (elModelo) elModelo.textContent = datos.modelo;
+            if (elSerie) elSerie.textContent = datos.serie;
+            if (elInfo) elInfo.classList.remove('hidden');
 
-            // Cargar firmas existentes si las hay
-            const firmaCExistente = '<?php echo htmlspecialchars($cab['firma_c_e'] ?? '', ENT_QUOTES, 'UTF-8'); ?>';
-            const firmaTExistente = '<?php echo htmlspecialchars($cab['firma_t_r'] ?? '', ENT_QUOTES, 'UTF-8'); ?>';
-
-            // Si ya hay firmas, mostrarlas en los canvas (simple placeholder)
-            if (firmaCExistente) {
-                const ctxC = document.getElementById('firmaClienteEntrega')?.getContext('2d');
-                if (ctxC) {
-                    ctxC.clearRect(0, 0, ctxC.canvas.width, ctxC.canvas.height);
-                }
-            }
-            if (firmaTExistente) {
-                const ctxT = document.getElementById('firmaTecnicoEntrega')?.getContext('2d');
-                if (ctxT) {
-                    ctxT.clearRect(0, 0, ctxT.canvas.width, ctxT.canvas.height);
-                }
-            }
+            const pendienteEl = document.getElementById('validacionSaldoPendiente');
+            if (pendienteEl) pendienteEl.classList.add('hidden');
+            exactoAplicarBloqueoEntregaCheckboxes();
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
@@ -2030,17 +2273,21 @@
             modal.style.alignItems = 'center';
             modal.style.justifyContent = 'center';
             modal.style.padding = '1rem';
-            modal.style.zIndex = '10160';
+            modal.style.zIndex = '20000';
             document.body.style.overflow = 'hidden';
-        };
+        }
 
-        // Agregar event listeners a los botones "Entrega por Equipo"
-        document.addEventListener('DOMContentLoaded', function() {
-            const btnsEntrega = document.querySelectorAll('.btn-entrega-equipo');
-            btnsEntrega.forEach(btn => {
-                btn.addEventListener('click', window.exactoBtnEntregaEquipo);
-            });
-        });
+        window.exactoBtnEntregaEquipo = function() {
+            const numEquipo = exactoResolverNumeroEquipoDesdeBoton(this);
+            if (!numEquipo) {
+                exactoShowAlert('Selecciona el equipo a entregar desde el ícono de camión en la fila del equipo.', {
+                    title: 'Entrega por Equipo',
+                    icon: 'error',
+                });
+                return;
+            }
+            exactoAbrirModalEntregaEquipo(numEquipo);
+        };
 
         // Cancelar modal Entrega por Equipo
         document.getElementById('btnCancelarEntregaEquipo')?.addEventListener('click', function() {
@@ -2057,46 +2304,95 @@
         // Manejar cambio de checkboxes Terminado/Entregado
         document.getElementById('chkTerminado')?.addEventListener('change', function() {
             const pendienteEl = document.getElementById('validacionSaldoPendiente');
+            if (this.disabled) {
+                this.checked = exactoAccionesEquipoSeleccionado() >= 1;
+                exactoAplicarBloqueoEntregaCheckboxes();
+                return;
+            }
             if (this.checked) {
-                // Validar saldo pendiente - consultar al servidor
-                const idOrden = Number(document.getElementById('id_orden_c')?.value || 0);
-                if (idOrden) {
-                    fetch('/api/ordenes/validar-saldo', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': exactoCsrfToken()
-                        },
-                        body: JSON.stringify({id_orden: idOrden})
-                    }).then(r => r.json())
-                      .then(data => {
-                          if (data && data.valid) {
-                              pendienteEl.classList.add('hidden');
-                          } else {
-                              pendienteEl.classList.remove('hidden');
-                              this.checked = false;
-                              exactoShowAlert((data && data.message) || 'Saldo pendiente no liquidado', {title: 'Validación', icon: 'error'});
-                          }
-                      });
+                const numEq = Number(window.exactoEntregaEquipoSeleccionado) || 0;
+                const saldo = (typeof exactoSaldoPendienteActual === 'function')
+                    ? exactoSaldoPendienteActual()
+                    : (parseFloat(document.getElementById('saldoPendiente')?.textContent || '0') || 0);
+                const saldoEq = (numEq > 0 && typeof exactoCalcularSaldoEquipo === 'function')
+                    ? exactoCalcularSaldoEquipo(numEq)
+                    : saldo;
+                if (saldoEq > 0.009 && saldo > 0.009) {
+                    pendienteEl?.classList.remove('hidden');
+                    this.checked = false;
+                    exactoShowAlert(
+                        `Queda un saldo pendiente de $${saldoEq.toFixed(2)} en este equipo. Liquídalo antes de marcar Terminado.`,
+                        { title: 'Validación', icon: 'error' }
+                    );
+                } else {
+                    pendienteEl?.classList.add('hidden');
                 }
             } else {
-                pendienteEl.classList.add('hidden');
+                pendienteEl?.classList.add('hidden');
+                const chkEntregado = document.getElementById('chkEntregado');
+                if (chkEntregado && exactoAccionesEquipoSeleccionado() < 1) {
+                    chkEntregado.checked = false;
+                }
+            }
+            // Al marcar Terminado se habilita Entregado de inmediato (sin esperar otro guardado).
+            exactoAplicarBloqueoEntregaCheckboxes();
+        });
+
+        document.getElementById('chkEntregado')?.addEventListener('change', function() {
+            if (this.disabled) {
+                this.checked = exactoAccionesEquipoSeleccionado() >= 2;
+                return;
+            }
+            if (this.checked && !exactoEquipoPuedeEntregarse()) {
+                this.checked = false;
+                exactoShowAlert(
+                    'Primero marca Terminado (uso interno). En cuanto lo marques, Entregado se habilita.',
+                    { title: 'Flujo de entrega', icon: 'warning' }
+                );
+                exactoAplicarBloqueoEntregaCheckboxes();
+                return;
             }
         });
 
-        // Marcar como Entregado y guardar
-        document.getElementById('btnGuardarEntregaEquipo')?.addEventListener('click', function() {
-            const chkTerminado = document.getElementById('chkTerminado').checked;
-            const chkEntregado = document.getElementById('chkEntregado').checked;
+        // Marcar como Terminado/Entregado y guardar
+        document.getElementById('btnGuardarEntregaEquipo')?.addEventListener('click', async function() {
+            const btn = this;
+            const chkTerminado = document.getElementById('chkTerminado')?.checked;
+            const chkEntregado = document.getElementById('chkEntregado')?.checked;
             const idOrden = Number(document.getElementById('id_orden_c')?.value || 0);
+            const numEquipo = Number(window.exactoEntregaEquipoSeleccionado) || 0;
 
             if (idOrden <= 0) {
-                exactoShowAlert('No hay orden activa', {title: 'Error', icon: 'error'});
+                await exactoShowAlert('No hay orden activa', {title: 'Error', icon: 'error'});
+                return;
+            }
+
+            if (numEquipo < 1) {
+                await exactoShowAlert('Selecciona el equipo a entregar desde el ícono de camión.', {
+                    title: 'Entrega por Equipo',
+                    icon: 'error',
+                });
                 return;
             }
 
             if (!chkTerminado && !chkEntregado) {
-                exactoShowAlert('Selecciona al menos un estatus (Terminado o Entregado)', {title: 'Error', icon: 'error'});
+                await exactoShowAlert('Selecciona al menos un estatus (Terminado o Entregado)', {title: 'Error', icon: 'error'});
+                return;
+            }
+
+            const accionesEq = exactoAccionesEquipoSeleccionado();
+            if (chkEntregado && !exactoEquipoPuedeEntregarse()) {
+                await exactoShowAlert(
+                    'Primero marca Terminado (uso interno). Luego podrás marcar Entregado.',
+                    { title: 'Flujo de entrega', icon: 'warning' }
+                );
+                return;
+            }
+            if (chkTerminado && accionesEq >= 1 && !chkEntregado) {
+                await exactoShowAlert(
+                    'Este equipo ya está Terminado. Marca Entregado para firmar y enviar la OS solo de este equipo.',
+                    { title: 'Flujo de entrega', icon: 'warning' }
+                );
                 return;
             }
 
@@ -2106,25 +2402,101 @@
                 return;
             }
 
-            // Solo Terminado: validar saldo y guardar
-            fetch('/api/ordenes/validar-saldo', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': exactoCsrfToken()
-                },
-                body: JSON.stringify({id_orden: idOrden})
-            }).then(r => r.json())
-              .then(data => {
-                  if (!data.valid) {
-                      exactoShowAlert(data.message || 'Saldo pendiente no liquidado', {title: 'Error', icon: 'error'});
-                      return;
-                  }
-                  guardarOrdenConEstatus(idOrden, 'Terminado');
-              });
+            // Solo Terminado: validar saldo del formulario (misma fuente que SALDO PENDIENTE en pantalla)
+            // y guardar. No usar /validar-saldo de BD aquí: el abono liquidado en UI puede no estar guardado aún.
+            const saldo = (typeof exactoSaldoPendienteActual === 'function')
+                ? exactoSaldoPendienteActual()
+                : (parseFloat(document.getElementById('saldoPendiente')?.textContent || '0') || 0);
+            if (saldo > 0.009) {
+                await exactoShowAlert(
+                    `Queda un saldo pendiente de $${saldo.toFixed(2)}. Liquídalo antes de marcar Terminado.`,
+                    { title: 'Error', icon: 'error' }
+                );
+                return;
+            }
+
+            btn.disabled = true;
+            const textoOriginal = btn.textContent;
+            btn.textContent = 'Guardando...';
+
+            try {
+                await Promise.resolve(guardarOrdenConEstatus(idOrden, 'Terminado'));
+            } catch (err) {
+                console.error(err);
+                await exactoShowAlert('Error de red al guardar. Revisa tu conexión.', {title: 'Error', icon: 'error'});
+            } finally {
+                btn.disabled = false;
+                btn.textContent = textoOriginal;
+            }
         });
 
         // ===== LÓGICA: Modal de firmas de entrega =====
+        function exactoNombreClienteTitular() {
+            return String(document.getElementById('nombreCliente')?.value
+                || document.querySelector('[name="nombreCliente"]')?.value
+                || '').trim();
+        }
+
+        function exactoEsEntregaPorTercero() {
+            return Boolean(document.getElementById('entregaQuienTercero')?.checked);
+        }
+
+        function exactoSincronizarQuienRecibeEntrega() {
+            const input = document.getElementById('inputRecibidoClienteEntrega');
+            const hint = document.getElementById('hintRecibidoTercero');
+            const esTercero = exactoEsEntregaPorTercero();
+            if (hint) hint.classList.toggle('hidden', !esTercero);
+            if (!input) return;
+            if (!esTercero) {
+                const titular = exactoNombreClienteTitular();
+                if (titular !== '') {
+                    input.value = titular.toUpperCase();
+                }
+                input.readOnly = true;
+                input.classList.add('bg-slate-100');
+            } else {
+                input.readOnly = false;
+                input.classList.remove('bg-slate-100');
+                if (input.value.trim().toUpperCase() === exactoNombreClienteTitular().toUpperCase()) {
+                    input.value = '';
+                }
+                input.focus();
+            }
+        }
+
+        function exactoNombreQuienRecibeEntrega() {
+            const input = document.getElementById('inputRecibidoClienteEntrega');
+            let nombre = String(input?.value || '').trim();
+            if (nombre === '' && !exactoEsEntregaPorTercero()) {
+                nombre = exactoNombreClienteTitular();
+            }
+            return nombre.toUpperCase();
+        }
+
+        document.getElementById('entregaQuienCliente')?.addEventListener('change', exactoSincronizarQuienRecibeEntrega);
+        document.getElementById('entregaQuienTercero')?.addEventListener('change', exactoSincronizarQuienRecibeEntrega);
+        document.getElementById('inputRecibidoClienteEntrega')?.addEventListener('input', function () {
+            this.value = String(this.value || '').toUpperCase();
+        });
+
+        function exactoPrepararFirmasEntregaModal() {
+            const ids = ['firmaClienteEntrega', 'firmaTecnicoEntrega'];
+            ids.forEach((id) => {
+                try {
+                    if (typeof window.exactoPrepararCanvasFirmaVisible === 'function') {
+                        window.exactoPrepararCanvasFirmaVisible(id);
+                    } else if (typeof window.inicializarFirma === 'function') {
+                        window.inicializarFirma(id);
+                        if (typeof window.pintarFondoBlancoFirma === 'function') {
+                            window.pintarFondoBlancoFirma(id);
+                        }
+                    }
+                } catch (err) {
+                    console.warn('No se pudo preparar firma de entrega:', id, err);
+                }
+            });
+        }
+
         function abrirModalFirmasEntrega() {
             // Copiar info del equipo al modal de firmas
             const infoMarca = document.getElementById('equipoInfoMarca');
@@ -2134,13 +2506,12 @@
             if (infoMarca && eqMarca) eqMarca.textContent = infoMarca.textContent;
             if (infoModelo && eqModelo) eqModelo.textContent = infoModelo.textContent;
 
-            // Inicializar lienzos de firma si aún no están
-            if (typeof inicializarFirma === 'function') {
-                inicializarFirma('firmaClienteEntrega');
-                inicializarFirma('firmaTecnicoEntrega');
-            }
+            const radioCliente = document.getElementById('entregaQuienCliente');
+            if (radioCliente) radioCliente.checked = true;
+            exactoSincronizarQuienRecibeEntrega();
 
-            // Cerrar modal de confirmación y abrir modal de firmas
+            // Cerrar modal de confirmación y abrir modal de firmas PRIMERO
+            // (si se inicializa el canvas oculto, queda negro).
             const modalConf = document.getElementById('modalEntregaEquipo');
             if (modalConf) {
                 modalConf.classList.add('hidden');
@@ -2149,15 +2520,21 @@
             }
             const modalFirmas = document.getElementById('modalFirmasEntrega');
             if (modalFirmas) {
+                if (modalFirmas.parentNode !== document.body) {
+                    document.body.appendChild(modalFirmas);
+                }
                 modalFirmas.classList.remove('hidden');
                 modalFirmas.classList.add('flex');
                 modalFirmas.style.display = 'flex';
                 modalFirmas.style.alignItems = 'center';
                 modalFirmas.style.justifyContent = 'center';
                 modalFirmas.style.padding = '1rem';
-                modalFirmas.style.zIndex = '10170';
+                modalFirmas.style.zIndex = '20000';
             }
             document.body.style.overflow = 'hidden';
+
+            requestAnimationFrame(exactoPrepararFirmasEntregaModal);
+            setTimeout(exactoPrepararFirmasEntregaModal, 80);
         }
 
         document.getElementById('btnCancelarFirmasEntrega')?.addEventListener('click', function() {
@@ -2183,34 +2560,56 @@
         });
 
         document.getElementById('btnLimpiarFirmaClienteEntrega')?.addEventListener('click', function() {
-            if (typeof limpiarFirma === 'function') {
-                limpiarFirma('firmaClienteEntrega');
-            } else if (typeof canvasContexts !== 'undefined' && canvasContexts['firmaClienteEntrega']) {
-                const canvas = document.getElementById('firmaClienteEntrega');
-                canvasContexts['firmaClienteEntrega'].clearRect(0, 0, canvas.width, canvas.height);
-                if (typeof pintarFondoBlancoFirma === 'function') {
-                    pintarFondoBlancoFirma('firmaClienteEntrega');
-                }
+            if (typeof window.limpiarFirma === 'function') {
+                window.limpiarFirma('firmaClienteEntrega');
             }
         });
 
         document.getElementById('btnLimpiarFirmaTecnicoEntrega')?.addEventListener('click', function() {
-            if (typeof limpiarFirma === 'function') {
-                limpiarFirma('firmaTecnicoEntrega');
-            } else if (typeof canvasContexts !== 'undefined' && canvasContexts['firmaTecnicoEntrega']) {
-                const canvas = document.getElementById('firmaTecnicoEntrega');
-                canvasContexts['firmaTecnicoEntrega'].clearRect(0, 0, canvas.width, canvas.height);
-                if (typeof pintarFondoBlancoFirma === 'function') {
-                    pintarFondoBlancoFirma('firmaTecnicoEntrega');
-                }
+            if (typeof window.limpiarFirma === 'function') {
+                window.limpiarFirma('firmaTecnicoEntrega');
             }
         });
 
-        document.getElementById('btnGuardarFirmasEntrega')?.addEventListener('click', function() {
+        document.getElementById('btnGuardarFirmasEntrega')?.addEventListener('click', async function() {
             const idOrden = Number(document.getElementById('id_orden_c')?.value || 0);
+            const numEquipo = Number(window.exactoEntregaEquipoSeleccionado) || 0;
             if (idOrden <= 0) {
                 exactoShowAlert('No hay orden activa', {title: 'Error', icon: 'error'});
                 return;
+            }
+            if (numEquipo < 1) {
+                exactoShowAlert('Selecciona el equipo a entregar desde el ícono de camión.', {
+                    title: 'Entrega por Equipo',
+                    icon: 'error',
+                });
+                return;
+            }
+            const quienRecibe = exactoNombreQuienRecibeEntrega();
+            if (quienRecibe.length < 3) {
+                exactoShowAlert(
+                    exactoEsEntregaPorTercero()
+                        ? 'Escribe el nombre completo del tercero que recoge el equipo.'
+                        : 'Indica el nombre de quien recibe el equipo.',
+                    { title: 'Quién recibe', icon: 'error' }
+                );
+                document.getElementById('inputRecibidoClienteEntrega')?.focus();
+                return;
+            }
+            if (exactoEsEntregaPorTercero()) {
+                const confirmado = await exactoShowConfirm(
+                    `¿Confirmas que ${quienRecibe} recogerá este equipo como tercero?`,
+                    {
+                        title: 'Confirmar entrega a tercero',
+                        confirmText: 'Sí, entregar',
+                        cancelText: 'Cancelar',
+                        icon: 'warning',
+                    }
+                );
+                if (!confirmado) {
+                    document.getElementById('inputRecibidoClienteEntrega')?.focus();
+                    return;
+                }
             }
             // Guardar la orden con estatus Entregado (incluye firmas del modal)
             guardarOrdenConEstatus(idOrden, 'Entregado');
@@ -2219,8 +2618,27 @@
         function guardarOrdenConEstatus(idOrden, estatus) {
             const form = document.getElementById('ordenForm');
             if (!form) {
-                exactoShowAlert('No se encontró el formulario', {title: 'Error', icon: 'error'});
-                return;
+                return exactoShowAlert('No se encontró el formulario', {title: 'Error', icon: 'error'});
+            }
+
+            const numEquipo = Number(window.exactoEntregaEquipoSeleccionado) || 0;
+            if (numEquipo < 1) {
+                return exactoShowAlert('Selecciona el equipo a entregar desde el ícono de camión.', {
+                    title: 'Entrega por Equipo',
+                    icon: 'error',
+                });
+            }
+
+            if (estatus === 'Entregado') {
+                const quienRecibe = exactoNombreQuienRecibeEntrega();
+                if (quienRecibe.length < 3) {
+                    return exactoShowAlert(
+                        exactoEsEntregaPorTercero()
+                            ? 'Escribe el nombre completo del tercero que recoge el equipo.'
+                            : 'Indica el nombre de quien recibe el equipo.',
+                        { title: 'Quién recibe', icon: 'error' }
+                    );
+                }
             }
 
             const formData = new FormData(form);
@@ -2236,47 +2654,132 @@
             formData.set('estatus', estatus);
             formData.set('modo_completar', '0');
             formData.set('entrega_por_equipo', '1');
-            formData.set('id_equipo', String(window.exactoEntregaEquipoSeleccionado || 0));
+            formData.set('equipo_indice', String(numEquipo));
+            // Preferir id real de BD; si no hay, el servidor acepta el índice 1..N.
+            const idEquipoDb = Number(window.exactoEntregaEquipoDbId) || exactoResolverIdEquipoDb(numEquipo) || 0;
+            formData.set('id_equipo', String(idEquipoDb > 0 ? idEquipoDb : numEquipo));
+            // Persistir acciones del equipo en el payload (Terminado=1, Entregado=2).
+            const accionesGuardar = estatus === 'Entregado' ? 2 : (estatus === 'Terminado' ? 1 : 0);
+            if (accionesGuardar > 0) {
+                formData.set(`equipos[${numEquipo - 1}][acciones]`, String(accionesGuardar));
+            }
+            if (estatus === 'Entregado') {
+                formData.set('recibido_cliente', exactoNombreQuienRecibeEntrega());
+                formData.set('entrega_quien_recibe', exactoEsEntregaPorTercero() ? 'tercero' : 'cliente');
+            }
 
             // Firmas del modal de entrega
-            const firmaClienteDataUrl = exactoFirmaDataUrlSiHay('firmaClienteEntrega');
-            const firmaTecnicoDataUrl = exactoFirmaDataUrlSiHay('firmaTecnicoEntrega');
+            const firmaFn = typeof exactoFirmaDataUrlSiHay === 'function'
+                ? exactoFirmaDataUrlSiHay
+                : (typeof window.exactoFirmaDataUrlSiHay === 'function' ? window.exactoFirmaDataUrlSiHay : null);
+            const firmaClienteDataUrl = firmaFn ? firmaFn('firmaClienteEntrega') : '';
+            const firmaTecnicoDataUrl = firmaFn ? firmaFn('firmaTecnicoEntrega') : '';
             formData.set('firmaCliente', firmaClienteDataUrl || '');
             formData.set('firmaTecnico', firmaTecnicoDataUrl || '');
 
-            fetch('/api/ordenes/registrar', {
+            // CSRF en FormData por si el middleware lo exige
+            const csrf = (typeof exactoCsrfToken === 'function')
+                ? exactoCsrfToken()
+                : ((document.querySelector('meta[name="csrf-token"]') || {}).content
+                    || window.EXACTO_CSRF_TOKEN
+                    || document.querySelector('#ordenForm input[name="_token"]')?.value
+                    || '');
+            if (csrf && !formData.get('_token')) {
+                formData.set('_token', csrf);
+            }
+
+            const btnGuardarFirmas = document.getElementById('btnGuardarFirmasEntrega');
+            const btnGuardarEntrega = document.getElementById('btnGuardarEntregaEquipo');
+            if (btnGuardarFirmas) btnGuardarFirmas.disabled = true;
+            if (btnGuardarEntrega) btnGuardarEntrega.disabled = true;
+
+            const urlRegistrar = (typeof exactoUrlApiRegistrar === 'function')
+                ? exactoUrlApiRegistrar()
+                : ((typeof window.EXACTO_REGISTRAR_ORDEN_URL === 'string' && window.EXACTO_REGISTRAR_ORDEN_URL.trim())
+                    ? window.EXACTO_REGISTRAR_ORDEN_URL.trim()
+                    : '/api/ordenes/registrar');
+
+            return fetch(urlRegistrar, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrf,
                 },
                 body: formData
-            }).then(r => r.json())
-              .then(data => {
-                  if (data.success) {
-                      exactoShowAlert(data.message || 'Orden guardada', {title: 'Éxito', icon: 'success'});
-                      const modalFirmas = document.getElementById('modalFirmasEntrega');
-                      if (modalFirmas) {
-                          modalFirmas.classList.add('hidden');
-                          modalFirmas.classList.remove('flex');
-                          modalFirmas.style.display = 'none';
-                      }
-                      const modalConf = document.getElementById('modalEntregaEquipo');
-                      if (modalConf) {
-                          modalConf.classList.add('hidden');
-                          modalConf.classList.remove('flex');
-                          modalConf.style.display = 'none';
-                      }
-                      document.body.style.overflow = '';
-                      exactoQuitarResaltadoEquipos();
-                      // Recargar o actualizar vista
-                      window.location.reload();
-                  } else {
-                      exactoShowAlert(data.message || 'Error al guardar', {title: 'Error', icon: 'error'});
-                  }
+            }).then(async (r) => {
+                const raw = await r.text();
+                let data = null;
+                try {
+                    data = raw.trim() === '' ? null : JSON.parse(raw);
+                } catch (e) {
+                    data = null;
+                }
+
+                if (!data || typeof data !== 'object') {
+                    const mensajeRespuesta = r.status === 419
+                        ? 'La sesión venció. Recarga la página e intenta nuevamente.'
+                        : (r.status >= 500
+                            ? 'El servidor tuvo un error interno al guardar la orden.'
+                            : `El servidor devolvió una respuesta no reconocida (HTTP ${r.status}).`);
+                    console.error('Entrega por equipo: respuesta cruda del servidor', {
+                        status: r.status,
+                        body: raw,
+                    });
+                    await exactoShowAlert(mensajeRespuesta, {
+                        title: 'Error',
+                        icon: 'error',
+                    });
+                    return;
+                }
+
+                if (!r.ok || !data.success) {
+                    await exactoShowAlert(
+                        String(data.message || `No se pudo guardar la orden (HTTP ${r.status}).`),
+                        {title: 'Error', icon: 'error'}
+                    );
+                    return;
+                }
+
+                if (data.success) {
+                    if (typeof exactoPermitirSalidaOrdenForm === 'function') {
+                        exactoPermitirSalidaOrdenForm();
+                    } else if (typeof window.exactoPermitirSalidaOrdenForm === 'function') {
+                        window.exactoPermitirSalidaOrdenForm();
+                    }
+                    const accResp = Number(data.equipo_acciones);
+                    const numEq = Number(window.exactoEntregaEquipoSeleccionado) || 0;
+                    const accionesConfirmadas = Number.isFinite(accResp) && accResp > 0
+                        ? accResp
+                        : accionesGuardar;
+                    if (numEq > 0 && accionesConfirmadas > 0) {
+                        // Cambiar el color únicamente después de que el servidor confirme el guardado.
+                        exactoMarcarAccionesEquipoLocal(numEq, accionesConfirmadas);
+                    }
+                    const modalFirmas = document.getElementById('modalFirmasEntrega');
+                    if (modalFirmas) {
+                        modalFirmas.classList.add('hidden');
+                        modalFirmas.classList.remove('flex');
+                        modalFirmas.style.display = 'none';
+                    }
+                    const modalConf = document.getElementById('modalEntregaEquipo');
+                    if (modalConf) {
+                        modalConf.classList.add('hidden');
+                        modalConf.classList.remove('flex');
+                        modalConf.style.display = 'none';
+                    }
+                    document.body.style.overflow = '';
+                    exactoQuitarResaltadoEquipos();
+                    await exactoShowAlert(data.message || 'Orden guardada', {title: 'Éxito', icon: 'success'});
+                    window.location.reload();
+                }
+            })
+              .catch(async () => {
+                  await exactoShowAlert('Error de red al guardar', {title: 'Error', icon: 'error'});
               })
-              .catch(() => {
-                  exactoShowAlert('Error de red al guardar', {title: 'Error', icon: 'error'});
+              .finally(() => {
+                  if (btnGuardarFirmas) btnGuardarFirmas.disabled = false;
+                  if (btnGuardarEntrega) btnGuardarEntrega.disabled = false;
               });
         }
 
@@ -2326,7 +2829,9 @@
         }
 
         #exactoUiModal.flex,
-        #modalLiquidarSaldo.flex {
+        #modalLiquidarSaldo.flex,
+        #modalFirmasEntrega.flex,
+        #modalEntregaEquipo.flex {
             display: flex !important;
         }
 

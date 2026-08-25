@@ -21,6 +21,7 @@ final class AdminRegistroControllerTest extends TestCase
 
         $this->actingAs($admin)->post(route('admin.registro.store'), [
             'nombre' => 'Tecnico Nuevo 1',
+            'nombre_usuario' => 'tecnico.nuevo1',
             'email' => 'nuevo1@example.test',
             'password' => 'Password1!',
             'confirm_password' => 'Password1!',
@@ -30,6 +31,7 @@ final class AdminRegistroControllerTest extends TestCase
 
         $this->actingAs($admin)->post(route('admin.registro.store'), [
             'nombre' => 'Tecnico Nuevo 2',
+            'nombre_usuario' => 'tecnico.nuevo2',
             'email' => 'nuevo2@example.test',
             'password' => 'Password1!',
             'confirm_password' => 'Password1!',

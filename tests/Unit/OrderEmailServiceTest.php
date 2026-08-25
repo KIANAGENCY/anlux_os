@@ -58,7 +58,7 @@ final class OrderEmailServiceTest extends TestCase
 
         $result = app(OrderEmailService::class)->sendForStatusWithResult(
             99,
-            'Terminado',
+            'Entregado',
             [
                 'status' => 'verified',
                 'email' => 'cliente@example.test',
@@ -83,7 +83,7 @@ final class OrderEmailServiceTest extends TestCase
 
         $result = app(OrderEmailService::class)->sendForStatusWithResult(
             99,
-            'Terminado',
+            'Entregado',
             [
                 'status' => 'rejected',
                 'email' => 'cliente@example.test',

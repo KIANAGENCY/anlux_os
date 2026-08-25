@@ -221,7 +221,7 @@ class OrderPdfController extends Controller
     /**
      * Genera el PDF de la orden sin requerir sesión (correos en cola, jobs).
      */
-    public function renderOrderPdfBinary(int $id, bool $refreshCache = true): string
+    public function renderOrderPdfBinary(int $id, bool $refreshCache = true, ?int $equipoIndice = null): string
     {
         if ($id <= 0) {
             throw new \InvalidArgumentException('ID de orden inválido para PDF.');
@@ -251,15 +251,60 @@ class OrderPdfController extends Controller
         $o['tecnico_recibido_t'] = $this->vault->tecnicoNombreReveal($o['tecnico_recibido_t'] ?? null);
         $o['entregado_por_tecnico'] = $this->vault->tecnicoNombreReveal($o['entregado_por_tecnico'] ?? null);
 
-        $equipos = DB::select('SELECT * FROM equipos_orden WHERE id_orden_c = ?', [$id]);
+        $equipos = DB::select('SELECT * FROM equipos_orden WHERE id_orden_c = ? ORDER BY id_equipo ASC', [$id]);
+        $totalEquiposOrden = count($equipos);
+        $filtraEquipo = $equipoIndice !== null && $equipoIndice >= 1;
+        $idEquipoDbSeleccionado = 0;
+        if ($filtraEquipo) {
+            $equipos = array_values(array_filter(
+                $equipos,
+                static fn ($eq, $idx): bool => ($idx + 1) === $equipoIndice,
+                ARRAY_FILTER_USE_BOTH
+            ));
+            if ($equipos === []) {
+                throw new \RuntimeException('Equipo no encontrado para PDF parcial.');
+            }
+            $idEquipoDbSeleccionado = (int) ($equipos[0]->id_equipo ?? 0);
+            // PDF de entrega parcial: mostrar Entregado en encabezado.
+            $o['estatus'] = 'Entregado';
+        }
         $idTrabajo = DB::scalar('SELECT MIN(id_trabajo) FROM orden_servicio_t WHERE id_orden_c = ?', [$id]);
         $trabajos = $idTrabajo
             ? DB::select(
-                'SELECT id_trabajo_detalle, clave, descripcion, importe, ticket FROM trabajos_orden WHERE id_trabajo = ? ORDER BY id_trabajo_detalle ASC',
+                'SELECT id_trabajo_detalle, clave, descripcion, importe, ticket, id_equipo FROM trabajos_orden WHERE id_trabajo = ? ORDER BY id_trabajo_detalle ASC',
                 [$idTrabajo]
             )
             : [];
-        $materialesRaw = $idTrabajo ? DB::select('SELECT vale, codigo, descripcion, cantidad, precio_unitario, importe, anticipo, ticket FROM materiales_orden WHERE id_trabajo = ? ORDER BY id_material ASC', [$idTrabajo]) : [];
+        $materialesRaw = $idTrabajo ? DB::select('SELECT vale, codigo, descripcion, cantidad, precio_unitario, importe, anticipo, ticket, id_equipo FROM materiales_orden WHERE id_trabajo = ? ORDER BY id_material ASC', [$idTrabajo]) : [];
+        if ($filtraEquipo) {
+            $matchEquipo = static function (int $idEq) use ($equipoIndice, $idEquipoDbSeleccionado, $totalEquiposOrden): bool {
+                if ($idEq === (int) $equipoIndice) {
+                    return true;
+                }
+                if ($idEquipoDbSeleccionado > 0 && $idEq === $idEquipoDbSeleccionado) {
+                    return true;
+                }
+
+                return $idEq <= 0 && $totalEquiposOrden <= 1;
+            };
+            $trabajos = array_values(array_filter(
+                $trabajos,
+                static function ($tr) use ($matchEquipo): bool {
+                    return $matchEquipo((int) ($tr->id_equipo ?? 0));
+                }
+            ));
+            $materialesRaw = array_values(array_filter(
+                $materialesRaw,
+                static function ($m) use ($matchEquipo): bool {
+                    $tipo = MaterialesOrdenClassifier::classify((array) $m);
+                    if ($tipo === 'abono') {
+                        return false;
+                    }
+
+                    return $matchEquipo((int) ($m->id_equipo ?? 0));
+                }
+            ));
+        }
         $materiales = [];
         $anticipos = [];
         $abonoSaldoTotal = 0.0;
@@ -301,6 +346,22 @@ class OrderPdfController extends Controller
         $ivaTotal = (float) ($o['iva'] ?? 0);
         if ($ivaTotal <= 0.009 && $subtotalCombinado > 0.009) {
             $ivaTotal = round($subtotalCombinado * 0.16, 2);
+        }
+        // PDF parcial por equipo: recalcular totales solo con líneas del equipo.
+        if ($filtraEquipo) {
+            $subT = 0.0;
+            foreach ($trabajos as $tr) {
+                $subT += (float) ($tr->importe ?? 0);
+            }
+            $subM = 0.0;
+            foreach ($materiales as $mat) {
+                $subM += (float) ($mat->importe ?? 0);
+            }
+            $subtotalCombinado = round($subT + $subM, 2);
+            $ivaTotal = round($subtotalCombinado * 0.16, 2);
+            $totalConIva = round($subtotalCombinado + $ivaTotal, 2);
+            $pagosConIva = round(($anticipoTotal + $abonoSaldoTotal) * 1.16, 2);
+            $saldoPagar = round(max(0, $totalConIva - $pagosConIva), 2);
         }
         $anticipoTotalConIva = round($anticipoTotal * 1.16, 2);
         $abonoSaldoConIva = round($abonoSaldoTotal * 1.16, 2);
@@ -489,9 +550,9 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;tex
 .sig-box img{display:inline-block;margin:0 auto;max-height:34px;max-width:95%;width:auto;height:auto;vertical-align:middle;object-fit:contain}
 </style></head><body><table class="header-table"><tr><td class="header-col-logo"><div class="logo">'.($logoData !== '' ? '<img src="'.$logoData.'" alt="Logo">' : '&nbsp;').'</div></td><td class="header-col-title"><h1>Orden de Servicio</h1><div><strong>Folio:</strong> '.e((string) ($o['folio'] ?? '')).'</div></td><td class="header-col-client"><div><strong>Cliente:</strong> '.$this->short((string) ($o['nombre_cliente'] ?? ''), 80).'</div><div><strong>Atención (recepción):</strong> '.$this->short($tecnicoAtiende, 55).'</div><div><strong>Entrega al cliente:</strong> '.$this->short($tecnicoEntregaPdf, 55).'</div></td></tr></table>
 <table class="info"><tr><td colspan="2"><strong>Dirección:</strong> '.$this->short((string) ($o['direccion'] ?? ''), 150).'</td></tr><tr><td><strong>Teléfono:</strong> '.$this->short((string) ($o['telefono'] ?? ''), 30).'</td><td><strong>Correo:</strong> '.$this->short((string) ($o['correo'] ?? ''), 70).'</td></tr><tr><td><strong>Población:</strong> '.$this->short((string) ($o['poblacion'] ?? ''), 50).'</td><td><strong>Estatus:</strong> <span class="status '.$statusClass.'">'.e($status !== '' ? $status : '-').'</span></td></tr><tr><td><strong>Fecha entrada:</strong> '.e($fechaEntrada).'</td><td><strong>Fecha terminado:</strong> '.e($fechaTerminada).' | <strong>Fecha entrega:</strong> '.e($fechaSalida).'</td></tr></table>
+<h2>EQUIPOS</h2><table class="section"><thead><tr><th>MARCA</th><th>MODELO</th><th>SERIE</th><th>TIPO DE SERVICIO</th><th>DESCRIPCION</th></tr></thead><tbody>'.$rowsEquipos.'</tbody></table>
 <h2>Observaciones</h2><table class="section"><tbody><tr><td>'.$obsHtml.'</td></tr></tbody></table>
 <h2>Comentarios técnicos</h2><table class="section"><tbody><tr><td>'.$comentariosTecnicoHtml.'</td></tr></tbody></table>
-<h2>EQUIPOS</h2><table class="section"><thead><tr><th>MARCA</th><th>MODELO</th><th>SERIE</th><th>TIPO DE SERVICIO</th><th>DESCRIPCION</th></tr></thead><tbody>'.$rowsEquipos.'</tbody></table>
 <h2>TRABAJOS</h2><table class="section"><thead><tr><th>ID</th><th>CLAVE</th><th>DESCRIPCION</th><th>PRECIO SIN IVA</th><th>TICKET O FACTURA</th></tr></thead><tbody>'.$rowsTrab.'</tbody></table>
 <h2>MATERIALES</h2><table class="section"><thead><tr><th>VALE NO.</th><th>DESCRIPCION</th><th>CANTIDAD</th><th>PRECIO SIN IVA</th><th>IMPORTE</th><th>TICKET O FACTURA</th></tr></thead><tbody>'.$rowsMat.'</tbody></table>
 '.($rowsAnticipos !== '' ? '<h2>ANTICIPOS</h2><table class="section"><thead><tr><th>ID</th><th>FOLIO</th><th>DESCRIPCION</th><th>MONTO SIN IVA</th><th>TICKET/FACTURA</th></tr></thead><tbody>'.$rowsAnticipos.'</tbody></table>' : '').'
@@ -520,8 +581,9 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;tex
             File::makeDirectory($cacheDir, 0755, true);
         }
         // Bump este prefijo al cambiar layout del PDF para invalidar cache en disco.
-        $cacheKey = hash('sha256', 'orden_pdf_v27_salida_gap|'.$id.'|'.$html);
-        $cachePath = $cacheDir.'/orden_'.$id.'_'.$cacheKey.'.pdf';
+        $eqSuffix = $filtraEquipo ? ('|eq'.$equipoIndice) : '';
+        $cacheKey = hash('sha256', 'orden_pdf_v29_entrega_equipo|'.$id.$eqSuffix.'|'.$html);
+        $cachePath = $cacheDir.'/orden_'.$id.($filtraEquipo ? '_eq'.$equipoIndice : '').'_'.$cacheKey.'.pdf';
         if (! $refreshCache && File::exists($cachePath)) {
             return (string) File::get($cachePath);
         }
@@ -549,7 +611,8 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;tex
         Gate::authorize('order-access', $id);
 
         // Siempre regenerar desde BD al abrir en navegador (evita PDF viejo tras vaciar BD o editar orden).
-        $pdfOutput = $this->renderOrderPdfBinary($id, true);
+        $equipoIndice = (int) $request->query('eq', 0);
+        $pdfOutput = $this->renderOrderPdfBinary($id, true, $equipoIndice > 0 ? $equipoIndice : null);
         $folio = (string) (DB::scalar('SELECT folio FROM orden_servicio_c WHERE id_orden_c = ?', [$id]) ?? '');
         $baseName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $folio !== '' ? $folio : 'orden_'.$id);
         // Nombre único por request: Firefox/Chrome cachean PDF por URL+filename.
@@ -586,9 +649,14 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;tex
             abort(404);
         }
 
-        $pdfOutput = $this->renderOrderPdfBinary($id, false);
+        $equipoIndice = (int) $request->query('eq', 0);
+        $pdfOutput = $this->renderOrderPdfBinary($id, false, $equipoIndice > 0 ? $equipoIndice : null);
         $folio = (string) (DB::scalar('SELECT folio FROM orden_servicio_c WHERE id_orden_c = ?', [$id]) ?? '');
-        $filename = preg_replace('/[^a-zA-Z0-9_-]/', '_', $folio !== '' ? $folio : 'orden_'.$id).'.pdf';
+        $filename = preg_replace('/[^a-zA-Z0-9_-]/', '_', $folio !== '' ? $folio : 'orden_'.$id);
+        if ($equipoIndice > 0) {
+            $filename .= '_eq'.$equipoIndice;
+        }
+        $filename .= '.pdf';
 
         return response($pdfOutput, 200, [
             'Content-Type' => 'application/pdf',

@@ -1,5 +1,14 @@
 @extends('layouts.exacto_app')
 
+{{-- Debe ir fuera de @section: si va dentro del yield, el @stack del <head> ya pasó y ordenes.css no carga. --}}
+@php
+    $ordenesCssPath = public_path('legacy/assets/css/ordenes.css');
+    $ordenesCssV = is_file($ordenesCssPath) ? filemtime($ordenesCssPath) : 1;
+@endphp
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('legacy/assets/css/ordenes.css') }}?v={{ $ordenesCssV }}">
+@endpush
+
 @section('content')
 <body class="bg-blue-50 px-2 py-3 sm:px-3 sm:py-4 lg:px-4 lg:py-6">
     <div class="mx-auto w-full max-w-[1800px] rounded-lg bg-white p-3 shadow-lg sm:p-5 lg:p-6">
@@ -15,7 +24,7 @@
 
         <section class="mb-2 mt-2 rounded-r-lg border-l-4 border-blue-700 bg-blue-50 p-3 sm:p-4 sm:pl-5">
             <h2 class="mb-4 flex items-center text-xl font-bold text-blue-900 sm:text-2xl">
-                <i class="mr-3 text-blue-700 fas fa-search"></i>BÚSQUEDA Y FILTROS
+                <i class="mr-3 text-blue-700 fas fa-search"></i>B&Uacute;SQUEDA Y FILTROS
             </h2>
             <div class="flex flex-col gap-3 md:flex-row">
                 <input id="search" placeholder="Buscar cliente o folio..." class="flex-1 px-4 py-2 border-2 border-blue-300 rounded-lg focus:outline-none focus:border-blue-700 focus:bg-blue-50">
@@ -170,14 +179,6 @@
             <iframe id="iframePdfOrdenes" class="h-full min-h-[70vh] w-full flex-1 border-0 bg-white" title="Vista previa PDF de la orden"></iframe>
         </div>
     </div>
-
-    @php
-        $ordenesCssPath = public_path('legacy/assets/css/ordenes.css');
-        $ordenesCssV = is_file($ordenesCssPath) ? filemtime($ordenesCssPath) : 1;
-    @endphp
-    @push('styles')
-    <link rel="stylesheet" href="{{ asset('legacy/assets/css/ordenes.css') }}?v={{ $ordenesCssV }}">
-    @endpush
 
     @php
         $ordenesJs = public_path('legacy/js/ordenes_laravel.js');

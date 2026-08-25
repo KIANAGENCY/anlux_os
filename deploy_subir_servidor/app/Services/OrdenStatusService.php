@@ -174,7 +174,6 @@ final class OrdenStatusService
 
         $estatusActualCanon = OrderStatus::map($estatusActual);
         $cambiaEstatus = ($estatusActualCanon !== $nuevoEstatus);
-        $confirmaTerminado = $nuevoEstatus === 'Terminado';
         if (
             $cambiaEstatus
             && in_array($nuevoEstatus, ['En proceso', 'Terminado'], true)
@@ -243,19 +242,17 @@ final class OrdenStatusService
             'tecnico' => $nombreInvolucrado,
         ]);
 
-        if (($cambiaEstatus || $confirmaTerminado) && in_array($nuevoEstatus, ['Recepción', 'Terminado', 'Entregado'], true)) {
-            if ($cambiaEstatus) {
-                $this->orderEmail->sendForStatus($id, $nuevoEstatus);
-            }
+        // Terminado es solo uso interno: no envía WhatsApp/correo. Solo Recepción y Entregado.
+        if ($cambiaEstatus && in_array($nuevoEstatus, ['Recepción', 'Entregado'], true)) {
+            $this->orderEmail->sendForStatus($id, $nuevoEstatus);
             if (config('exacto.whatsapp_notifications_enabled', false)
                 && filter_var(config('services.whatsapp.enabled', false), FILTER_VALIDATE_BOOL)) {
-                // Cada confirmación de Terminado debe generar una plantilla nueva con PDF.
                 $this->orderWhatsapp->queueForStatusWithResult(
                     $id,
                     $nuevoEstatus,
                     null,
                     true,
-                    $confirmaTerminado
+                    false
                 );
             }
         }

@@ -239,6 +239,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 || ''
             );
         }
+        window.exactoCsrfToken = exactoCsrfToken;
 
         function exactoEsperar(ms) {
             return new Promise((resolve) => setTimeout(resolve, ms));
@@ -1266,11 +1267,11 @@ function exactoAplicarConversionNetoASinIva(input) {
                         inputEl.value = '';
                     }
                 }
-                // Fuera de la nav sticky (z-index 9999); si no, queda detrás de liquidar/entrega.
+                // Encima de liquidar/entrega/firmas (20000).
                 if (modal.parentNode !== document.body) {
                     document.body.appendChild(modal);
                 }
-                modal.style.zIndex = '20000';
+                modal.style.zIndex = '30000';
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
                 document.body.style.overflow = 'hidden';
@@ -1400,18 +1401,27 @@ function exactoAplicarConversionNetoASinIva(input) {
         }
         window.exactoPermitirSalidaOrdenForm = exactoPermitirSalidaOrdenForm;
 
-        const EXACTO_BORRADOR_KEY_PREFIX = 'exacto_orden_borrador_v2:';
+        const EXACTO_BORRADOR_KEY_PREFIX = 'exacto_orden_borrador_v3:';
+        const EXACTO_BORRADOR_LEGACY_KEY_PREFIX = 'exacto_orden_borrador_v2:';
         const EXACTO_BORRADOR_TTL_MS = 7 * 24 * 60 * 60 * 1000;
         let exactoBorradorTimer = null;
         let exactoBorradorRestaurando = false;
 
-        function exactoBorradorStorageKey() {
+        function exactoBorradorStorageSuffix() {
             const id = Number(document.getElementById('id_orden_c')?.value || 0);
             const modo = String(document.getElementById('modo_completar')?.value || '0');
             if (id > 0) {
-                return EXACTO_BORRADOR_KEY_PREFIX + 'edit:' + id;
+                return 'edit:' + id;
             }
-            return EXACTO_BORRADOR_KEY_PREFIX + 'nueva:' + (modo === '1' ? 'completar' : 'registro');
+            return 'nueva:' + (modo === '1' ? 'completar' : 'registro');
+        }
+
+        function exactoBorradorStorageKey() {
+            return EXACTO_BORRADOR_KEY_PREFIX + exactoBorradorStorageSuffix();
+        }
+
+        function exactoBorradorSoloParaOrdenNueva() {
+            return Number(document.getElementById('id_orden_c')?.value || 0) <= 0;
         }
 
         function exactoBorradorUiSet(texto, tono) {
@@ -1476,6 +1486,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                     descripcion: row.querySelector('[name*="[descripcion]"]')?.value || '',
                     importe: row.querySelector('[name*="[importe]"]')?.value || '',
                     ticket: ticketEl ? String(ticketEl.value || '') : '',
+                    id_equipo: row.querySelector('[name*="[id_equipo]"]')?.value || '',
                 });
             });
 
@@ -1485,10 +1496,11 @@ function exactoAplicarConversionNetoASinIva(input) {
                 materiales.push({
                     vale: row.querySelector('[name*="[vale]"]')?.value || '',
                     codigo: row.querySelector('[name*="[codigo]"]')?.value || '',
-                    cant: row.querySelector('[name*="[cant]"]')?.value || '',
+                    cantidad: row.querySelector('[name*="[cant]"]')?.value || '',
                     descripcion: row.querySelector('[name*="[descripcion]"]')?.value || '',
-                    precio: row.querySelector('[name*="[precio]"]')?.value || '',
+                    precio_unitario: row.querySelector('[name*="[precio]"]')?.value || '',
                     ticket: ticketEl ? String(ticketEl.value || '') : '',
+                    id_equipo: row.querySelector('[name*="[id_equipo]"]')?.value || '',
                 });
             });
 
@@ -1500,6 +1512,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                     descripcion: row.querySelector('[name*="[descripcion]"]')?.value || '',
                     monto: row.querySelector('[name*="[monto]"]')?.value || '',
                     ticket: ticketEl ? String(ticketEl.value || '') : '',
+                    id_equipo: row.querySelector('[name*="[id_equipo]"]')?.value || '',
                 });
             });
 
@@ -1511,7 +1524,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             });
 
             return {
-                version: 2,
+                version: 3,
                 savedAt: Date.now(),
                 id_orden_c: pick('#id_orden_c'),
                 cab: {
@@ -1560,7 +1573,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             if ((draft.trabajos || []).some((t) => String(t.clave || t.descripcion || t.importe || '').trim() !== '')) {
                 return true;
             }
-            if ((draft.materiales || []).some((m) => String(m.vale || m.descripcion || m.precio || '').trim() !== '')) {
+            if ((draft.materiales || []).some((m) => String(m.vale || m.descripcion || m.precio_unitario || '').trim() !== '')) {
                 return true;
             }
             if ((draft.anticipos || []).some((a) => String(a.folio || a.descripcion || a.monto || '').trim() !== '')) {
@@ -1583,12 +1596,21 @@ function exactoAplicarConversionNetoASinIva(input) {
             if (exactoBorradorRestaurando || exactoOrdenSubmitInFlight) {
                 return false;
             }
-            if (!forzar && !exactoOrdenFormTieneCambios && !exactoBorradorTieneContenidoUtil(exactoLeerBorradorOrdenLocal())) {
-                // Aun así guardar si hay contenido actual.
+            // Las órdenes existentes siempre se recuperan desde el servidor. Un snapshot parcial
+            // puede borrar IDs, relaciones y estados por equipo al aplicarse encima.
+            if (!exactoBorradorSoloParaOrdenNueva()) {
+                exactoBorrarBorradorOrdenLocal();
+                return false;
+            }
+            // "forzar" solo adelanta el guardado al ocultar/salir; no crea un borrador
+            // si el usuario no hizo ningún cambio real.
+            if (!exactoOrdenFormTieneCambios) {
+                return false;
             }
             try {
                 const draft = exactoRecolectarBorradorOrden();
                 if (!draft || !exactoBorradorTieneContenidoUtil(draft)) {
+                    exactoBorrarBorradorOrdenLocal();
                     return false;
                 }
                 localStorage.setItem(exactoBorradorStorageKey(), JSON.stringify(draft));
@@ -1613,10 +1635,19 @@ function exactoAplicarConversionNetoASinIva(input) {
 
         function exactoLeerBorradorOrdenLocal() {
             try {
+                // La versión 2 podía sobrescribir datos del servidor; descartarla al encontrarla.
+                localStorage.removeItem(EXACTO_BORRADOR_LEGACY_KEY_PREFIX + exactoBorradorStorageSuffix());
+                if (!exactoBorradorSoloParaOrdenNueva()) {
+                    exactoBorrarBorradorOrdenLocal();
+                    return null;
+                }
                 const raw = localStorage.getItem(exactoBorradorStorageKey());
                 if (!raw) return null;
                 const draft = JSON.parse(raw);
-                if (!draft || !draft.savedAt) return null;
+                if (!draft || Number(draft.version) !== 3 || !draft.savedAt) {
+                    exactoBorrarBorradorOrdenLocal();
+                    return null;
+                }
                 if ((Date.now() - Number(draft.savedAt)) > EXACTO_BORRADOR_TTL_MS) {
                     exactoBorrarBorradorOrdenLocal();
                     return null;
@@ -1630,6 +1661,7 @@ function exactoAplicarConversionNetoASinIva(input) {
         function exactoBorrarBorradorOrdenLocal() {
             try {
                 localStorage.removeItem(exactoBorradorStorageKey());
+                localStorage.removeItem(EXACTO_BORRADOR_LEGACY_KEY_PREFIX + exactoBorradorStorageSuffix());
             } catch (_) { /* ignore */ }
             const el = document.getElementById('exactoBorradorEstado');
             if (el) el.classList.add('hidden');
@@ -1637,12 +1669,44 @@ function exactoAplicarConversionNetoASinIva(input) {
 
         async function exactoAplicarBorradorOrdenLocal(draft) {
             if (!draft) return;
+            if (!exactoBorradorSoloParaOrdenNueva()) {
+                exactoBorrarBorradorOrdenLocal();
+                return;
+            }
             exactoBorradorRestaurando = true;
             try {
                 const idActual = Number(document.getElementById('id_orden_c')?.value || 0);
+                const cab = Object.assign({}, draft.cab || {});
+
+                // En edición: NUNCA sobrescribir estatus ni fechas de taller con el borrador local.
+                // Eso provocaba saltos "de la nada" a En proceso/Terminado al pulsar "Sí, recuperar".
+                if (idActual > 0) {
+                    const estatusEl = document.getElementById('inputEstatus')
+                        || document.querySelector('[name="estatus"]');
+                    if (estatusEl) {
+                        cab.estatus = String(estatusEl.value || '').trim() || cab.estatus;
+                    }
+                    const folioEl = document.querySelector('[name="folio"]');
+                    if (folioEl && String(folioEl.value || '').trim() !== '') {
+                        cab.folio = String(folioEl.value || '').trim();
+                    }
+                    const ftEl = document.querySelector('[name="fechaTerminada"]');
+                    const fsEl = document.querySelector('[name="fechaSalida"]');
+                    const feEl = document.querySelector('[name="fechaEntrada"]');
+                    if (ftEl) cab.fecha_terminada = String(ftEl.value || '');
+                    if (fsEl) cab.fecha_salida = String(fsEl.value || '');
+                    if (feEl && String(feEl.value || '').trim() !== '') {
+                        cab.fecha_entrada = String(feEl.value || '');
+                    }
+                }
+
                 const payload = {
                     id_orden_c: idActual > 0 ? idActual : (draft.id_orden_c || ''),
-                    cab: Object.assign({}, draft.cab || {}),
+                    cab,
+                    t: {
+                        comentarios_m: cab.comentarios_m || '',
+                        recibido_cliente: cab.recibido_cliente || '',
+                    },
                     equipos: draft.equipos || [],
                     trabajos: draft.trabajos || [],
                     materiales: draft.materiales || [],
@@ -1655,6 +1719,23 @@ function exactoAplicarConversionNetoASinIva(input) {
                     payload.id_orden_c = '';
                 }
                 await Promise.resolve(aplicarOrdenExistente(payload));
+
+                // Reafirmar estatus del servidor por si aplicarOrdenExistente lo normalizó mal.
+                if (idActual > 0 && cab.estatus) {
+                    const estatusEl = document.getElementById('inputEstatus');
+                    if (estatusEl) {
+                        estatusEl.value = exactoNormalizarEstatusOrden(cab.estatus);
+                        if (typeof exactoAplicarColorEstatus === 'function') {
+                            exactoAplicarColorEstatus();
+                        }
+                        if (typeof exactoSincronizarFirmasEntregaPorEstatus === 'function') {
+                            exactoSincronizarFirmasEntregaPorEstatus();
+                        }
+                        if (typeof actualizarColumnaAccionesEquipos === 'function') {
+                            actualizarColumnaAccionesEquipos();
+                        }
+                    }
+                }
 
                 exactoAsegurarCamposAbonoNuevaOrden();
                 const abonoEl = document.getElementById('abonoSaldoAplicado');
@@ -1693,7 +1774,8 @@ function exactoAplicarConversionNetoASinIva(input) {
             const restaurar = await exactoShowConfirm(
                 'Se encontró un borrador local sin guardar (por ejemplo si la tablet salió del modo PC o se recargó la página).\n\n'
                 + 'Guardado: ' + cuando + '\n\n'
-                + '¿Quieres recuperar esos datos?',
+                + '¿Quieres recuperar esos datos?\n\n'
+                + 'Nota: el estatus de la orden (Recepción / En proceso / Terminado / Entregado) no se cambia; se mantiene el del servidor.',
                 {
                     title: 'Recuperar borrador',
                     confirmText: 'Sí, recuperar',
@@ -1707,13 +1789,19 @@ function exactoAplicarConversionNetoASinIva(input) {
                 return;
             }
             await exactoAplicarBorradorOrdenLocal(draft);
-            exactoBorradorUiSet('Borrador recuperado. Recuerda guardar la orden en el servidor.', 'ok');
+            // Reescribe el borrador ya con el estatus correcto del servidor.
+            try { exactoGuardarBorradorOrdenLocal(true); } catch (_) { /* ignore */ }
+            exactoBorradorUiSet('Borrador recuperado (estatus del servidor conservado). Recuerda guardar la orden.', 'ok');
             exactoOrdenFormTieneCambios = true;
         }
 
         function exactoIniciarAutosaveBorradorOrden() {
             const form = document.getElementById('ordenForm');
             if (!form || form.dataset.exactoBorradorConfigurado === '1') {
+                return;
+            }
+            if (!exactoBorradorSoloParaOrdenNueva()) {
+                exactoBorrarBorradorOrdenLocal();
                 return;
             }
             form.dataset.exactoBorradorConfigurado = '1';
@@ -2572,7 +2660,20 @@ function exactoAplicarConversionNetoASinIva(input) {
                 if (inpSerie) inpSerie.value = eq.serie || '';
                 if (inpDesc) inpDesc.value = eq.descripcion_falla || '';
                 exactoSeleccionarTipoServicio(selTipo, eq.tipo_servicio || '');
+                const dbId = Number(eq.id_equipo) || 0;
+                row.dataset.idEquipoDb = dbId > 0 ? String(dbId) : '';
+                row.dataset.acciones = String(Number(eq.acciones) || 0);
+                exactoPintarEstatusEquipoFila(row, Number(eq.acciones) || 0);
+                const btnEntrega = row.querySelector('.btn-entrega-equipo-row');
+                if (btnEntrega) {
+                    btnEntrega.dataset.idEquipo = String(i + 1);
+                    if (dbId > 0) {
+                        btnEntrega.dataset.idEquipoDb = String(dbId);
+                    }
+                }
             });
+            actualizarNumerosEquipos();
+            actualizarColumnaAccionesEquipos();
 
             const trabajos = data.trabajos || [];
             ensureTrabajoRowCount(Math.max(1, trabajos.length));
@@ -2698,6 +2799,20 @@ function exactoAplicarConversionNetoASinIva(input) {
             if (tx && data.t) {
                 tx.value = data.t.comentarios_m || '';
             }
+            const recibidoInput = document.getElementById('inputRecibidoClienteForm')
+                || document.querySelector('[name="recibido_cliente"]');
+            if (recibidoInput && data.t) {
+                const recibido = String(data.t.recibido_cliente || '').trim();
+                if (recibido !== '') {
+                    recibidoInput.value = recibido.toUpperCase();
+                    const titular = String(document.getElementById('nombreCliente')?.value || '').trim().toUpperCase();
+                    const esTercero = titular !== '' && recibido.toUpperCase() !== titular;
+                    const radioTercero = document.getElementById('formQuienTercero');
+                    const radioCliente = document.getElementById('formQuienCliente');
+                    if (esTercero && radioTercero) radioTercero.checked = true;
+                    else if (radioCliente) radioCliente.checked = true;
+                }
+            }
 
             const firmas = data.firmas || {};
             const finCalculos = () => {
@@ -2748,15 +2863,23 @@ function exactoAplicarConversionNetoASinIva(input) {
             if (!canvas) return;
             if (!canvasContexts[canvasId]) {
                 inicializarFirma(canvasId);
-                return;
             }
 
             const rect = canvas.parentElement ? canvas.parentElement.getBoundingClientRect() : null;
-            const ancho = rect ? Math.max(1, Math.round(rect.width)) : canvas.width;
-            const alto = rect ? Math.max(1, Math.round(rect.height)) : canvas.height;
-            if (canvas.width !== ancho || canvas.height !== alto) {
+            // Modal/sección aún oculta: no fijar tamaño 0 (queda el lienzo negro).
+            if (!rect || rect.width < 2 || rect.height < 2) {
+                return;
+            }
+            const ancho = Math.max(1, Math.round(rect.width));
+            const alto = Math.max(1, Math.round(rect.height));
+            const sizeChanged = canvas.width !== ancho || canvas.height !== alto;
+            const wasTiny = canvas.width <= 2 || canvas.height <= 2;
+            if (sizeChanged) {
                 canvas.width = ancho;
                 canvas.height = alto;
+            }
+            // Tras redimensionar el bitmap queda transparente/negro; si no hay trazo, asegurar blanco.
+            if (sizeChanged || wasTiny || !canvasPareceFirmado(canvasId)) {
                 pintarFondoBlancoFirma(canvasId);
             }
         }
@@ -3026,6 +3149,52 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         });
 
+        function exactoInfoEstatusEquipo(acciones) {
+            const a = Math.max(0, Number(acciones) || 0);
+            if (a >= 2) {
+                return { text: 'Entregado', cls: 'bg-emerald-600 text-white', style: 'background-color:#059669;color:#ffffff;', acciones: 2 };
+            }
+            if (a >= 1) {
+                return { text: 'Terminado', cls: 'bg-amber-500 text-black', style: 'background-color:#f59e0b;color:#111827;', acciones: 1 };
+            }
+            return { text: 'Pendiente', cls: 'bg-slate-400 text-white', style: 'background-color:#64748b;color:#ffffff;', acciones: 0 };
+        }
+
+        function exactoHtmlCeldaEstatusEquipo(index, acciones) {
+            const info = exactoInfoEstatusEquipo(acciones);
+            return `<td class="p-3 text-center border equipo-estatus-cell">
+                <input type="hidden" name="equipos[${index}][acciones]" class="equipo-acciones-input" value="${info.acciones}">
+                <span class="equipo-estatus-badge inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${info.cls}" style="${info.style}">${info.text}</span>
+            </td>`;
+        }
+
+        function exactoPintarEstatusEquipoFila(fila, acciones) {
+            if (!fila) return;
+            const info = exactoInfoEstatusEquipo(acciones);
+            fila.dataset.acciones = String(info.acciones);
+            const hidden = fila.querySelector('.equipo-acciones-input');
+            if (hidden) hidden.value = String(info.acciones);
+            const badge = fila.querySelector('.equipo-estatus-badge');
+            if (badge) {
+                badge.textContent = info.text;
+                badge.className = `equipo-estatus-badge inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${info.cls}`;
+                badge.setAttribute('style', info.style);
+            }
+            const btn = fila.querySelector('.btn-entrega-equipo-row');
+            if (btn) {
+                btn.classList.toggle('text-green-600', info.acciones < 1);
+                btn.classList.toggle('hover:text-green-800', info.acciones < 1);
+                btn.classList.toggle('text-amber-500', info.acciones === 1);
+                btn.classList.toggle('text-emerald-700', info.acciones >= 2);
+                btn.title = info.acciones >= 2
+                    ? 'Equipo ya entregado'
+                    : (info.acciones === 1 ? 'Equipo terminado — listo para entregar' : 'Terminar y entregar este equipo');
+            }
+        }
+
+        window.exactoPintarEstatusEquipoFila = exactoPintarEstatusEquipoFila;
+        window.exactoInfoEstatusEquipo = exactoInfoEstatusEquipo;
+
         function agregarEquipo() {
             const tbody = document.getElementById('equiposTableBody');
             const contador = tbody.querySelectorAll('.equipo-row').length + 1;
@@ -3037,16 +3206,21 @@ function exactoAplicarConversionNetoASinIva(input) {
 
             const fila = document.createElement('tr');
             fila.className = 'equipo-row hover:bg-blue-100';
+            fila.dataset.acciones = '0';
 
             // Siempre agregar celda AÑADIR vacía para filas nuevas (la primera fila tiene el botón)
-            // Agregar ACCIONES solo cuando estatus es "En proceso"
-            let extraCeldasHtml = `
+            // ESTATUS + ACCIONES cuando estatus es En proceso/Terminado
+            let extraCeldasHtml = '';
+            if (mostrarAcciones) {
+                extraCeldasHtml += exactoHtmlCeldaEstatusEquipo(contador - 1, 0);
+            }
+            extraCeldasHtml += `
                 <td class="p-3 border"></td>
             `;
             if (mostrarAcciones) {
                 extraCeldasHtml += `
                 <td class="p-3 text-center border">
-                    <button type="button" class="font-bold text-green-600 hover:text-green-800 btn-entrega-equipo-row mr-2" title="Terminar y entregar este equipo" data-id-equipo="">
+                    <button type="button" class="font-bold text-green-600 hover:text-green-800 btn-entrega-equipo-row mr-2" title="Terminar y entregar este equipo" data-id-equipo="${contador}">
                         <i class="fas fa-truck"></i>
                     </button>
                     <button type="button" class="font-bold text-red-600 hover:text-red-800 btn-eliminar-equipo" title="Eliminar fila">
@@ -3087,10 +3261,16 @@ function exactoAplicarConversionNetoASinIva(input) {
                         input.setAttribute('name', name.replace(/equipos\[\d+\]/, `equipos[${index}]`));
                     }
                 });
-                // Actualizar data-id-equipo en botón de entrega
+                // Actualizar data-id-equipo en botón de entrega (número 1..N)
+                // Conservar id real de BD si ya venía en la fila.
                 const btnEntrega = fila.querySelector('.btn-entrega-equipo-row');
                 if (btnEntrega) {
-                    btnEntrega.dataset.idEquipo = index;
+                    btnEntrega.dataset.idEquipo = String(index + 1);
+                    const dbId = fila.dataset.idEquipoDb || btnEntrega.dataset.idEquipoDb || '';
+                    if (dbId) {
+                        fila.dataset.idEquipoDb = String(dbId);
+                        btnEntrega.dataset.idEquipoDb = String(dbId);
+                    }
                 }
             });
         }
@@ -3100,49 +3280,78 @@ function exactoAplicarConversionNetoASinIva(input) {
             const estatus = estatusEl ? estatusEl.value.trim() : '';
             const mostrarAcciones = estatus === 'En proceso' || estatus === 'Terminado';
 
-            const table = document.querySelector('#equiposTableBody').closest('table');
+            const table = document.querySelector('#equiposTableBody')?.closest('table');
             const thead = table ? table.querySelector('thead') : null;
             const headerRow = thead ? thead.querySelector('tr') : null;
-            const headerAcciones = headerRow ? headerRow.querySelector('th:last-child') : null;
             const filas = document.querySelectorAll('#equiposTableBody .equipo-row');
 
-            // Mostrar/ocultar header ACCIONES
-            if (headerAcciones) {
-                if (mostrarAcciones && headerAcciones.textContent.trim() !== 'ACCIONES') {
-                    const th = document.createElement('th');
-                    th.className = 'p-3 text-center border';
-                    th.textContent = 'ACCIONES';
-                    headerRow.appendChild(th);
-                } else if (!mostrarAcciones && headerAcciones.textContent.trim() === 'ACCIONES') {
-                    headerAcciones.remove();
+            if (headerRow) {
+                let thEstatus = Array.from(headerRow.querySelectorAll('th')).find((th) => th.textContent.trim() === 'ESTATUS');
+                let thAcciones = Array.from(headerRow.querySelectorAll('th')).find((th) => th.textContent.trim() === 'ACCIONES');
+                const thAnadir = Array.from(headerRow.querySelectorAll('th')).find((th) => {
+                    const t = th.textContent.trim().toUpperCase();
+                    return t === 'ANADIR' || t === 'AÑADIR' || t === 'AÃ‘ADIR';
+                });
+
+                if (mostrarAcciones && !thEstatus) {
+                    thEstatus = document.createElement('th');
+                    thEstatus.className = 'p-3 text-center border';
+                    thEstatus.textContent = 'ESTATUS';
+                    if (thAnadir) {
+                        headerRow.insertBefore(thEstatus, thAnadir);
+                    } else {
+                        headerRow.appendChild(thEstatus);
+                    }
+                } else if (!mostrarAcciones && thEstatus) {
+                    thEstatus.remove();
+                }
+
+                if (mostrarAcciones && !thAcciones) {
+                    thAcciones = document.createElement('th');
+                    thAcciones.className = 'p-3 text-center border';
+                    thAcciones.textContent = 'ACCIONES';
+                    headerRow.appendChild(thAcciones);
+                } else if (!mostrarAcciones && thAcciones) {
+                    thAcciones.remove();
                 }
             }
 
-            // Actualizar cada fila
             filas.forEach((fila, index) => {
-                const celdas = fila.querySelectorAll('td');
-                const esPrimeraFila = index === 0;
-                // ACCIONES siempre está en índice 7 cuando visible
-                const idxAcciones = 7;
-                const tieneAcciones = celdas.length > idxAcciones && celdas[idxAcciones]?.querySelector('.btn-eliminar-equipo');
+                const tieneEstatus = Boolean(fila.querySelector('.equipo-estatus-cell'));
+                const tieneAcciones = Boolean(fila.querySelector('.btn-eliminar-equipo'));
+                const tdAnadir = Array.from(fila.querySelectorAll('td')).find((td) => td.querySelector('.btn-agregar-equipo'))
+                    || Array.from(fila.querySelectorAll('td'))[mostrarAcciones && tieneEstatus ? 7 : 6];
+
+                if (mostrarAcciones && !tieneEstatus) {
+                    const wrap = document.createElement('tbody');
+                    wrap.innerHTML = exactoHtmlCeldaEstatusEquipo(index, Number(fila.dataset.acciones) || 0);
+                    const tdEst = wrap.firstElementChild;
+                    if (tdEst && tdAnadir) {
+                        fila.insertBefore(tdEst, tdAnadir);
+                    } else if (tdEst) {
+                        fila.appendChild(tdEst);
+                    }
+                } else if (!mostrarAcciones && tieneEstatus) {
+                    fila.querySelector('.equipo-estatus-cell')?.remove();
+                } else if (mostrarAcciones && tieneEstatus) {
+                    exactoPintarEstatusEquipoFila(fila, Number(fila.dataset.acciones) || 0);
+                }
 
                 if (mostrarAcciones && !tieneAcciones) {
-                    // Agregar celda ACCIONES en índice 7 (todas las filas tienen 7 celdas antes: 0-5 datos, 6 AÑADIR)
+                    const dbId = fila.dataset.idEquipoDb || '';
                     const tdAcciones = document.createElement('td');
                     tdAcciones.className = 'p-3 text-center border';
                     tdAcciones.innerHTML = `
-                        <button type="button" class="font-bold text-green-600 hover:text-green-800 btn-entrega-equipo-row mr-2" title="Terminar y entregar este equipo" data-id-equipo="${index}">
+                        <button type="button" class="font-bold text-green-600 hover:text-green-800 btn-entrega-equipo-row mr-2" title="Terminar y entregar este equipo" data-id-equipo="${index + 1}"${dbId ? ` data-id-equipo-db="${dbId}"` : ''}>
                             <i class="fas fa-truck"></i>
                         </button>
                         <button type="button" class="font-bold text-red-600 hover:text-red-800 btn-eliminar-equipo" title="Eliminar fila">
                             <i class="fas fa-trash"></i>
                         </button>`;
                     fila.appendChild(tdAcciones);
+                    exactoPintarEstatusEquipoFila(fila, Number(fila.dataset.acciones) || 0);
                 } else if (!mostrarAcciones && tieneAcciones) {
-                    // Remover celda ACCIONES (índice 7), mantener AÑADIR (índice 6)
-                    if (celdas.length >= 8) {
-                        celdas[7].remove();
-                    }
+                    fila.querySelector('.btn-eliminar-equipo')?.closest('td')?.remove();
                 }
             });
         }
@@ -3352,6 +3561,22 @@ function exactoAplicarConversionNetoASinIva(input) {
 
             canvas.dataset.exactoFirmaInicializada = '1';
         }
+
+        function limpiarFirma(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvasContexts[canvasId];
+            if (!canvas || !ctx) {
+                return;
+            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            pintarFondoBlancoFirma(canvasId);
+        }
+
+        window.inicializarFirma = inicializarFirma;
+        window.pintarFondoBlancoFirma = pintarFondoBlancoFirma;
+        window.exactoPrepararCanvasFirmaVisible = exactoPrepararCanvasFirmaVisible;
+        window.limpiarFirma = limpiarFirma;
+        window.exactoFirmaDataUrlSiHay = exactoFirmaDataUrlSiHay;
 
         function startDrawing(e, canvasId) {
             const canvas = document.getElementById(canvasId);
@@ -4079,6 +4304,17 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
 
             elSal.textContent = saldo.toFixed(2);
+
+            const badge = elSal.closest('strong');
+            const btnLiquidar = document.getElementById('btnPagarSaldoPendiente');
+            const liquidado = Math.abs(saldo) <= 0.009;
+            if (badge) {
+                badge.style.backgroundColor = liquidado ? '#16a34a' : '#dc2626';
+            }
+            if (btnLiquidar) {
+                btnLiquidar.classList.toggle('hidden', liquidado);
+                btnLiquidar.disabled = liquidado;
+            }
         }
 
         function exactoIdEquipoDeFilaLiquidar(row) {

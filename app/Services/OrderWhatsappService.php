@@ -68,7 +68,8 @@ final class OrderWhatsappService
 
         $estatusCanon = OrderStatus::map($estatus);
 
-        if (! in_array($estatusCanon, ['Recepción', 'Terminado', 'Entregado'], true)) {
+        // Terminado es solo uso interno: no notifica al cliente.
+        if (! in_array($estatusCanon, ['Recepción', 'Entregado'], true)) {
 
             return [
 
@@ -401,7 +402,7 @@ final class OrderWhatsappService
 
                 if ($this->documentDeliveryUsesLink()) {
 
-                    if ($this->resolveOrderPdfBinary($idOrdenC) === null) {
+                    if ($this->resolveOrderPdfBinary($idOrdenC, $payload) === null) {
 
                         $this->markNotificationFailed($notificationId, 'WhatsApp no enviado. No se pudo generar el PDF de la orden.');
 
@@ -423,11 +424,11 @@ final class OrderWhatsappService
 
                     }
 
-                    $documentLink = $this->signedPdfUrlForOrder($idOrdenC, $notificationId);
+                    $documentLink = $this->signedPdfUrlForOrder($idOrdenC, $notificationId, $payload);
 
                 } else {
 
-                    $pdfBinary = $this->resolveOrderPdfBinary($idOrdenC);
+                    $pdfBinary = $this->resolveOrderPdfBinary($idOrdenC, $payload);
 
                     if ($pdfBinary === null) {
 
@@ -465,12 +466,12 @@ final class OrderWhatsappService
                             ]);
                             $mediaId = null;
                             $pdfFilename = null;
-                        } elseif ($this->resolveOrderPdfBinary($idOrdenC) !== null) {
+                        } elseif ($this->resolveOrderPdfBinary($idOrdenC, $payload) !== null) {
                             Log::channel('exacto_ops')->warning('order_whatsapp_pdf_upload_link_fallback', [
                                 'notification_id' => $notificationId,
                                 'error' => $uploadError->getMessage(),
                             ]);
-                            $documentLink = $this->signedPdfUrlForOrder($idOrdenC, $notificationId);
+                            $documentLink = $this->signedPdfUrlForOrder($idOrdenC, $notificationId, $payload);
                             $mediaId = null;
                         } else {
                             throw $uploadError;
@@ -918,11 +919,21 @@ final class OrderWhatsappService
 
     }
 
-    private function signedPdfUrlForOrder(int $idOrdenC, int $notificationId): string
+    private function signedPdfUrlForOrder(int $idOrdenC, int $notificationId, ?array $payload = null): string
 
     {
 
         $ttlMinutes = max(60, (int) config('services.whatsapp.pdf_link_ttl_minutes', 2880));
+
+        $params = ['id' => $idOrdenC, 'n' => $notificationId];
+
+        $equipoIndice = (int) ($payload['equipo_indice'] ?? 0);
+
+        if ($equipoIndice > 0) {
+
+            $params['eq'] = $equipoIndice;
+
+        }
 
         return URL::temporarySignedRoute(
 
@@ -930,7 +941,7 @@ final class OrderWhatsappService
 
             now()->addMinutes($ttlMinutes),
 
-            ['id' => $idOrdenC, 'n' => $notificationId]
+            $params
 
         );
 
@@ -974,13 +985,26 @@ final class OrderWhatsappService
 
 
 
-    private function resolveOrderPdfBinary(int $idOrdenC): ?string
+    /**
+     * @param  array<string, mixed>|null  $payload
+     */
+    private function resolveOrderPdfBinary(int $idOrdenC, ?array $payload = null): ?string
 
     {
 
         try {
 
-            $content = app(OrderPdfController::class)->renderOrderPdfBinary($idOrdenC, true);
+            $equipoIndice = (int) ($payload['equipo_indice'] ?? 0);
+
+            $content = app(OrderPdfController::class)->renderOrderPdfBinary(
+
+                $idOrdenC,
+
+                true,
+
+                $equipoIndice > 0 ? $equipoIndice : null
+
+            );
 
 
 
@@ -991,6 +1015,8 @@ final class OrderWhatsappService
             Log::channel('exacto_ops')->warning('order_whatsapp_pdf_failed', [
 
                 'id_orden_c' => $idOrdenC,
+
+                'equipo_indice' => (int) ($payload['equipo_indice'] ?? 0),
 
                 'error' => $e->getMessage(),
 

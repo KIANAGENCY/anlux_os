@@ -107,7 +107,12 @@ class OrderController extends Controller
             'message' => $result['message'] ?? null,
         ]);
 
-        return response()->json($result);
+        return response()->json(
+            $result,
+            200,
+            ['Content-Type' => 'application/json; charset=UTF-8'],
+            JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+        );
     }
 
     public function updateStatus(UpdateOrderStatusRequest $request): JsonResponse

@@ -1,4 +1,4 @@
-<div id="exactoUiModal" class="hidden fixed inset-0 z-[80] items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-labelledby="exactoUiModalTitle">
+<div id="exactoUiModal" class="hidden fixed inset-0 z-[30000] items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-labelledby="exactoUiModalTitle" style="z-index:30000;">
     <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl">
         <div class="border-b border-slate-200 px-5 py-4">
             <h3 id="exactoUiModalTitle" class="text-center text-xl font-bold text-blue-900">Aviso</h3>

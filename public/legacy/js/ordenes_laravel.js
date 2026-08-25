@@ -326,13 +326,13 @@
                             </button>`;
                 tabla.innerHTML += `
                     <tr class="${rowClass}" data-orden-id="${orden.id_orden_c}" data-lock-activo="${lockActivo ? '1' : '0'}" data-lock-nombre="${escHtmlAttr(lockNombre)}">
-                        <td class="p-3 border">${orden.folio}</td>
-                        <td class="p-3 border">${orden.nombre_cliente}</td>
-                        <td class="p-3 border">${fechaEntrada}</td>
-                        <td class="p-3 border">${fechaTerminada}</td>
-                        <td class="p-3 border">${fechaSalida}</td>
+                        <td class="p-3 border">${escHtml(orden.folio)}</td>
+                        <td class="p-3 border">${escHtml(orden.nombre_cliente)}</td>
+                        <td class="p-3 border">${escHtml(fechaEntrada)}</td>
+                        <td class="p-3 border">${escHtml(fechaTerminada)}</td>
+                        <td class="p-3 border">${escHtml(fechaSalida)}</td>
                         <td class="p-3 border text-center">${salidaTempHtml}</td>
-                        <td class="p-3 border text-sm text-blue-900 min-w-[12rem]">${escHtmlAttr(primerTecnicoOrden(orden) || '\u2014')}</td>
+                        <td class="p-3 border text-sm text-blue-900 min-w-[12rem]">${escHtml(primerTecnicoOrden(orden) || '\u2014')}</td>
                         <td class="p-3 border text-sm text-slate-700 align-top whitespace-normal min-w-[16rem] leading-relaxed">${involucradosHtmlOrden(orden)}</td>
                         <td class="p-3 border text-center">
                             <div class="inline-flex flex-col items-center">

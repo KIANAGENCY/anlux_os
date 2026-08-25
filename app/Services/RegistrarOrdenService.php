@@ -20,6 +20,10 @@ final class RegistrarOrdenService
     private const ANTICIPO_DESCRIPCION = 'ANTICIPO';
     private const ABONO_SALDO_DESCRIPCION = 'SALDO LIQUIDADO';
     private const SUBMIT_LOCK_TTL_SECONDS = 45;
+    /** equipos_orden.acciones: 0=pendiente, 1=terminado (interno), 2=entregado */
+    private const EQUIPO_ACCION_PENDIENTE = 0;
+    private const EQUIPO_ACCION_TERMINADO = 1;
+    private const EQUIPO_ACCION_ENTREGADO = 2;
 
     public function __construct(
         private readonly ExactoVaultService $vault,
@@ -205,7 +209,8 @@ final class RegistrarOrdenService
     }
 
     /** @var list<string> */
-    private const ESTATUS_NOTIFICACION_CLIENTE = ['Recepción', 'Terminado', 'Entregado'];
+    /** Terminado es solo uso interno: no envía WhatsApp/correo al cliente. */
+    private const ESTATUS_NOTIFICACION_CLIENTE = ['Recepción', 'Entregado'];
 
     /**
      * @return array{status: string, email: string, message: string}
@@ -310,7 +315,8 @@ final class RegistrarOrdenService
         float $totalPagar,
         array $equiposIn,
         bool $sendEmail = true,
-        bool $forceWhatsapp = false
+        bool $forceWhatsapp = false,
+        array $payloadExtra = []
     ): array {
         if (! in_array($estatusCanon, self::ESTATUS_NOTIFICACION_CLIENTE, true)) {
             return [
@@ -332,6 +338,9 @@ final class RegistrarOrdenService
             $equiposIn
         );
         $notificationPayload['id_orden_c'] ??= $idOrdenC;
+        if ($payloadExtra !== []) {
+            $notificationPayload = array_merge($notificationPayload, $payloadExtra);
+        }
         $emailNotice = ['message' => null, 'level' => null];
         if ($sendEmail) {
             $emailProbe = $this->probeCorreoFormatoLocal($correoPlano);
@@ -1066,11 +1075,14 @@ final class RegistrarOrdenService
 
     /**
      * @param  array<mixed>  $equiposIn
+     * @param  list<int>|null  $accionesPorIndice acciones previas 0..N-1 (se preservan al reinsertar)
      * @return list<array<int, mixed>>
      */
-    private function equipoInsertRows(int $idOrdenC, array $equiposIn): array
+    private function equipoInsertRows(int $idOrdenC, array $equiposIn, ?array $accionesPorIndice = null): array
     {
         $rows = [];
+        $indice = 0;
+        $conAcciones = Schema::hasTable('equipos_orden') && Schema::hasColumn('equipos_orden', 'acciones');
         foreach ($equiposIn as $equipo) {
             if (! is_array($equipo)) {
                 continue;
@@ -1094,7 +1106,20 @@ final class RegistrarOrdenService
                 throw new RuntimeException('Cada equipo debe tener marca, modelo, número de serie, descripción de falla y tipo de servicio. Completa todos los campos de la fila.');
             }
 
-            $rows[] = [$idOrdenC, $marca, $modelo, $serie, $claveEquipo, $tipoServicioEquipo, $descripcionFallaEquipo];
+            $acciones = self::EQUIPO_ACCION_PENDIENTE;
+            if (is_array($accionesPorIndice) && array_key_exists($indice, $accionesPorIndice)) {
+                $acciones = max($acciones, (int) $accionesPorIndice[$indice]);
+            }
+            if (isset($equipo['acciones'])) {
+                $acciones = max($acciones, (int) $equipo['acciones']);
+            }
+
+            if ($conAcciones) {
+                $rows[] = [$idOrdenC, $marca, $modelo, $serie, $claveEquipo, $tipoServicioEquipo, $descripcionFallaEquipo, $acciones];
+            } else {
+                $rows[] = [$idOrdenC, $marca, $modelo, $serie, $claveEquipo, $tipoServicioEquipo, $descripcionFallaEquipo];
+            }
+            $indice++;
         }
 
         if ($rows === []) {
@@ -1481,6 +1506,49 @@ final class RegistrarOrdenService
         return $idEquipoInt;
     }
 
+    /**
+     * Resuelve el equipo de una entrega parcial.
+     * Acepta el id real (equipos_orden.id_equipo) o el índice de fila 1..N.
+     */
+    private function resolverIdEquipoEntrega(int $idOrden, int $idEquipoReq, int $equipoIndice = 0): ?int
+    {
+        if ($idOrden <= 0) {
+            return null;
+        }
+
+        $equiposDb = DB::select(
+            'SELECT id_equipo FROM equipos_orden WHERE id_orden_c = ? ORDER BY id_equipo ASC',
+            [$idOrden]
+        );
+        if ($equiposDb === []) {
+            return null;
+        }
+
+        $ids = [];
+        foreach ($equiposDb as $eq) {
+            $ids[] = (int) ($eq->id_equipo ?? 0);
+        }
+        $ids = array_values(array_filter($ids, static fn (int $id): bool => $id > 0));
+        if ($ids === []) {
+            return null;
+        }
+
+        if ($idEquipoReq > 0 && in_array($idEquipoReq, $ids, true)) {
+            return $idEquipoReq;
+        }
+
+        if ($equipoIndice >= 1 && $equipoIndice <= count($ids)) {
+            return $ids[$equipoIndice - 1];
+        }
+
+        // Cliente legado: a veces manda el número de fila (1..N) en id_equipo.
+        if ($idEquipoReq >= 1 && $idEquipoReq <= count($ids)) {
+            return $ids[$idEquipoReq - 1];
+        }
+
+        return null;
+    }
+
     private function fechasTallerSegunEstatus(string $estatusCanon, mixed $fechaTerminadaActual, mixed $fechaSalidaActual): array
     {
         $nowSql = now()->format('Y-m-d H:i:s');
@@ -1680,7 +1748,13 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
             ];
         }
         $estatusCanon = OrderStatus::map($estatus);
-        if ($estatusCanon === 'Entregado' && abs($totalPagar - $totalRecibido) > 0.009) {
+        $entregaPorEquipoReq = (string) $request->input('entrega_por_equipo', '') === '1';
+        // Entrega por equipo: el saldo se valida por equipo en UI; no exigir liquidación de toda la orden.
+        if (
+            $estatusCanon === 'Entregado'
+            && ! $entregaPorEquipoReq
+            && abs($totalPagar - $totalRecibido) > 0.009
+        ) {
             return ['success' => false, 'message' => 'Para guardar como Entregado, el saldo pendiente debe quedar liquidado en $0.00.'];
         }
         if ($idOrdenEditar <= 0 && in_array($estatusCanon, ['En proceso', 'Terminado', 'Entregado'], true)) {
@@ -1833,6 +1907,42 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
         if ((string) $ex['folio'] !== (string) $folio) {
             return ['success' => false, 'message' => 'El folio no coincide con la orden.'];
         }
+
+        // Entrega por equipo: aceptar id real de BD o índice 1..N de la fila.
+        $entregaPorEquipo = (string) $request->input('entrega_por_equipo', '') === '1';
+        $idEquipoEntregaResuelto = null;
+        $equipoIndiceEntrega = 0;
+        $estatusEquipoSolicitado = null;
+        if ($entregaPorEquipo) {
+            $estatusEquipoSolicitado = $this->mapEstatusCanon($estatus);
+            $equipoIndiceEntrega = (int) $request->input('equipo_indice', 0);
+            $resuelto = $this->resolverIdEquipoEntrega(
+                $idOrdenEditar,
+                (int) $request->input('id_equipo', 0),
+                $equipoIndiceEntrega
+            );
+            if ($resuelto === null) {
+                return ['success' => false, 'message' => 'Ese equipo no pertenece a esta orden.'];
+            }
+            $idEquipoEntregaResuelto = $resuelto;
+            if ($equipoIndiceEntrega < 1) {
+                $equiposOrdenados = DB::select(
+                    'SELECT id_equipo FROM equipos_orden WHERE id_orden_c = ? ORDER BY id_equipo ASC',
+                    [$idOrdenEditar]
+                );
+                foreach ($equiposOrdenados as $idx => $eqRow) {
+                    if ((int) ($eqRow->id_equipo ?? 0) === $idEquipoEntregaResuelto) {
+                        $equipoIndiceEntrega = $idx + 1;
+                        break;
+                    }
+                }
+            }
+            $request->merge([
+                'id_equipo' => $idEquipoEntregaResuelto,
+                'equipo_indice' => $equipoIndiceEntrega,
+            ]);
+        }
+
         if ($this->editLocks->tableExists() && ! $this->editLocks->assertHolder($idOrdenEditar, null, $user)) {
             $lock = $this->editLocks->activeLockForOrder($idOrdenEditar);
             $holder = $lock ? (string) $lock->locked_by_nombre : 'otro usuario';
@@ -1907,6 +2017,57 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
         $nuevCanon = $this->mapEstatusCanon($estatus);
         $estatusOrdenFlujo = ['Recepción', 'En proceso', 'Terminado', 'Entregado'];
         $estatusOrdenIndice = array_flip($estatusOrdenFlujo);
+
+        // Entrega por equipo: NO cambia el estatus de la orden; solo el equipo (acciones).
+        if ($entregaPorEquipo && $estatusEquipoSolicitado !== null) {
+            $accionesActual = 0;
+            if (Schema::hasColumn('equipos_orden', 'acciones')) {
+                // Preferir índice 1..N (estable tras reinsert); fallback por id_equipo.
+                if ($equipoIndiceEntrega >= 1) {
+                    $eqAccRows = DB::select(
+                        'SELECT acciones FROM equipos_orden WHERE id_orden_c = ? ORDER BY id_equipo ASC',
+                        [$idOrdenEditar]
+                    );
+                    $idxAcc = $equipoIndiceEntrega - 1;
+                    if (isset($eqAccRows[$idxAcc])) {
+                        $accionesActual = (int) ($eqAccRows[$idxAcc]->acciones ?? 0);
+                    }
+                }
+                if ($accionesActual < 1 && $idEquipoEntregaResuelto) {
+                    $accionesActual = (int) (DB::scalar(
+                        'SELECT acciones FROM equipos_orden WHERE id_equipo = ? AND id_orden_c = ?',
+                        [$idEquipoEntregaResuelto, $idOrdenEditar]
+                    ) ?? 0);
+                }
+            }
+            // Legado: si la orden ya está Terminado/Entregado a nivel global, el equipo se considera terminado.
+            if ($accionesActual < self::EQUIPO_ACCION_TERMINADO
+                && in_array($actCanon, ['Terminado', 'Entregado'], true)) {
+                $accionesActual = self::EQUIPO_ACCION_TERMINADO;
+            }
+            if ($estatusEquipoSolicitado === 'Entregado' && $accionesActual < self::EQUIPO_ACCION_TERMINADO) {
+                return [
+                    'success' => false,
+                    'message' => 'Primero marca este equipo como Terminado (uso interno). Después podrás marcarlo como Entregado y notificar al cliente.',
+                ];
+            }
+            if ($estatusEquipoSolicitado === 'Terminado' && $accionesActual >= self::EQUIPO_ACCION_ENTREGADO) {
+                return [
+                    'success' => false,
+                    'message' => 'Este equipo ya fue entregado.',
+                ];
+            }
+            if ($estatusEquipoSolicitado === 'Entregado' && $accionesActual >= self::EQUIPO_ACCION_ENTREGADO) {
+                return [
+                    'success' => false,
+                    'message' => 'Este equipo ya fue entregado.',
+                ];
+            }
+            // La orden conserva su estatus actual.
+            $nuevCanon = $actCanon;
+            $estatus = $actCanon;
+        }
+
         if (
             isset($estatusOrdenIndice[$actCanon], $estatusOrdenIndice[$nuevCanon])
             && $estatusOrdenIndice[$nuevCanon] < $estatusOrdenIndice[$actCanon]
@@ -1928,7 +2089,7 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
                 return ['success' => false, 'message' => 'No se puede poner en En proceso o Terminado sin las firmas de Cliente y Técnico. Complétalas en la orden y guarda.'];
             }
         }
-        if ($nuevCanon === 'Entregado') {
+        if ($nuevCanon === 'Entregado' || ($entregaPorEquipo && $estatusEquipoSolicitado === 'Entregado')) {
             if (
                 ! $this->firmaGuardadaTieneTrazos($firmaClienteFinalPlano)
                 || ! $this->firmaGuardadaTieneTrazos($firmaTecnicoFinalPlano)
@@ -1936,6 +2097,42 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
                 return ['success' => false, 'message' => 'Para guardar como Entregado, deben estar firmadas Cliente y Técnico.'];
             }
         }
+
+        $recibidoClienteSolicitadoPlano = $this->textoMayusculas(trim((string) $request->input(
+            'recibido_cliente',
+            $request->input('recibidoCliente', '')
+        )));
+        $entregaQuienRecibe = mb_strtolower(trim((string) $request->input('entrega_quien_recibe', 'cliente')), 'UTF-8');
+        if (
+            $entregaPorEquipo
+            && $estatusEquipoSolicitado === 'Entregado'
+            && $entregaQuienRecibe === 'tercero'
+            && mb_strlen($recibidoClienteSolicitadoPlano) < 3
+        ) {
+            return [
+                'success' => false,
+                'message' => 'Escribe el nombre completo del tercero que recoge el equipo.',
+            ];
+        }
+        $recibidoClienteTPlano = $recibidoClienteSolicitadoPlano;
+        if ($recibidoClienteTPlano === '') {
+            $recibidoClienteTPlano = ($exT && isset($exT['recibido_cliente']))
+                ? $this->vault->nombreClienteReveal($exT['recibido_cliente'])
+                : $clienteRecibidoPlano;
+        }
+        if ($recibidoClienteTPlano === '') {
+            $recibidoClienteTPlano = $clienteRecibidoPlano;
+        }
+        if (
+            ($nuevCanon === 'Entregado' || ($entregaPorEquipo && $estatusEquipoSolicitado === 'Entregado'))
+            && mb_strlen($recibidoClienteTPlano) < 3
+        ) {
+            return [
+                'success' => false,
+                'message' => 'Indica el nombre de quien recibe el equipo (cliente titular o tercero).',
+            ];
+        }
+
         if (
             $this->hasSalidaTemporalColumns()
             && in_array($nuevCanon, ['Terminado', 'Entregado'], true)
@@ -1969,12 +2166,69 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
             $values[] = $idOrdenEditar;
             DB::update($sqlUpd, $values);
 
+            $accionesPreviasEquipos = [];
+            if (Schema::hasColumn('equipos_orden', 'acciones')) {
+                $eqPrev = DB::select(
+                    'SELECT acciones FROM equipos_orden WHERE id_orden_c = ? ORDER BY id_equipo ASC',
+                    [$idOrdenEditar]
+                );
+                foreach ($eqPrev as $idx => $eqRow) {
+                    $accionesPreviasEquipos[$idx] = (int) ($eqRow->acciones ?? 0);
+                }
+                // Aplicar estatus del equipo seleccionado (sin tocar el estatus de la orden).
+                if ($entregaPorEquipo && $estatusEquipoSolicitado !== null && $equipoIndiceEntrega >= 1) {
+                    $idxEntrega = $equipoIndiceEntrega - 1;
+                    if ($estatusEquipoSolicitado === 'Terminado') {
+                        $accionesPreviasEquipos[$idxEntrega] = max(
+                            (int) ($accionesPreviasEquipos[$idxEntrega] ?? 0),
+                            self::EQUIPO_ACCION_TERMINADO
+                        );
+                    } elseif ($estatusEquipoSolicitado === 'Entregado') {
+                        $accionesPreviasEquipos[$idxEntrega] = self::EQUIPO_ACCION_ENTREGADO;
+                    }
+                }
+            }
+
             DB::delete('DELETE FROM equipos_orden WHERE id_orden_c = ?', [$idOrdenEditar]);
+            $equipoCols = ['id_orden_c', 'marca', 'modelo', 'serie', 'clave', 'tipo_servicio', 'descripcion_falla'];
+            if (Schema::hasColumn('equipos_orden', 'acciones')) {
+                $equipoCols[] = 'acciones';
+            }
             $this->batchInsert(
                 'equipos_orden',
-                ['id_orden_c', 'marca', 'modelo', 'serie', 'clave', 'tipo_servicio', 'descripcion_falla'],
-                $this->equipoInsertRows($idOrdenEditar, $equiposIn)
+                $equipoCols,
+                $this->equipoInsertRows($idOrdenEditar, $equiposIn, $accionesPreviasEquipos)
             );
+
+            // Asegurar acciones del equipo de entrega tras el reinsert (por índice 1..N).
+            if (
+                $entregaPorEquipo
+                && $estatusEquipoSolicitado !== null
+                && $equipoIndiceEntrega >= 1
+                && Schema::hasColumn('equipos_orden', 'acciones')
+            ) {
+                $targetAccion = $estatusEquipoSolicitado === 'Entregado'
+                    ? self::EQUIPO_ACCION_ENTREGADO
+                    : ($estatusEquipoSolicitado === 'Terminado' ? self::EQUIPO_ACCION_TERMINADO : null);
+                if ($targetAccion !== null) {
+                    $equiposNuevos = DB::select(
+                        'SELECT id_equipo, acciones FROM equipos_orden WHERE id_orden_c = ? ORDER BY id_equipo ASC',
+                        [$idOrdenEditar]
+                    );
+                    $idx = $equipoIndiceEntrega - 1;
+                    if (isset($equiposNuevos[$idx])) {
+                        $idEqNuevo = (int) ($equiposNuevos[$idx]->id_equipo ?? 0);
+                        $accAntes = (int) ($equiposNuevos[$idx]->acciones ?? 0);
+                        $accFinal = max($accAntes, $targetAccion);
+                        if ($idEqNuevo > 0) {
+                            DB::update(
+                                'UPDATE equipos_orden SET acciones = ? WHERE id_equipo = ? AND id_orden_c = ?',
+                                [$accFinal, $idEqNuevo, $idOrdenEditar]
+                            );
+                        }
+                    }
+                }
+            }
 
             $idTrabajo = null;
             if ($exT && isset($exT['id_trabajo'])) {
@@ -1990,12 +2244,6 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
             DB::delete('DELETE FROM trabajos_orden WHERE id_trabajo = ?', [$idTrabajo]);
             DB::delete('DELETE FROM materiales_orden WHERE id_trabajo = ?', [$idTrabajo]);
 
-            $recibidoClienteTPlano = ($exT && isset($exT['recibido_cliente']))
-                ? $this->vault->nombreClienteReveal($exT['recibido_cliente'])
-                : $clienteRecibidoPlano;
-            if ($recibidoClienteTPlano === '') {
-                $recibidoClienteTPlano = $clienteRecibidoPlano;
-            }
             $recibidoClienteT = $this->vault->nombreClienteSeal($recibidoClienteTPlano);
             $tecnicoRecibidoT = ($exT && isset($exT['tecnico_recibido']))
                 ? $this->tecnicoRecibidoLegibleDesdeBd((string) $exT['tecnico_recibido'])
@@ -2006,7 +2254,7 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
             $entregadoPorTecnicoT = ($exT && array_key_exists('entregado_por_tecnico', $exT))
                 ? $this->tecnicoRecibidoLegibleDesdeBd((string) $exT['entregado_por_tecnico'])
                 : '';
-            if ($nuevCanon === 'Entregado') {
+            if ($nuevCanon === 'Entregado' || ($entregaPorEquipo && $estatusEquipoSolicitado === 'Entregado')) {
                 $entregadoPorTecnicoT = $tecnicoInvolucrado;
             }
 
@@ -2069,22 +2317,71 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
             'whatsapp_notification_id' => null,
             'whatsapp_applicable' => false,
         ];
-        $confirmaTerminado = $nuevCanon === 'Terminado';
-        if (($cambiaEstatusOrden || $confirmaTerminado) && in_array($nuevCanon, self::ESTATUS_NOTIFICACION_CLIENTE, true)) {
+        // Entrega por equipo Entregado: notifica solo ese equipo (PDF filtrado). No cambia estatus de orden.
+        if ($entregaPorEquipo && $estatusEquipoSolicitado === 'Entregado' && $equipoIndiceEntrega >= 1) {
+            $equiposFiltrados = [];
+            $i = 0;
+            foreach ($equiposIn as $eqItem) {
+                if (! is_array($eqItem)) {
+                    continue;
+                }
+                $i++;
+                if ($i === $equipoIndiceEntrega) {
+                    $equiposFiltrados = [$eqItem];
+                    break;
+                }
+            }
+            if ($equiposFiltrados === []) {
+                return [
+                    'success' => false,
+                    'message' => 'No se encontró el equipo seleccionado para notificar. Revisa la fila del camión e inténtalo de nuevo.',
+                ];
+            }
             $notificaciones = $this->dispatchStatusNotifications(
                 $idOrdenEditar,
-                $nuevCanon,
+                'Entregado',
                 $folioStr,
                 $nombreClientePlano,
                 $telefono,
                 $correoPlano,
                 $poblacionPlano,
                 $totalPagar,
-                $equiposIn,
-                $cambiaEstatusOrden,
-                $confirmaTerminado
+                $equiposFiltrados,
+                true,
+                true,
+                [
+                    'equipo_indice' => $equipoIndiceEntrega,
+                    'id_equipo' => $idEquipoEntregaResuelto,
+                    'entrega_por_equipo' => 1,
+                    'recibido_cliente' => $recibidoClienteTPlano,
+                ]
             );
+        } else {
+            $confirmaTerminado = $nuevCanon === 'Terminado';
+            if (($cambiaEstatusOrden || $confirmaTerminado) && in_array($nuevCanon, self::ESTATUS_NOTIFICACION_CLIENTE, true)) {
+                $notificaciones = $this->dispatchStatusNotifications(
+                    $idOrdenEditar,
+                    $nuevCanon,
+                    $folioStr,
+                    $nombreClientePlano,
+                    $telefono,
+                    $correoPlano,
+                    $poblacionPlano,
+                    $totalPagar,
+                    $equiposIn,
+                    $cambiaEstatusOrden,
+                    $confirmaTerminado
+                );
+            }
         }
+
+        $mensajeOk = "✅ Orden $folioStr actualizada correctamente";
+        if ($entregaPorEquipo && $estatusEquipoSolicitado === 'Terminado') {
+            $mensajeOk = "✅ Equipo marcado como Terminado (uso interno). La orden sigue en «{$actCanon}».";
+        } elseif ($entregaPorEquipo && $estatusEquipoSolicitado === 'Entregado') {
+            $mensajeOk = "✅ Equipo entregado. Se envió la orden de servicio solo de ese equipo. La orden sigue en «{$actCanon}».";
+        }
+
         $emailNotice = $notificaciones['email'];
         $whatsappNotice = $notificaciones['whatsapp'];
 
@@ -2096,9 +2393,14 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
 
         return [
             'success' => true,
-            'message' => "✅ Orden $folioStr actualizada correctamente",
+            'message' => $mensajeOk,
             'folio' => $folioStr,
             'idOrden' => $idOrdenEditar,
+            'estatus_orden' => $actCanon,
+            'equipo_indice' => $entregaPorEquipo ? $equipoIndiceEntrega : null,
+            'equipo_acciones' => ($entregaPorEquipo && $estatusEquipoSolicitado === 'Entregado')
+                ? self::EQUIPO_ACCION_ENTREGADO
+                : (($entregaPorEquipo && $estatusEquipoSolicitado === 'Terminado') ? self::EQUIPO_ACCION_TERMINADO : null),
             'email_notice' => $emailNotice['message'],
             'email_notice_level' => $emailNotice['level'],
             'whatsapp_notice' => $whatsappNotice['message'],
@@ -2208,9 +2510,13 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
                 $idOrdenC = (int) DB::getPdo()->lastInsertId();
 
                 $this->rebuildSearchIndex($idOrdenC, $nombreClientePlano, $telefono, $correoPlano);
+                $equipoColsIns = ['id_orden_c', 'marca', 'modelo', 'serie', 'clave', 'tipo_servicio', 'descripcion_falla'];
+                if (Schema::hasColumn('equipos_orden', 'acciones')) {
+                    $equipoColsIns[] = 'acciones';
+                }
                 $this->batchInsert(
                     'equipos_orden',
-                    ['id_orden_c', 'marca', 'modelo', 'serie', 'clave', 'tipo_servicio', 'descripcion_falla'],
+                    $equipoColsIns,
                     $this->equipoInsertRows($idOrdenC, $equiposIn)
                 );
 

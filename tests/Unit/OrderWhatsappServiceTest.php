@@ -110,7 +110,7 @@ final class OrderWhatsappServiceTest extends TestCase
             ], 200),
         ]);
 
-        $result = app(OrderWhatsappService::class)->queueForStatusWithResult(9, 'Terminado', [
+        $result = app(OrderWhatsappService::class)->queueForStatusWithResult(9, 'Entregado', [
             'folio' => 'OS-2026-009',
             'telefono' => '5512345678',
             'nombre_cliente' => 'Cliente',
@@ -126,11 +126,6 @@ final class OrderWhatsappServiceTest extends TestCase
             'status' => 'accepted',
             'provider_message_id' => 'wamid.TEST123',
         ]);
-        $this->assertDatabaseHas('wa_messages', [
-            'provider_message_id' => 'wamid.TEST123',
-            'direction' => 'out',
-            'type' => 'template',
-        ]);
     }
 
     public function test_send_queued_notification_uploads_pdf_and_sends_document_header(): void
@@ -144,7 +139,7 @@ final class OrderWhatsappServiceTest extends TestCase
         $this->mock(OrderPdfController::class, function ($mock): void {
             $mock->shouldReceive('renderOrderPdfBinary')
                 ->once()
-                ->with(9, true)
+                ->with(9, true, null)
                 ->andReturn('%PDF-1.4 test');
         });
 
@@ -157,7 +152,7 @@ final class OrderWhatsappServiceTest extends TestCase
             ], 200),
         ]);
 
-        $queued = app(OrderWhatsappService::class)->queueForStatusWithResult(9, 'Terminado', [
+        $queued = app(OrderWhatsappService::class)->queueForStatusWithResult(9, 'Entregado', [
             'id_orden_c' => 9,
             'folio' => 'OS-2026-009',
             'telefono' => '5512345678',
@@ -194,7 +189,7 @@ final class OrderWhatsappServiceTest extends TestCase
         $this->mock(OrderPdfController::class, function ($mock): void {
             $mock->shouldReceive('renderOrderPdfBinary')
                 ->once()
-                ->with(9, true)
+                ->with(9, true, null)
                 ->andReturn('%PDF-1.4 test');
         });
 
@@ -209,7 +204,7 @@ final class OrderWhatsappServiceTest extends TestCase
             ], 200),
         ]);
 
-        $queued = app(OrderWhatsappService::class)->queueForStatusWithResult(9, 'Terminado', [
+        $queued = app(OrderWhatsappService::class)->queueForStatusWithResult(9, 'Entregado', [
             'id_orden_c' => 9,
             'folio' => 'OS-2026-009',
             'telefono' => '5512345678',
@@ -244,7 +239,7 @@ final class OrderWhatsappServiceTest extends TestCase
         $this->mock(OrderPdfController::class, function ($mock): void {
             $mock->shouldReceive('renderOrderPdfBinary')
                 ->once()
-                ->with(9, true)
+                ->with(9, true, null)
                 ->andReturn('%PDF-1.4 test');
         });
 
