@@ -425,11 +425,29 @@ class OrderPdfController extends Controller
 
         $firmasEntregaBlock = '';
         if ($mostrarFirmasEntrega) {
-            $firmasEntregaBlock = '<h2>Firmas de entrega del equipo</h2><div class="sig-outer"><table class="signature-grid"><tr><td>'
+            $equipoEntregadoLine = '';
+            if ($filtraEquipo && isset($equipos[0])) {
+                $marcaEq = trim((string) ($equipos[0]->marca ?? ''));
+                $modeloEq = trim((string) ($equipos[0]->modelo ?? ''));
+                $serieEq = trim((string) ($equipos[0]->serie ?? ''));
+                $partesEq = array_values(array_filter([$marcaEq, $modeloEq], static fn (string $p): bool => $p !== ''));
+                $equipoTxt = $partesEq !== [] ? implode(' / ', $partesEq) : '-';
+                if ($serieEq !== '') {
+                    $equipoTxt .= ' | Serie: '.$serieEq;
+                }
+                $equipoEntregadoLine = '<div class="sig-equipo">Equipo entregado: '.$this->short($equipoTxt, 55).'</div>';
+            }
+            $firmasEntregaBlock = '<h2>Firmas de entrega del equipo</h2><div class="sig-outer"><table class="signature-grid'
+                .($equipoEntregadoLine !== '' ? ' signature-grid-eq' : '')
+                .'"><tr><td>'
                 .$firmaBoxHtml($firmaRecibidoClienteImg)
-                .'<div class="sig-label">Firma del cliente que recibe: '.$this->short($clienteQueRecibe, 34).'</div></td><td>'
+                .'<div class="sig-label">Firma del cliente que recibe: '.$this->short($clienteQueRecibe, 34).'</div>'
+                .$equipoEntregadoLine
+                .'</td><td>'
                 .$firmaBoxHtml($firmaRecibidoTecnicoImg)
-                .'<div class="sig-label">Firma del técnico que entrega: '.$this->short($tecnicoEntregaPdf, 34).'</div></td></tr></table></div>';
+                .'<div class="sig-label">Firma del técnico que entrega: '.$this->short($tecnicoEntregaPdf, 34).'</div>'
+                .$equipoEntregadoLine
+                .'</td></tr></table></div>';
         }
 
         $salidaTemporalBlock = '';
@@ -545,7 +563,9 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;tex
 .sig-outer{width:100%;max-width:100%;margin:4px 0;text-align:center}
 .signature-grid{width:100%;border-collapse:collapse;table-layout:fixed;margin:0 auto}
 .signature-grid td{border:1px solid #999;padding:3px;vertical-align:top;width:50%;height:58px;text-align:center;box-sizing:border-box}
+.signature-grid-eq td{height:72px}
 .sig-label{height:14px;margin:2px 0 0;font-size:6.4px;line-height:1.05;overflow:hidden;text-align:center}
+.sig-equipo{height:12px;margin:1px 0 0;font-size:6.2px;line-height:1.05;overflow:hidden;text-align:center;font-weight:bold;color:#1e3a8a}
 .sig-box{border:1px solid #333;height:38px;line-height:38px;padding:0;background:#fff;margin:0 auto;width:100%;max-width:100%;text-align:center;box-sizing:border-box;overflow:hidden}
 .sig-box img{display:inline-block;margin:0 auto;max-height:34px;max-width:95%;width:auto;height:auto;vertical-align:middle;object-fit:contain}
 </style></head><body><table class="header-table"><tr><td class="header-col-logo"><div class="logo">'.($logoData !== '' ? '<img src="'.$logoData.'" alt="Logo">' : '&nbsp;').'</div></td><td class="header-col-title"><h1>Orden de Servicio</h1><div><strong>Folio:</strong> '.e((string) ($o['folio'] ?? '')).'</div></td><td class="header-col-client"><div><strong>Cliente:</strong> '.$this->short((string) ($o['nombre_cliente'] ?? ''), 80).'</div><div><strong>Atención (recepción):</strong> '.$this->short($tecnicoAtiende, 55).'</div><div><strong>Entrega al cliente:</strong> '.$this->short($tecnicoEntregaPdf, 55).'</div></td></tr></table>
@@ -582,7 +602,7 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;tex
         }
         // Bump este prefijo al cambiar layout del PDF para invalidar cache en disco.
         $eqSuffix = $filtraEquipo ? ('|eq'.$equipoIndice) : '';
-        $cacheKey = hash('sha256', 'orden_pdf_v29_entrega_equipo|'.$id.$eqSuffix.'|'.$html);
+        $cacheKey = hash('sha256', 'orden_pdf_v30_equipo_en_firma|'.$id.$eqSuffix.'|'.$html);
         $cachePath = $cacheDir.'/orden_'.$id.($filtraEquipo ? '_eq'.$equipoIndice : '').'_'.$cacheKey.'.pdf';
         if (! $refreshCache && File::exists($cachePath)) {
             return (string) File::get($cachePath);
@@ -630,7 +650,7 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;tex
             'X-Accel-Expires' => '0',
             'Vary' => '*',
             // Para verificar en DevTools → Network que el servidor ya tiene este PHP.
-            'X-Exacto-Pdf-Ver' => 'v27-salida-gap',
+            'X-Exacto-Pdf-Ver' => 'v30-equipo-en-firma',
         ]);
         $response->headers->remove('ETag');
         $response->setPrivate();
