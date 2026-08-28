@@ -2665,6 +2665,8 @@ function exactoAplicarConversionNetoASinIva(input) {
                 row.dataset.acciones = String(Number(eq.acciones) || 0);
                 row.dataset.entregaReceptorTipo = String(eq.entrega_receptor_tipo || '');
                 row.dataset.entregaRecibidoCliente = String(eq.entrega_recibido_cliente || '');
+                row.dataset.entregaFecha = String(eq.entrega_fecha || '');
+                row.dataset.entregaTecnico = String(eq.entrega_tecnico || '');
                 exactoPintarEstatusEquipoFila(row, Number(eq.acciones) || 0);
                 const btnEntrega = row.querySelector('.btn-entrega-equipo-row');
                 if (btnEntrega) {
@@ -2808,7 +2810,8 @@ function exactoAplicarConversionNetoASinIva(input) {
                 if (recibido !== '') {
                     recibidoInput.value = recibido.toUpperCase();
                     const titular = String(document.getElementById('nombreCliente')?.value || '').trim().toUpperCase();
-                    const esTercero = titular !== '' && recibido.toUpperCase() !== titular;
+                    const esResumen = recibido.toUpperCase() === 'VARIOS RECEPTORES';
+                    const esTercero = !esResumen && titular !== '' && recibido.toUpperCase() !== titular;
                     const radioTercero = document.getElementById('formQuienTercero');
                     const radioCliente = document.getElementById('formQuienCliente');
                     if (esTercero && radioTercero) radioTercero.checked = true;

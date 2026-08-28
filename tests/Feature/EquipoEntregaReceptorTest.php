@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Http\Controllers\OrderPdfController;
 use App\Models\User;
+use App\Services\EquipoEntregaResolver;
 use App\Services\ExactoVaultService;
 use App\Services\RegistrarOrdenService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -227,5 +228,102 @@ final class EquipoEntregaReceptorTest extends TestCase
             ->assertJsonPath('data.0.fecha_entrega', '2026-08-21 09:15:00')
             ->assertJsonPath('data.1.receptor', 'RECEPTOR SEGUNDO')
             ->assertJsonPath('data.1.fecha_entrega', '2026-08-22 10:30:00');
+    }
+
+    public function test_shared_resolver_keeps_each_receiver_and_summarizes_multiple_names(): void
+    {
+        $vault = app(ExactoVaultService::class);
+        $resolver = app(EquipoEntregaResolver::class);
+        $equipos = [
+            (object) [
+                'acciones' => 2,
+                'marca' => 'TOSHIBA',
+                'modelo' => '3450 SUPER',
+                'entrega_receptor_tipo' => 'tercero',
+                'entrega_recibido_cliente' => $vault->nombreClienteSeal('PEDRO LOPEZ'),
+                'entrega_fecha' => '2026-08-25 12:43:55',
+            ],
+            (object) [
+                'acciones' => 2,
+                'marca' => 'DELL',
+                'modelo' => 'INSPIRON 3535',
+                'entrega_receptor_tipo' => 'cliente',
+                'entrega_recibido_cliente' => $vault->nombreClienteSeal('PINOCHO PINOCHET'),
+                'entrega_fecha' => '2026-08-25 11:06:48',
+            ],
+        ];
+
+        $entregas = $resolver->resolveAll(0, $equipos, [
+            'nombre_cliente' => $vault->nombreClienteSeal('PINOCHO PINOCHET'),
+            'recibido_cliente' => $vault->nombreClienteSeal('PEDRO LOPEZ'),
+        ]);
+
+        $this->assertSame('PEDRO LOPEZ', $entregas[1]['receptor']);
+        $this->assertSame('tercero', $entregas[1]['receptor_tipo']);
+        $this->assertSame('PINOCHO PINOCHET', $entregas[2]['receptor']);
+        $this->assertSame('cliente', $entregas[2]['receptor_tipo']);
+        $this->assertSame('VARIOS RECEPTORES', $resolver->resumenReceptores($entregas));
+    }
+
+    public function test_pending_equipment_does_not_inherit_last_global_receiver(): void
+    {
+        $vault = app(ExactoVaultService::class);
+        $entregas = app(EquipoEntregaResolver::class)->resolveAll(0, [
+            (object) [
+                'acciones' => 0,
+                'marca' => 'HP',
+                'modelo' => 'PAVILION',
+            ],
+        ], [
+            'nombre_cliente' => $vault->nombreClienteSeal('CLIENTE TITULAR'),
+            'recibido_cliente' => $vault->nombreClienteSeal('ULTIMO RECEPTOR'),
+        ]);
+
+        $this->assertSame('', $entregas[1]['receptor']);
+        $this->assertNull($entregas[1]['fecha_entrega']);
+    }
+
+    public function test_delivered_equipment_does_not_inherit_global_signature(): void
+    {
+        $vault = app(ExactoVaultService::class);
+        $firmaEquipo = $vault->firmaRutaSeal('firmas/equipo-2.png');
+        $firmaGlobal = $vault->firmaRutaSeal('firmas/global.png');
+
+        $entregas = app(EquipoEntregaResolver::class)->resolveAll(0, [
+            (object) [
+                'acciones' => 2,
+                'entrega_firma_cliente' => null,
+                'entrega_firma_tecnico' => null,
+            ],
+            (object) [
+                'acciones' => 2,
+                'entrega_firma_cliente' => $firmaEquipo,
+                'entrega_firma_tecnico' => $vault->firmaRutaSeal('firmas/tecnico-2.png'),
+            ],
+        ], [
+            'firma_c_r' => $firmaGlobal,
+            'firma_t_e' => $firmaGlobal,
+        ]);
+
+        $this->assertNull($entregas[1]['firma_cliente']);
+        $this->assertNull($entregas[1]['firma_tecnico']);
+        $this->assertSame($firmaEquipo, $entregas[2]['firma_cliente']);
+    }
+
+    public function test_equipos_entrega_schema_ensure_creates_missing_signature_columns(): void
+    {
+        if (Schema::hasColumn('equipos_orden', 'entrega_firma_cliente')) {
+            Schema::table('equipos_orden', function ($table): void {
+                $table->dropColumn('entrega_firma_cliente');
+            });
+        }
+
+        $this->assertFalse(Schema::hasColumn('equipos_orden', 'entrega_firma_cliente'));
+
+        \App\Support\EquiposOrdenEntregaSchema::ensure();
+
+        $this->assertTrue(Schema::hasColumn('equipos_orden', 'entrega_firma_cliente'));
+        $this->assertTrue(Schema::hasColumn('equipos_orden', 'entrega_firma_tecnico'));
+        $this->assertTrue(Schema::hasColumn('equipos_orden', 'entrega_fecha'));
     }
 }

@@ -68,8 +68,7 @@ final class OrderWhatsappService
 
         $estatusCanon = OrderStatus::map($estatus);
 
-        // Terminado es solo uso interno: no notifica al cliente.
-        if (! in_array($estatusCanon, ['Recepción', 'Entregado'], true)) {
+        if (! in_array($estatusCanon, ['Recepción', 'Terminado', 'Entregado'], true)) {
 
             return [
 
@@ -323,8 +322,6 @@ final class OrderWhatsappService
             ];
 
         }
-
-
 
         if (! $this->enabled()) {
 

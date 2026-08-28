@@ -6,7 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Models\User;
-use App\Services\ExactoVaultService;
+use App\Services\EquipoEntregaResolver;
 use App\Services\OrdenListService;
 use App\Services\OrdenStatusService;
 use App\Services\RegistrarOrdenService;
@@ -19,26 +19,20 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class OrderController extends Controller
 {
-    private function debugLog(string $runId, string $hypothesisId, string $location, string $message, array $data = []): void {}
-
     public function __construct(
         private readonly OrdenListService $listService,
         private readonly OrdenStatusService $statusService,
-        private readonly RegistrarOrdenService $registrarService
+        private readonly RegistrarOrdenService $registrarService,
+        private readonly EquipoEntregaResolver $entregaResolver
     ) {}
 
     public function index(): View
     {
         $user = Auth::user();
-        $this->debugLog('run2', 'H3', 'app/Http/Controllers/OrderController.php:index', 'Orders index hit', [
-            'authenticated' => (bool) $user,
-            'user_id' => $user?->id_tecnico,
-        ]);
         abort_unless($user, 403);
 
         $nombreTecnico = htmlspecialchars(
@@ -61,20 +55,6 @@ class OrderController extends Controller
     public function list(Request $request): JsonResponse
     {
         $user = ExactoAuthContext::currentUser();
-        $this->debugLog('run1', 'H3', 'app/Http/Controllers/OrderController.php:list:entry', 'API list entry', [
-            'authenticated' => $user !== null,
-            'user_id' => $user?->id_tecnico,
-            'perfil' => $user?->perfil,
-            'session_nombre_tecnico' => (string) session('nombre_tecnico', ''),
-            'query' => [
-                'search' => (string) $request->query('search', ''),
-                'startDate' => (string) $request->query('startDate', ''),
-                'endDate' => (string) $request->query('endDate', ''),
-                'estatus' => (string) $request->query('estatus', ''),
-                'page' => (string) $request->query('page', ''),
-                'perPage' => (string) $request->query('perPage', ''),
-            ],
-        ]);
         if (! $user instanceof User) {
             return response()->json(['success' => false, 'message' => 'No autorizado'], 401);
         }
@@ -92,22 +72,12 @@ class OrderController extends Controller
             $result = $this->listService->listForRequest($user, $search, $startDate, $endDate, $estatus, $page, $perPage, $sort);
         } catch (\Throwable $e) {
             report($e);
-            $this->debugLog('run1', 'H3', 'app/Http/Controllers/OrderController.php:list:error', 'API list exception', [
-                'message' => $e->getMessage(),
-            ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'No se pudo cargar el listado de órdenes. Revisa que estén subidos OrderStatus.php y OrdenListService.php actualizados.',
             ], 500);
         }
-
-        $this->debugLog('run1', 'H3', 'app/Http/Controllers/OrderController.php:list:exit', 'API list exit', [
-            'success' => (bool) ($result['success'] ?? false),
-            'count' => isset($result['data']) && is_array($result['data']) ? count($result['data']) : null,
-            'total' => $result['pagination']['total'] ?? null,
-            'message' => $result['message'] ?? null,
-        ]);
 
         return response()->json(
             $result,
@@ -137,12 +107,6 @@ class OrderController extends Controller
     public function registrar(Request $request): JsonResponse
     {
         $user = Auth::user();
-        $this->debugLog('run1', 'H4', 'app/Http/Controllers/OrderController.php:registrar:entry', 'API registrar entry', [
-            'authenticated' => (bool) $user,
-            'user_id' => $user?->id_tecnico,
-            'has_id_orden_c' => $request->filled('id_orden_c'),
-            'modo_completar' => (string) $request->input('modo_completar', ''),
-        ]);
         if (! $user) {
             return response()->json(['success' => false, 'message' => 'No autorizado'], 401);
         }
@@ -161,11 +125,6 @@ class OrderController extends Controller
                 'message' => '❌ Error al guardar: '.$e->getMessage(),
             ], 500);
         }
-        $this->debugLog('run1', 'H4', 'app/Http/Controllers/OrderController.php:registrar:exit', 'API registrar exit', [
-            'success' => (bool) ($result['success'] ?? false),
-            'message' => $result['message'] ?? null,
-            'id_orden_c' => $result['id_orden_c'] ?? null,
-        ]);
 
         $statusCode = $result['success'] ? 200 : 400;
         if (($result['processing'] ?? false) || ($result['duplicate_submit'] ?? false)) {
@@ -381,32 +340,11 @@ class OrderController extends Controller
             return response()->json(['success' => false, 'message' => 'Orden no encontrada.'], 404);
         }
 
-        $vault = app(ExactoVaultService::class);
         $equipos = DB::select(
             'SELECT * FROM equipos_orden WHERE id_orden_c = ? ORDER BY id_equipo ASC',
             [$id]
         );
-        $entregasLegacy = [];
-        if (Schema::hasTable('order_whatsapp_notifications')) {
-            $notificaciones = DB::select(
-                'SELECT payload_json, COALESCE(queued_at, created_at, sent_at, delivered_at) AS fecha_evento
-                 FROM order_whatsapp_notifications
-                 WHERE id_orden_c = ? AND estatus = ?
-                 ORDER BY id ASC',
-                [$id, 'Entregado']
-            );
-            foreach ($notificaciones as $notificacion) {
-                $payload = json_decode((string) ($notificacion->payload_json ?? ''), true);
-                $indiceEvento = is_array($payload) ? (int) ($payload['equipo_indice'] ?? 0) : 0;
-                if ($indiceEvento < 1 || isset($entregasLegacy[$indiceEvento])) {
-                    continue;
-                }
-                $entregasLegacy[$indiceEvento] = [
-                    'receptor' => trim((string) ($payload['recibido_cliente'] ?? '')),
-                    'fecha' => $notificacion->fecha_evento ?? null,
-                ];
-            }
-        }
+        $entregas = $this->entregaResolver->resolveAll($id, $equipos, (array) $orden);
         $resultado = [];
         foreach ($equipos as $idx => $equipo) {
             if ((int) ($equipo->acciones ?? 0) !== 2) {
@@ -414,42 +352,17 @@ class OrderController extends Controller
             }
 
             $indice = $idx + 1;
-            $entregaLegacy = $entregasLegacy[$indice] ?? [];
-            $receptor = $vault->nombreClienteReveal($equipo->entrega_recibido_cliente ?? null);
-            if (trim($receptor) === '' && trim((string) ($entregaLegacy['receptor'] ?? '')) !== '') {
-                $receptor = trim((string) $entregaLegacy['receptor']);
-            }
-            if (trim($receptor) === '') {
-                $receptor = $vault->nombreClienteReveal($orden->recibido_cliente ?? null);
-            }
-            if (trim($receptor) === '') {
-                $receptor = $vault->nombreClienteReveal($orden->nombre_cliente ?? null);
-            }
-            $tecnico = $vault->tecnicoNombreReveal($equipo->entrega_tecnico ?? null);
-            if (trim($tecnico) === '') {
-                $tecnico = $vault->tecnicoNombreReveal($orden->entregado_por_tecnico ?? null);
-            }
-            $tipo = mb_strtolower(trim((string) ($equipo->entrega_receptor_tipo ?? '')), 'UTF-8');
-            if (! in_array($tipo, ['cliente', 'tercero'], true)) {
-                $titular = $vault->nombreClienteReveal($orden->nombre_cliente ?? null);
-                $tipo = mb_strtolower(trim($receptor), 'UTF-8') !== mb_strtolower(trim($titular), 'UTF-8')
-                    ? 'tercero'
-                    : 'cliente';
-            }
-            $fechaEntrega = $equipo->entrega_fecha
-                ?? $entregaLegacy['fecha']
-                ?? $orden->fecha_salida
-                ?? null;
+            $entrega = $entregas[$indice] ?? [];
 
             $resultado[] = [
                 'indice' => $indice,
                 'marca' => trim((string) ($equipo->marca ?? '')),
                 'modelo' => trim((string) ($equipo->modelo ?? '')),
                 'serie' => trim((string) ($equipo->serie ?? '')),
-                'receptor' => trim($receptor),
-                'receptor_tipo' => $tipo,
-                'fecha_entrega' => $fechaEntrega,
-                'tecnico' => trim($tecnico),
+                'receptor' => (string) ($entrega['receptor'] ?? ''),
+                'receptor_tipo' => (string) ($entrega['receptor_tipo'] ?? 'cliente'),
+                'fecha_entrega' => $entrega['fecha_entrega'] ?? null,
+                'tecnico' => (string) ($entrega['tecnico'] ?? ''),
                 'pdf_url' => route('pdf.orden', [
                     'id' => $id,
                     'eq' => $indice,

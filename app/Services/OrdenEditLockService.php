@@ -200,9 +200,9 @@ final class OrdenEditLockService
         return DB::selectOne(
             'SELECT id_orden_c, locked_by_user_id, locked_by_nombre, locked_at, expires_at
              FROM orden_servicio_edit_locks
-             WHERE id_orden_c = ? AND expires_at >= NOW()
+             WHERE id_orden_c = ? AND expires_at >= ?
              LIMIT 1',
-            [$orderId]
+            [$orderId, now()->format('Y-m-d H:i:s')]
         );
     }
 }

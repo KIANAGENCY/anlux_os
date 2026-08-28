@@ -280,4 +280,33 @@ final class OrderWhatsappServiceTest extends TestCase
             return str_contains($request->url(), '/media');
         });
     }
+
+    public function test_queue_for_status_with_result_queues_terminado(): void
+    {
+        Bus::fake();
+        config([
+            'exacto.whatsapp_notifications_enabled' => true,
+            'services.whatsapp.enabled' => true,
+            'services.whatsapp.base_url' => 'https://graph.facebook.com',
+            'services.whatsapp.graph_version' => 'v20.0',
+            'services.whatsapp.phone_number_id' => '123456789',
+            'services.whatsapp.access_token' => 'test-token',
+            'services.whatsapp.default_country_code' => '52',
+            'services.whatsapp.templates.terminado' => 'orden_terminado',
+            'services.whatsapp.template_include_document' => false,
+        ]);
+
+        $result = app(OrderWhatsappService::class)->queueForStatusWithResult(12, 'Terminado', [
+            'folio' => 'OS-2026-012',
+            'telefono' => '5512345678',
+            'nombre_cliente' => 'Cliente',
+        ]);
+
+        $this->assertSame('queued', $result['status']);
+        $this->assertDatabaseHas('order_whatsapp_notifications', [
+            'id_orden_c' => 12,
+            'estatus' => 'Terminado',
+            'template_name' => 'orden_terminado',
+        ]);
+    }
 }

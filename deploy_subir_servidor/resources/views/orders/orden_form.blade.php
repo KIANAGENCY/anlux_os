@@ -2265,6 +2265,13 @@
 
             const pendienteEl = document.getElementById('validacionSaldoPendiente');
             if (pendienteEl) pendienteEl.classList.add('hidden');
+
+            const accionesEquipo = exactoAccionesEquipoSeleccionado();
+            const chkTerminado = document.getElementById('chkTerminado');
+            const chkEntregado = document.getElementById('chkEntregado');
+            if (chkTerminado) chkTerminado.checked = accionesEquipo >= 1;
+            if (chkEntregado) chkEntregado.checked = accionesEquipo >= 2;
+
             exactoAplicarBloqueoEntregaCheckboxes();
 
             modal.classList.remove('hidden');

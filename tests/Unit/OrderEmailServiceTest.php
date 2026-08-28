@@ -16,6 +16,17 @@ final class OrderEmailServiceTest extends TestCase
     {
         Queue::fake();
 
+        app(OrderEmailService::class)->sendForStatus(55, 'Recepción');
+
+        Queue::assertPushed(SendOrderStatusEmailJob::class, function (SendOrderStatusEmailJob $job): bool {
+            return $job->idOrdenC === 55 && $job->estatus === 'Recepción';
+        });
+    }
+
+    public function test_send_for_status_dispatches_for_terminado(): void
+    {
+        Queue::fake();
+
         app(OrderEmailService::class)->sendForStatus(55, 'Terminado');
 
         Queue::assertPushed(SendOrderStatusEmailJob::class, function (SendOrderStatusEmailJob $job): bool {

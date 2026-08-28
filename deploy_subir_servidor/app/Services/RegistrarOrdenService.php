@@ -160,6 +160,9 @@ final class RegistrarOrdenService
         }
 
         $this->list->ensureSearchTable();
+        if (class_exists(\App\Support\EquiposOrdenEntregaSchema::class)) {
+            \App\Support\EquiposOrdenEntregaSchema::ensure();
+        }
     }
 
     private function acquireSubmissionLock(string $key): bool
@@ -209,8 +212,7 @@ final class RegistrarOrdenService
     }
 
     /** @var list<string> */
-    /** Terminado es solo uso interno: no envía WhatsApp/correo al cliente. */
-    private const ESTATUS_NOTIFICACION_CLIENTE = ['Recepción', 'Entregado'];
+    private const ESTATUS_NOTIFICACION_CLIENTE = ['Recepción', 'Terminado', 'Entregado'];
 
     /**
      * @return array{status: string, email: string, message: string}
@@ -319,6 +321,17 @@ final class RegistrarOrdenService
         array $payloadExtra = []
     ): array {
         if (! in_array($estatusCanon, self::ESTATUS_NOTIFICACION_CLIENTE, true)) {
+            return [
+                'email' => ['message' => null, 'level' => null],
+                'whatsapp' => ['message' => null, 'level' => null],
+                'whatsapp_notification_id' => null,
+                'whatsapp_applicable' => false,
+            ];
+        }
+        if (
+            $estatusCanon === 'Terminado'
+            && (int) ($payloadExtra['entrega_por_equipo'] ?? 0) === 1
+        ) {
             return [
                 'email' => ['message' => null, 'level' => null],
                 'whatsapp' => ['message' => null, 'level' => null],
@@ -2021,12 +2034,12 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
         $esEntregaIndividual = $entregaPorEquipo
             && $estatusEquipoSolicitado === 'Entregado'
             && $equipoIndiceEntrega >= 1;
-        $firmaClienteFinalExistente = $exT
-            ? $this->vault->firmaRutaReveal($exT['firma_c_r'] ?? null)
-            : null;
-        $firmaTecnicoFinalExistente = $exT
-            ? $this->vault->firmaRutaReveal($exT['firma_t_e'] ?? null)
-            : null;
+        $firmaClienteFinalExistente = null;
+        $firmaTecnicoFinalExistente = null;
+        if (! $esEntregaIndividual && $exT) {
+            $firmaClienteFinalExistente = $this->vault->firmaRutaReveal($exT['firma_c_r'] ?? null);
+            $firmaTecnicoFinalExistente = $this->vault->firmaRutaReveal($exT['firma_t_e'] ?? null);
+        }
         if (
             $esEntregaIndividual
             && $idEquipoEntregaResuelto
@@ -2418,19 +2431,38 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
                 $entregadoPorTecnicoT = $tecnicoInvolucrado;
             }
 
-            $tColumnsUpd = ['recibido_cliente', 'tecnico_recibido', 'entregado_por_tecnico', 'subtotal_t', 'subtotal_m', 'iva', 'total_pagar', 'firma_c_r', 'firma_t_e', 'comentarios_m'];
+            // Entrega individual: receptor y firmas solo en equipos_orden, no pisar orden_servicio_t.
+            $recibidoClienteParaTablaT = $recibidoClienteT;
+            if ($esEntregaIndividual && $exT) {
+                $recibidoClienteParaTablaT = $exT['recibido_cliente'] ?? null;
+            }
+
+            $tColumnsUpd = [
+                'recibido_cliente',
+                'tecnico_recibido',
+                'entregado_por_tecnico',
+                'subtotal_t',
+                'subtotal_m',
+                'iva',
+                'total_pagar',
+                'comentarios_m',
+            ];
             $tValuesUpd = [
-                $recibidoClienteT,
+                $recibidoClienteParaTablaT,
                 $tecnicoRecibidoT,
                 $entregadoPorTecnicoT,
                 $subtotalTrabajos,
                 $subtotalMateriales,
                 $ivaTotal,
                 $totalPagar,
-                $firmaClienteFinal,
-                $firmaTecnicoFinal,
                 $comentariosTecnico,
             ];
+            if (! $esEntregaIndividual) {
+                $tColumnsUpd[] = 'firma_c_r';
+                $tColumnsUpd[] = 'firma_t_e';
+                $tValuesUpd[] = $firmaClienteFinal;
+                $tValuesUpd[] = $firmaTecnicoFinal;
+            }
             $setT = implode(', ', array_map(fn ($c) => '`'.str_replace('`', '', $c).'` = ?', $tColumnsUpd));
             $tValuesUpd[] = $idTrabajo;
             DB::update("UPDATE orden_servicio_t SET $setT WHERE id_trabajo = ?", $tValuesUpd);
@@ -2518,7 +2550,10 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
             );
         } else {
             $confirmaTerminado = $nuevCanon === 'Terminado';
-            if (($cambiaEstatusOrden || $confirmaTerminado) && in_array($nuevCanon, self::ESTATUS_NOTIFICACION_CLIENTE, true)) {
+            $debeNotificarCliente = ($cambiaEstatusOrden || $confirmaTerminado)
+                && in_array($nuevCanon, self::ESTATUS_NOTIFICACION_CLIENTE, true)
+                && ! ($entregaPorEquipo && $estatusEquipoSolicitado === 'Terminado');
+            if ($debeNotificarCliente) {
                 $notificaciones = $this->dispatchStatusNotifications(
                     $idOrdenEditar,
                     $nuevCanon,

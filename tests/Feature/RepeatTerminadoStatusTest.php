@@ -77,7 +77,7 @@ final class RepeatTerminadoStatusTest extends TestCase
             'estatus' => 'Terminado',
             'fecha_terminada' => '2026-08-12 16:45:30',
         ]);
-        // Terminado es uso interno: no se reenvía plantilla WhatsApp.
+        // Reconfirmar Terminado en historial no reenvía plantilla.
         $this->assertDatabaseCount('order_whatsapp_notifications', 1);
         Bus::assertNothingDispatched();
     }

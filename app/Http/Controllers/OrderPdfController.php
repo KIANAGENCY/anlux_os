@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Support\MaterialesOrdenClassifier;
-use App\Support\TipoServicioCatalog;
+use App\Services\EquipoEntregaResolver;
 use App\Services\ExactoVaultService;
 use App\Services\OrdenPolicyService;
 use App\Services\PdfCondicionesService;
+use App\Support\MaterialesOrdenClassifier;
+use App\Support\TipoServicioCatalog;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
@@ -23,7 +24,8 @@ class OrderPdfController extends Controller
     public function __construct(
         private readonly ExactoVaultService $vault,
         private readonly OrdenPolicyService $policy,
-        private readonly PdfCondicionesService $pdfCondiciones
+        private readonly PdfCondicionesService $pdfCondiciones,
+        private readonly EquipoEntregaResolver $entregaResolver
     ) {}
 
     private function normalizeTipoServicio(string $value): string
@@ -263,6 +265,10 @@ class OrderPdfController extends Controller
             throw new \InvalidArgumentException('ID de orden inválido para PDF.');
         }
 
+        if (class_exists(\App\Support\EquiposOrdenEntregaSchema::class)) {
+            \App\Support\EquiposOrdenEntregaSchema::ensure();
+        }
+
         $orden = DB::selectOne(
             'SELECT c.*, t.subtotal_t, t.subtotal_m, t.iva, t.total_pagar, t.tecnico_recibido AS tecnico_recibido_t, t.entregado_por_tecnico, t.recibido_cliente, t.firma_c_r, t.firma_t_e, t.comentarios_m
             FROM orden_servicio_c c
@@ -290,6 +296,8 @@ class OrderPdfController extends Controller
         $equipos = DB::select('SELECT * FROM equipos_orden WHERE id_orden_c = ? ORDER BY id_equipo ASC', [$id]);
         $totalEquiposOrden = count($equipos);
         $filtraEquipo = $equipoIndice !== null && $equipoIndice >= 1;
+        $entregasResueltas = $this->entregaResolver->resolveAll($id, $equipos, $o);
+        $entregaEquipo = $filtraEquipo ? ($entregasResueltas[$equipoIndice] ?? null) : null;
         $idEquipoDbSeleccionado = 0;
         if ($filtraEquipo) {
             $equipos = array_values(array_filter(
@@ -404,14 +412,19 @@ class OrderPdfController extends Controller
 
         $firmaEntregaClienteImg = $this->signatureImageSrcForPdf($o['firma_c_e'] ?? null);
         $firmaEntregaTecnicoImg = $this->signatureImageSrcForPdf($o['firma_t_r'] ?? null);
-        $firmaRecibidoClienteImg = $this->signatureImageSrcForPdf($o['firma_c_r'] ?? null);
-        $firmaRecibidoTecnicoImg = $this->signatureImageSrcForPdf($o['firma_t_e'] ?? null);
-        if ($filtraEquipo && isset($equipos[0])) {
+        if ($filtraEquipo) {
+            $firmaRecibidoClienteImg = '';
+            $firmaRecibidoTecnicoImg = '';
+        } else {
+            $firmaRecibidoClienteImg = $this->signatureImageSrcForPdf($o['firma_c_r'] ?? null);
+            $firmaRecibidoTecnicoImg = $this->signatureImageSrcForPdf($o['firma_t_e'] ?? null);
+        }
+        if ($entregaEquipo !== null) {
             $firmaClienteEquipo = $this->signatureImageSrcForPdf(
-                $equipos[0]->entrega_firma_cliente ?? null
+                $entregaEquipo['firma_cliente'] ?? null
             );
             $firmaTecnicoEquipo = $this->signatureImageSrcForPdf(
-                $equipos[0]->entrega_firma_tecnico ?? null
+                $entregaEquipo['firma_tecnico'] ?? null
             );
             if ($firmaClienteEquipo !== '') {
                 $firmaRecibidoClienteImg = $firmaClienteEquipo;
@@ -433,8 +446,8 @@ class OrderPdfController extends Controller
         $fechaEntrada = ! empty($o['fecha_entrada']) ? date('d/m/Y H:i', strtotime((string) $o['fecha_entrada'])) : '-';
         $fechaTerminada = ! empty($o['fecha_terminada']) ? date('d/m/Y H:i', strtotime((string) $o['fecha_terminada'])) : '-';
         $fechaSalidaValor = $o['fecha_salida'] ?? null;
-        if ($filtraEquipo && isset($equipos[0]) && ! empty($equipos[0]->entrega_fecha)) {
-            $fechaSalidaValor = $equipos[0]->entrega_fecha;
+        if ($entregaEquipo !== null && ! empty($entregaEquipo['fecha_entrega'])) {
+            $fechaSalidaValor = $entregaEquipo['fecha_entrega'];
         }
         $fechaSalida = ! empty($fechaSalidaValor) ? date('d/m/Y H:i', strtotime((string) $fechaSalidaValor)) : '-';
         $clienteQueEntrega = trim((string) ($o['nombre_cliente'] ?? '')) !== '' ? (string) $o['nombre_cliente'] : '-';
@@ -443,25 +456,11 @@ class OrderPdfController extends Controller
             $clienteQueRecibe = trim((string) ($o['cliente_recibido'] ?? $o['nombre_cliente'] ?? '-'));
         }
         $receptorEquipoTipo = '';
-        if ($filtraEquipo && isset($equipos[0])) {
-            $receptorEquipoTipo = mb_strtolower(
-                trim((string) ($equipos[0]->entrega_receptor_tipo ?? '')),
-                'UTF-8'
-            );
-            $receptorEquipoNombre = $this->vault->nombreClienteReveal(
-                $equipos[0]->entrega_recibido_cliente ?? null
-            );
+        if ($entregaEquipo !== null) {
+            $receptorEquipoTipo = (string) ($entregaEquipo['receptor_tipo'] ?? '');
+            $receptorEquipoNombre = (string) ($entregaEquipo['receptor'] ?? '');
             if (trim($receptorEquipoNombre) !== '') {
                 $clienteQueRecibe = trim($receptorEquipoNombre);
-            }
-            // Compatibilidad con entregas guardadas antes de tener receptor por equipo:
-            // si el receptor global no es el titular, se trató de una entrega a tercero.
-            if ($this->receptorEsTercero(
-                $receptorEquipoTipo,
-                $clienteQueRecibe,
-                (string) ($o['nombre_cliente'] ?? '')
-            )) {
-                $receptorEquipoTipo = 'tercero';
             }
         }
 
@@ -470,8 +469,8 @@ class OrderPdfController extends Controller
             $tecnicoAtiende = $this->vault->tecnicoNombreReveal((string) (DB::scalar('SELECT tecnico_recibido FROM orden_servicio_t WHERE id_orden_c = ? AND TRIM(COALESCE(tecnico_recibido, "")) <> "" ORDER BY id_trabajo ASC LIMIT 1', [$id]) ?? ''));
         }
         $tecnicoEntrega = trim((string) ($o['entregado_por_tecnico'] ?? ''));
-        if ($filtraEquipo && isset($equipos[0])) {
-            $tecnicoEquipo = $this->vault->tecnicoNombreReveal($equipos[0]->entrega_tecnico ?? null);
+        if ($entregaEquipo !== null) {
+            $tecnicoEquipo = (string) ($entregaEquipo['tecnico'] ?? '');
             if (trim($tecnicoEquipo) !== '') {
                 $tecnicoEntrega = trim($tecnicoEquipo);
             }
@@ -675,7 +674,7 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;tex
         }
         // Bump este prefijo al cambiar layout del PDF para invalidar cache en disco.
         $eqSuffix = $filtraEquipo ? ('|eq'.$equipoIndice) : '';
-        $cacheKey = hash('sha256', 'orden_pdf_v34_equipo_visible|'.$id.$eqSuffix.'|'.$html);
+        $cacheKey = hash('sha256', 'orden_pdf_v35_entrega_resuelta|'.$id.$eqSuffix.'|'.$html);
         $cachePath = $cacheDir.'/orden_'.$id.($filtraEquipo ? '_eq'.$equipoIndice : '').'_'.$cacheKey.'.pdf';
         if (! $refreshCache && File::exists($cachePath)) {
             return (string) File::get($cachePath);
@@ -723,7 +722,7 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;tex
             'X-Accel-Expires' => '0',
             'Vary' => '*',
             // Para verificar en DevTools → Network que el servidor ya tiene este PHP.
-            'X-Exacto-Pdf-Ver' => 'v34-equipo-visible',
+            'X-Exacto-Pdf-Ver' => 'v35-entrega-resuelta',
         ]);
         $response->headers->remove('ETag');
         $response->setPrivate();

@@ -242,8 +242,8 @@ final class OrdenStatusService
             'tecnico' => $nombreInvolucrado,
         ]);
 
-        // Terminado es solo uso interno: no envía WhatsApp/correo. Solo Recepción y Entregado.
-        if ($cambiaEstatus && in_array($nuevoEstatus, ['Recepción', 'Entregado'], true)) {
+        // Solo notifica al cambiar estatus (no al reconfirmar el mismo). Entrega por equipo Terminado no pasa por aquí.
+        if ($cambiaEstatus && in_array($nuevoEstatus, ['Recepción', 'Terminado', 'Entregado'], true)) {
             $this->orderEmail->sendForStatus($id, $nuevoEstatus);
             if (config('exacto.whatsapp_notifications_enabled', false)
                 && filter_var(config('services.whatsapp.enabled', false), FILTER_VALIDATE_BOOL)) {

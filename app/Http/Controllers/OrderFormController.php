@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Services\ExactoVaultService;
+use App\Services\EquipoEntregaResolver;
 use App\Services\FolioSequenceService;
 use App\Services\OrdenEditLockService;
 use App\Services\OrdenPolicyService;
@@ -30,7 +31,8 @@ class OrderFormController extends Controller
         private readonly PdfCondicionesService $pdfCondiciones,
         private readonly OrdenEditLockService $editLocks,
         private readonly RegistrarOrdenService $registrarOrden,
-        private readonly FolioSequenceService $folios
+        private readonly FolioSequenceService $folios,
+        private readonly EquipoEntregaResolver $entregaResolver
     ) {}
 
     public function create(Request $request): View|RedirectResponse
@@ -132,6 +134,16 @@ class OrderFormController extends Controller
             $tArr = $t ? (array) $t : null;
 
             $equiposDb = DB::select('SELECT * FROM equipos_orden WHERE id_orden_c = ? ORDER BY id_equipo ASC', [$idEditar]);
+            $entregasResueltas = $this->entregaResolver->resolveAll(
+                $idEditar,
+                $equiposDb,
+                array_merge($cab, [
+                    'recibido_cliente' => $tArr['recibido_cliente'] ?? null,
+                    'entregado_por_tecnico' => $tArr['entregado_por_tecnico'] ?? null,
+                    'firma_c_r' => $tArr['firma_c_r'] ?? null,
+                    'firma_t_e' => $tArr['firma_t_e'] ?? null,
+                ])
+            );
 
             $trabajosDb = [];
             $materialesDb = [];
@@ -186,8 +198,9 @@ class OrderFormController extends Controller
             }
 
             $equiposOut = [];
-            foreach ($equiposDb as $eq) {
+            foreach ($equiposDb as $idx => $eq) {
                 $e = (array) $eq;
+                $entrega = $entregasResueltas[$idx + 1] ?? [];
                 $desc = $e['descripcion_falla'] ?? ($e['descripcion'] ?? '');
                 $equiposOut[] = [
                     'id_equipo' => $e['id_equipo'] ?? null,
@@ -198,10 +211,10 @@ class OrderFormController extends Controller
                     'tipo_servicio' => $e['tipo_servicio'] ?? '',
                     'descripcion_falla' => $desc,
                     'acciones' => $e['acciones'] ?? 0,
-                    'entrega_receptor_tipo' => $e['entrega_receptor_tipo'] ?? null,
-                    'entrega_recibido_cliente' => isset($e['entrega_recibido_cliente'])
-                        ? $this->vault->nombreClienteReveal($e['entrega_recibido_cliente'])
-                        : null,
+                    'entrega_receptor_tipo' => $entrega['receptor_tipo'] ?? null,
+                    'entrega_recibido_cliente' => $entrega['receptor'] ?? null,
+                    'entrega_fecha' => $entrega['fecha_entrega'] ?? null,
+                    'entrega_tecnico' => $entrega['tecnico'] ?? null,
                 ];
             }
 
@@ -230,8 +243,15 @@ class OrderFormController extends Controller
                     'motivo' => (string) ($cab['motivo_salida_temporal'] ?? ''),
                 ],
             ];
-            if ($tArr && isset($tArr['recibido_cliente'])) {
-                $payload['t']['recibido_cliente'] = $this->vault->nombreClienteReveal($tArr['recibido_cliente']);
+            if ($tArr) {
+                $entregasCompletadas = array_filter(
+                    $entregasResueltas,
+                    static fn (array $entrega): bool => (int) ($entrega['acciones'] ?? 0) === 2
+                );
+                $resumenReceptores = $this->entregaResolver->resumenReceptores($entregasCompletadas);
+                $payload['t']['recibido_cliente'] = $resumenReceptores !== ''
+                    ? $resumenReceptores
+                    : $this->vault->nombreClienteReveal($tArr['recibido_cliente'] ?? null);
             }
             $ordenExistenteJson = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
         } else {

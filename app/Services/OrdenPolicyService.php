@@ -13,8 +13,6 @@ use RuntimeException;
 
 final class OrdenPolicyService
 {
-    private function debugLog(string $runId, string $hypothesisId, string $location, string $message, array $data = []): void {}
-
     public function __construct(
         private readonly ExactoVaultService $vault
     ) {}
@@ -320,8 +318,6 @@ final class OrdenPolicyService
 
         $tokens = $this->tecnicoMatchTokens($user);
         if ($tokens['norm'] === [] && $tokens['exact'] === []) {
-            $this->debugLog('run1', 'H5', 'app/Services/OrdenPolicyService.php:listRestrictionSql:empty', 'Empty tecnico name; forcing empty restriction', []);
-
             return ['sql' => ' AND 1 = 0 ', 'params' => []];
         }
 

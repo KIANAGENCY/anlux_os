@@ -21,6 +21,11 @@ final class OrderEmailService
 
     public function sendForStatus(int $idOrdenC, string $estatus): void
     {
+        $estatusCanon = OrderStatus::map($estatus);
+        if (! in_array($estatusCanon, ['Recepción', 'Terminado', 'Entregado'], true)) {
+            return;
+        }
+
         SendOrderStatusEmailJob::dispatch($idOrdenC, $estatus)->onConnection('database');
     }
 
@@ -32,8 +37,7 @@ final class OrderEmailService
     public function queueForStatusWithResult(int $idOrdenC, string $estatus, ?array $probeResult = null, ?array $orderPayload = null): array
     {
         $estatusCanon = OrderStatus::map($estatus);
-        // Terminado es solo uso interno: no notifica al cliente.
-        if (! in_array($estatusCanon, ['Recepción', 'Entregado'], true)) {
+        if (! in_array($estatusCanon, ['Recepción', 'Terminado', 'Entregado'], true)) {
             return [
                 'sent' => false,
                 'status' => 'skipped',
@@ -132,8 +136,7 @@ final class OrderEmailService
     public function sendForStatusWithResult(int $idOrdenC, string $estatus, ?array $probeResult = null, ?array $orderPayload = null): array
     {
         $estatusCanon = OrderStatus::map($estatus);
-        // Terminado es solo uso interno: no notifica al cliente.
-        if (! in_array($estatusCanon, ['Recepción', 'Entregado'], true)) {
+        if (! in_array($estatusCanon, ['Recepción', 'Terminado', 'Entregado'], true)) {
             return [
                 'sent' => false,
                 'status' => 'skipped',
