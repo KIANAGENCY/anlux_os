@@ -1,0 +1,249 @@
+{
+  "_http-B7mmsY33.js": {
+    "file": "assets/http-B7mmsY33.js",
+    "name": "http"
+  },
+  "_jsx-runtime-BzTfnnpq.js": {
+    "file": "assets/jsx-runtime-BzTfnnpq.js",
+    "name": "jsx-runtime"
+  },
+  "_status-BDUpPCbA.js": {
+    "file": "assets/status-BDUpPCbA.js",
+    "name": "status"
+  },
+  "_ui-BcLBn0FJ.js": {
+    "file": "assets/ui-BcLBn0FJ.js",
+    "name": "ui",
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js"
+    ]
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-DKffhisQ.css",
+    "name": "app",
+    "names": [
+      "app.css"
+    ],
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/admin/apariencia/main.tsx": {
+    "file": "assets/main-y8RcQIIL.js",
+    "name": "main",
+    "src": "resources/js/admin/apariencia/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/admin/catalogo/main.tsx": {
+    "file": "assets/main-9RTJLlbq.js",
+    "name": "main",
+    "src": "resources/js/admin/catalogo/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/admin/folios/main.tsx": {
+    "file": "assets/main-CdWsXd1p.js",
+    "name": "main",
+    "src": "resources/js/admin/folios/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/admin/index/main.tsx": {
+    "file": "assets/main-UKzOtB6e.js",
+    "name": "main",
+    "src": "resources/js/admin/index/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/admin/integraciones/main.tsx": {
+    "file": "assets/main-DSmMdCGC.js",
+    "name": "main",
+    "src": "resources/js/admin/integraciones/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/admin/registro/main.tsx": {
+    "file": "assets/main-BtWDlNCD.js",
+    "name": "main",
+    "src": "resources/js/admin/registro/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/admin/seguridad/main.tsx": {
+    "file": "assets/main-r3NdVv6N.js",
+    "name": "main",
+    "src": "resources/js/admin/seguridad/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/admin/users/main.tsx": {
+    "file": "assets/main-BIn8Wabx.js",
+    "name": "main",
+    "src": "resources/js/admin/users/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-MvBNrVg4.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  },
+  "resources/js/auth/confirm_password/main.tsx": {
+    "file": "assets/main-BmIinhIo.js",
+    "name": "main",
+    "src": "resources/js/auth/confirm_password/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/auth/forgot_password/main.tsx": {
+    "file": "assets/main-BntQeT-M.js",
+    "name": "main",
+    "src": "resources/js/auth/forgot_password/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/auth/reset_password/main.tsx": {
+    "file": "assets/main-CWN_lO_k.js",
+    "name": "main",
+    "src": "resources/js/auth/reset_password/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/auth/verify_email/main.tsx": {
+    "file": "assets/main-BvadiPqm.js",
+    "name": "main",
+    "src": "resources/js/auth/verify_email/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/historial/main.tsx": {
+    "file": "assets/main-cZim2Fv2.js",
+    "name": "main",
+    "src": "resources/js/historial/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js",
+      "_status-BDUpPCbA.js"
+    ]
+  },
+  "resources/js/home/main.tsx": {
+    "file": "assets/main-BbNRtU5a.js",
+    "name": "main",
+    "src": "resources/js/home/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/legal/main.tsx": {
+    "file": "assets/main-CFtxrRDo.js",
+    "name": "main",
+    "src": "resources/js/legal/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/login/main.tsx": {
+    "file": "assets/main-Cu865eP4.js",
+    "name": "main",
+    "src": "resources/js/login/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/maintenance/main.tsx": {
+    "file": "assets/main-Z7j3fFC7.js",
+    "name": "main",
+    "src": "resources/js/maintenance/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/orden_form/main.tsx": {
+    "file": "assets/main-Be93LW4W.js",
+    "name": "main",
+    "src": "resources/js/orden_form/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js",
+      "_ui-BcLBn0FJ.js",
+      "_status-BDUpPCbA.js"
+    ]
+  },
+  "resources/js/ordenes/main.tsx": {
+    "file": "assets/main-C-hXnpV6.js",
+    "name": "main",
+    "src": "resources/js/ordenes/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js"
+    ]
+  },
+  "resources/js/profile/main.tsx": {
+    "file": "assets/main-D1d1iwwX.js",
+    "name": "main",
+    "src": "resources/js/profile/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js"
+    ]
+  },
+  "resources/js/shared/nav/main.tsx": {
+    "file": "assets/main-DUuFTlO6.js",
+    "name": "main",
+    "src": "resources/js/shared/nav/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-BzTfnnpq.js",
+      "_http-B7mmsY33.js",
+      "_ui-BcLBn0FJ.js"
+    ]
+  }
+}
