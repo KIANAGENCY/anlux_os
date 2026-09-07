@@ -4,6 +4,7 @@
   "framework": null,
   "buildCommand": "npm ci && npm run build",
   "installCommand": "npm ci",
+  "outputDirectory": "public",
   "functions": {
     "api/index.php": {
       "runtime": "vercel-php@0.7.4",
@@ -43,8 +44,9 @@
     "APP_DEBUG": "false",
     "LOG_CHANNEL": "stderr",
     "LOG_LEVEL": "error",
-    "CACHE_STORE": "database",
-    "SESSION_DRIVER": "database",
+    "CACHE_STORE": "array",
+    "SESSION_DRIVER": "cookie",
+    "SESSION_ENCRYPT": "true",
     "QUEUE_CONNECTION": "sync",
     "FILESYSTEM_DISK": "local",
     "APP_CONFIG_CACHE": "/tmp/config.php",
