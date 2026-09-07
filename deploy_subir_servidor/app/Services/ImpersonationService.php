@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
-use App\Support\ExactoAuthContext;
+use App\Support\AnluxAuthContext;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -27,7 +27,7 @@ final class ImpersonationService
         private readonly UserPresenceService $presence,
         private readonly UserSessionLockService $sessionLock,
         private readonly SecurityActivityLogger $securityLog,
-        private readonly ExactoVaultService $vault,
+        private readonly AnluxVaultService $vault,
         private readonly OrdenEditLockService $editLocks
     ) {}
 
@@ -200,7 +200,7 @@ final class ImpersonationService
             return ['success' => false, 'message' => 'La función de impersonación no está disponible. Ejecuta las migraciones en el servidor.'];
         }
 
-        if (ExactoAuthContext::isImpersonating()) {
+        if (AnluxAuthContext::isImpersonating()) {
             return ['success' => false, 'message' => 'Vuelve a tu cuenta antes de solicitar otra.'];
         }
 
@@ -344,12 +344,12 @@ final class ImpersonationService
         }
 
         Session::put([
-            'exacto_impersonator_id' => (int) $requester->id_tecnico,
-            'exacto_impersonating' => true,
+            'anlux_impersonator_id' => (int) $requester->id_tecnico,
+            'anlux_impersonating' => true,
         ]);
 
         Auth::login($target);
-        ExactoAuthContext::syncSessionForUser($target);
+        AnluxAuthContext::syncSessionForUser($target);
 
         DB::table('impersonation_requests')
             ->where('id', (int) $row->id)
@@ -413,14 +413,14 @@ final class ImpersonationService
      */
     public function endImpersonation(): array
     {
-        if (! ExactoAuthContext::isImpersonating()) {
+        if (! AnluxAuthContext::isImpersonating()) {
             return ['success' => false, 'message' => 'No hay sesión de técnico activa.'];
         }
 
-        $adminId = ExactoAuthContext::impersonatorId();
+        $adminId = AnluxAuthContext::impersonatorId();
         $admin = ($adminId !== null && $adminId > 0) ? User::query()->find($adminId) : null;
         if (! $admin instanceof User) {
-            Session::forget(['exacto_impersonator_id', 'exacto_impersonating']);
+            Session::forget(['anlux_impersonator_id', 'anlux_impersonating']);
             Auth::logout();
 
             return ['success' => true, 'message' => 'Sesión cerrada.'];
@@ -433,9 +433,9 @@ final class ImpersonationService
             report($e);
         }
 
-        Session::forget(['exacto_impersonator_id', 'exacto_impersonating']);
+        Session::forget(['anlux_impersonator_id', 'anlux_impersonating']);
         Auth::login($admin);
-        ExactoAuthContext::syncSessionForUser($admin);
+        AnluxAuthContext::syncSessionForUser($admin);
 
         $this->securityLog->log('impersonacion_fin', 'info', json_encode(['admin_id' => (int) $admin->id_tecnico], JSON_UNESCAPED_UNICODE));
 

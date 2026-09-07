@@ -2,8 +2,8 @@
 
 use App\Http\Middleware\EnsureApplicationIsAvailable;
 use App\Http\Middleware\EnsureUserIsAdmin;
-use App\Http\Middleware\ExactoSecurityHeadersMiddleware;
-use App\Http\Middleware\ExactoUpdatePresence;
+use App\Http\Middleware\AnluxSecurityHeadersMiddleware;
+use App\Http\Middleware\AnluxUpdatePresence;
 use App\Http\Middleware\LegacyRememberMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'exacto.admin' => EnsureUserIsAdmin::class,
+            'anlux.admin' => EnsureUserIsAdmin::class,
         ]);
         // Meta/WhatsApp webhook: POST sin sesión ni CSRF (PowerShell, Postman, Meta).
         $middleware->validateCsrfTokens(except: [
@@ -25,9 +25,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->web(append: [
             LegacyRememberMiddleware::class,
-            ExactoUpdatePresence::class,
+            AnluxUpdatePresence::class,
             EnsureApplicationIsAvailable::class,
-            ExactoSecurityHeadersMiddleware::class,
+            AnluxSecurityHeadersMiddleware::class,
+            \App\Http\Middleware\PreventStaleHtmlCacheMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

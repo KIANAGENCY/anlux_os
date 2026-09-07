@@ -1,5 +1,5 @@
--- Exacto: columnas salida temporal (si no puedes correr artisan migrate)
--- Base: joses16_exacto (ajusta el nombre si aplica)
+-- Anlux: columnas salida temporal (si no puedes correr artisan migrate)
+-- Base: anlux_os (ajusta el nombre si aplica)
 
 ALTER TABLE orden_servicio_c
   ADD COLUMN IF NOT EXISTS salida_temporal_activa TINYINT(1) NOT NULL DEFAULT 0 AFTER estatus,

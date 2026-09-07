@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
-use App\Support\ExactoAuthContext;
+use App\Support\AnluxAuthContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use PDO;
@@ -14,7 +14,7 @@ use RuntimeException;
 final class OrdenPolicyService
 {
     public function __construct(
-        private readonly ExactoVaultService $vault
+        private readonly AnluxVaultService $vault
     ) {}
 
     private function looksSealedName(?string $value): bool
@@ -26,7 +26,7 @@ final class OrdenPolicyService
 
     public function sharedOrdersEnabled(): bool
     {
-        return (bool) config('exacto.auth_shared_orders', false);
+        return (bool) config('anlux.auth_shared_orders', false);
     }
 
     public function normalizeTecnicoNombre(?string $s): string
@@ -61,7 +61,7 @@ final class OrdenPolicyService
         $pdoId = spl_object_id($pdo);
         if (! array_key_exists($pdoId, $regexpReplaceOk)) {
             try {
-                $pdo->query("SELECT REGEXP_REPLACE('a  b', '[[:space:]]+', ' ') AS _exacto_regexp_probe");
+                $pdo->query("SELECT REGEXP_REPLACE('a  b', '[[:space:]]+', ' ') AS _anlux_regexp_probe");
                 $regexpReplaceOk[$pdoId] = true;
             } catch (\Throwable) {
                 $regexpReplaceOk[$pdoId] = false;
@@ -102,9 +102,9 @@ final class OrdenPolicyService
 
     private function actorTecnicoNombre(?User $user): string
     {
-        $plain = trim(ExactoAuthContext::nombreTecnicoSesionActual($user));
+        $plain = trim(AnluxAuthContext::nombreTecnicoSesionActual($user));
         if ($plain === '' && $user !== null) {
-            $plain = trim(ExactoAuthContext::nombreTecnicoParaRegistro($user));
+            $plain = trim(AnluxAuthContext::nombreTecnicoParaRegistro($user));
         }
         if ($plain !== '') {
             return $this->normalizeTecnicoNombre($plain);
@@ -129,12 +129,12 @@ final class OrdenPolicyService
         $exact = [];
 
         $candidates = [];
-        $sesion = trim(ExactoAuthContext::nombreTecnicoSesionActual($user));
+        $sesion = trim(AnluxAuthContext::nombreTecnicoSesionActual($user));
         if ($sesion !== '') {
             $candidates[] = $sesion;
         }
         if ($user !== null) {
-            $registro = trim(ExactoAuthContext::nombreTecnicoParaRegistro($user));
+            $registro = trim(AnluxAuthContext::nombreTecnicoParaRegistro($user));
             if ($registro !== '') {
                 $candidates[] = $registro;
             }

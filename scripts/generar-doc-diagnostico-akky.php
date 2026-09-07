@@ -8,7 +8,7 @@ declare(strict_types=1);
  */
 
 $root = dirname(__DIR__);
-$outFile = $root.DIRECTORY_SEPARATOR.'docs'.DIRECTORY_SEPARATOR.'Diagnostico-WhatsApp-Akky-Exacto.docx';
+$outFile = $root.DIRECTORY_SEPARATOR.'docs'.DIRECTORY_SEPARATOR.'Diagnostico-WhatsApp-Akky-Anlux.docx';
 
 if (! is_dir(dirname($outFile))) {
     mkdir(dirname($outFile), 0755, true);
@@ -18,22 +18,22 @@ $sections = [
     [
         'title' => 'Diagnóstico técnico — WhatsApp Cloud API',
         'level' => 0,
-        'text' => "Solicitud de soporte a Akky / proveedor de hosting\n\nCliente: Exacto LP\nSitio: https://soporte.exactolp.mx\nAplicación: Exacto Laravel (órdenes de servicio + notificaciones WhatsApp)\nFecha del diagnóstico: 2 de junio de 2026\nDocumento preparado para ingeniería de red / soporte avanzado del hosting",
+        'text' => "Solicitud de soporte a Akky / proveedor de hosting\n\nCliente: Anlux\nSitio: https://soporte.anlux.mx\nAplicación: Anlux Laravel (órdenes de servicio + notificaciones WhatsApp)\nFecha del diagnóstico: 2 de junio de 2026\nDocumento preparado para ingeniería de red / soporte avanzado del hosting",
     ],
     [
         'title' => '1. Resumen ejecutivo',
         'level' => 1,
-        'text' => "La aplicación en soporte.exactolp.mx está correctamente configurada para WhatsApp Business Cloud API (Meta). Token, Phone Number ID, plantillas y cola Laravel funcionan a nivel de software.\n\nEl envío de mensajes NO es posible porque el servidor de hosting NO establece conexión saliente HTTPS (puerto 443) hacia graph.facebook.com.\n\nPrueba automatizada (docheck.php) del 2-jun-2026:\n• Conexión TLS a www.google.com:443 → EXITOSA (~53 ms)\n• Conexión TLS a graph.facebook.com:443 → FALLIDA (errno 110, timeout ~15 s)\n• cURL GET a Graph API con token válido → cURL error 28 (timeout)\n\nConclusión: bloqueo o filtrado selectivo hacia infraestructura Meta/Facebook, no fallo de aplicación ni de credenciales Meta.",
+        'text' => "La aplicación en soporte.anlux.mx está correctamente configurada para WhatsApp Business Cloud API (Meta). Token, Phone Number ID, plantillas y cola Laravel funcionan a nivel de software.\n\nEl envío de mensajes NO es posible porque el servidor de hosting NO establece conexión saliente HTTPS (puerto 443) hacia graph.facebook.com.\n\nPrueba automatizada (docheck.php) del 2-jun-2026:\n• Conexión TLS a www.google.com:443 → EXITOSA (~53 ms)\n• Conexión TLS a graph.facebook.com:443 → FALLIDA (errno 110, timeout ~15 s)\n• cURL GET a Graph API con token válido → cURL error 28 (timeout)\n\nConclusión: bloqueo o filtrado selectivo hacia infraestructura Meta/Facebook, no fallo de aplicación ni de credenciales Meta.",
     ],
     [
         'title' => '2. Datos del entorno afectado',
         'level' => 1,
-        'text' => "Servidor (hostname): altar22.supremepanel22.com\nPanel: Supreme Panel / hosting compartido (cuenta referida: joses16)\nPHP: 8.4.21\nSAPI: LiteSpeed\nDominio: soporte.exactolp.mx\nAPP_URL: https://soporte.exactolp.mx\n\nExtensiones PHP verificadas (OK):\n• curl / curl_init\n• openssl\n• fsockopen permitido (no en disable_functions)\n• allow_url_fopen: On",
+        'text' => "Servidor (hostname): altar22.supremepanel22.com\nPanel: Supreme Panel / hosting compartido (cuenta referida: joses16)\nPHP: 8.4.21\nSAPI: LiteSpeed\nDominio: soporte.anlux.mx\nAPP_URL: https://soporte.anlux.mx\n\nExtensiones PHP verificadas (OK):\n• curl / curl_init\n• openssl\n• fsockopen permitido (no en disable_functions)\n• allow_url_fopen: On",
     ],
     [
         'title' => '3. Resultados de pruebas de red (2-jun-2026)',
         'level' => 1,
-        'text' => "Herramienta: public/docheck.php?key=exacto99 (diagnóstico sin SSH)\n\n--- DNS ---\n[OK] graph.facebook.com resuelve a: 57.144.204.141 (registro A)\n→ El problema NO es resolución DNS.\n\n--- Prueba control (salida 443 genérica) ---\nDestino: www.google.com:443\nResultado: [OK] TLS completado en ~53,3 ms\n→ El servidor SÍ tiene salida HTTPS general a Internet.\n\n--- Prueba objetivo (WhatsApp / Meta) ---\nDestino: graph.facebook.com:443\nResultado: [FALLO] errno=110 Connection timed out (~15.015 ms)\n→ No se completa handshake TLS hacia Meta.\n\n--- HTTP cURL sin token ---\nURL: https://graph.facebook.com/\nResultado: cURL #28 — conexión agotada (~15.003 ms), connect_ms=0, ip vacío\n\n--- Graph API con token (Phone Number ID) ---\nURL: https://graph.facebook.com/v20.0/1537852524373963?fields=display_phone_number,verified_name\nWHATSAPP_CLOUD_ENABLED: true\nACCESS_TOKEN: presente (195 caracteres, prefijo EAAV…)\nResultado cURL directo: #28 timeout ~15 s\nResultado Laravel Http: #28 timeout ~60 s\n\n→ Meta nunca devuelve HTTP 401/403; no hay respuesta HTTP. Indica bloqueo de red, no token inválido.",
+        'text' => "Herramienta: public/docheck.php?key=anlux99 (diagnóstico sin SSH)\n\n--- DNS ---\n[OK] graph.facebook.com resuelve a: 57.144.204.141 (registro A)\n→ El problema NO es resolución DNS.\n\n--- Prueba control (salida 443 genérica) ---\nDestino: www.google.com:443\nResultado: [OK] TLS completado en ~53,3 ms\n→ El servidor SÍ tiene salida HTTPS general a Internet.\n\n--- Prueba objetivo (WhatsApp / Meta) ---\nDestino: graph.facebook.com:443\nResultado: [FALLO] errno=110 Connection timed out (~15.015 ms)\n→ No se completa handshake TLS hacia Meta.\n\n--- HTTP cURL sin token ---\nURL: https://graph.facebook.com/\nResultado: cURL #28 — conexión agotada (~15.003 ms), connect_ms=0, ip vacío\n\n--- Graph API con token (Phone Number ID) ---\nURL: https://graph.facebook.com/v20.0/1537852524373963?fields=display_phone_number,verified_name\nWHATSAPP_CLOUD_ENABLED: true\nACCESS_TOKEN: presente (195 caracteres, prefijo EAAV…)\nResultado cURL directo: #28 timeout ~15 s\nResultado Laravel Http: #28 timeout ~60 s\n\n→ Meta nunca devuelve HTTP 401/403; no hay respuesta HTTP. Indica bloqueo de red, no token inválido.",
     ],
     [
         'title' => '4. Interpretación para ingeniería de red',
@@ -48,27 +48,27 @@ $sections = [
     [
         'title' => '6. Qué NO es el problema (ya descartado)',
         'level' => 1,
-        'text' => "• Código Laravel / Exacto: cola, jobs y OrderWhatsappService implementados.\n• Variables .env: WHATSAPP_CLOUD_ENABLED, PHONE_NUMBER_ID y ACCESS_TOKEN configurados.\n• Plantillas Meta: orden_recepcion, orden_terminado, orden_entregado (aprobadas en Business Manager).\n• PDF adjunto: modo WHATSAPP_DOCUMENT_DELIVERY=link (Meta descarga PDF desde URL firmada en soporte.exactolp.mx; no usa /media desde servidor).\n• DNS local: graph.facebook.com resuelve correctamente.\n• PHP sin curl/openssl: extensiones OK.\n• Salida 443 totalmente caída: Google responde OK.",
+        'text' => "• Código Laravel / Anlux: cola, jobs y OrderWhatsappService implementados.\n• Variables .env: WHATSAPP_CLOUD_ENABLED, PHONE_NUMBER_ID y ACCESS_TOKEN configurados.\n• Plantillas Meta: orden_recepcion, orden_terminado, orden_entregado (aprobadas en Business Manager).\n• PDF adjunto: modo WHATSAPP_DOCUMENT_DELIVERY=link (Meta descarga PDF desde URL firmada en soporte.anlux.mx; no usa /media desde servidor).\n• DNS local: graph.facebook.com resuelve correctamente.\n• PHP sin curl/openssl: extensiones OK.\n• Salida 443 totalmente caída: Google responde OK.",
     ],
     [
         'title' => '7. Contexto del negocio (por qué es crítico)',
         'level' => 1,
-        'text' => "Exacto envía WhatsApp automático al cliente cuando una orden de servicio cambia a:\n• Recepción\n• Terminado\n• Entregado\n\nEl teléfono se toma de la orden; se usan plantillas aprobadas por Meta con folio y estatus; se adjunta PDF de la orden.\n\nFlujo técnico resumido:\n1. Guardado de orden → SendOrderWhatsappJob en cola (database)\n2. Cron: php artisan queue:work database --stop-when-empty\n3. Job → POST https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/messages\n\nSin salida 443 a graph.facebook.com, ningún cliente recibe notificación por WhatsApp.",
+        'text' => "Anlux envía WhatsApp automático al cliente cuando una orden de servicio cambia a:\n• Recepción\n• Terminado\n• Entregado\n\nEl teléfono se toma de la orden; se usan plantillas aprobadas por Meta con folio y estatus; se adjunta PDF de la orden.\n\nFlujo técnico resumido:\n1. Guardado de orden → SendOrderWhatsappJob en cola (database)\n2. Cron: php artisan queue:work database --stop-when-empty\n3. Job → POST https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/messages\n\nSin salida 443 a graph.facebook.com, ningún cliente recibe notificación por WhatsApp.",
     ],
     [
         'title' => '8. Cómo reproducir el fallo (para soporte)',
         'level' => 1,
-        'text' => "Opción A — Navegador (sin SSH):\nhttps://soporte.exactolp.mx/docheck.php?key=exacto99\n\nOpción B — Con prueba Laravel Http:\nhttps://soporte.exactolp.mx/docheck.php?key=exacto99&wa_test_meta=1\n\nOpción C — Script alternativo:\nhttps://soporte.exactolp.mx/wa_test_send.php?key=exacto99&mode=ping\n\nResultado esperado HOY: sección 3 [FALLO] hacia graph.facebook.com y cURL #28 en sección 4 y 6.\n\nResultado esperado TRAS corrección:\n• Sección 3 [OK] TLS a graph.facebook.com\n• Sección 6a HTTP 200 con display_phone_number y verified_name",
+        'text' => "Opción A — Navegador (sin SSH):\nhttps://soporte.anlux.mx/docheck.php?key=anlux99\n\nOpción B — Con prueba Laravel Http:\nhttps://soporte.anlux.mx/docheck.php?key=anlux99&wa_test_meta=1\n\nOpción C — Script alternativo:\nhttps://soporte.anlux.mx/wa_test_send.php?key=anlux99&mode=ping\n\nResultado esperado HOY: sección 3 [FALLO] hacia graph.facebook.com y cURL #28 en sección 4 y 6.\n\nResultado esperado TRAS corrección:\n• Sección 3 [OK] TLS a graph.facebook.com\n• Sección 6a HTTP 200 con display_phone_number y verified_name",
     ],
     [
         'title' => '9. Texto sugerido para ticket (copiar/pegar)',
         'level' => 1,
-        'text' => "Asunto: Habilitar salida HTTPS (puerto 443) a graph.facebook.com — WhatsApp Cloud API\n\nEstimado equipo Akky / soporte hosting:\n\nDesde nuestro sitio https://soporte.exactolp.mx (servidor altar22.supremepanel22.com, PHP 8.4 LiteSpeed), las conexiones salientes hacia graph.facebook.com fallan con timeout.\n\nEvidencia:\n• TLS a www.google.com:443 — OK (~53 ms)\n• TLS a graph.facebook.com:443 — TIMEOUT (errno 110, ~15 s)\n• GET Graph API con token válido — cURL error 28\n• DNS: graph.facebook.com → 57.144.204.141 (resuelve bien)\n\nSolicitamos habilitar tráfico saliente TCP 443 (HTTPS) hacia graph.facebook.com para WhatsApp Business Cloud API (Meta). Actualmente parece bloqueo selectivo a infraestructura Facebook/Meta.\n\n¿Pueden confirmar si hay firewall, restricción del plan o filtro que bloquee estos destinos y aplicar la excepción necesaria?\n\nGracias.",
+        'text' => "Asunto: Habilitar salida HTTPS (puerto 443) a graph.facebook.com — WhatsApp Cloud API\n\nEstimado equipo Akky / soporte hosting:\n\nDesde nuestro sitio https://soporte.anlux.mx (servidor altar22.supremepanel22.com, PHP 8.4 LiteSpeed), las conexiones salientes hacia graph.facebook.com fallan con timeout.\n\nEvidencia:\n• TLS a www.google.com:443 — OK (~53 ms)\n• TLS a graph.facebook.com:443 — TIMEOUT (errno 110, ~15 s)\n• GET Graph API con token válido — cURL error 28\n• DNS: graph.facebook.com → 57.144.204.141 (resuelve bien)\n\nSolicitamos habilitar tráfico saliente TCP 443 (HTTPS) hacia graph.facebook.com para WhatsApp Business Cloud API (Meta). Actualmente parece bloqueo selectivo a infraestructura Facebook/Meta.\n\n¿Pueden confirmar si hay firewall, restricción del plan o filtro que bloquee estos destinos y aplicar la excepción necesaria?\n\nGracias.",
     ],
     [
         'title' => '10. Criterios de aceptación (cierre del ticket)',
         'level' => 1,
-        'text' => "Consideraremos resuelto el incidente cuando, ejecutado desde el mismo servidor:\n\n1. docheck.php?key=exacto99 muestre [OK] en TLS 443 a graph.facebook.com.\n2. docheck.php?key=exacto99&wa_test_meta=1 muestre HTTP 200 y datos display_phone_number / verified_name.\n3. Una notificación WhatsApp de prueba quede en status=accepted con provider_message_id (wamid) en base de datos.\n\nHasta entonces, el software Exacto permanece operativo para órdenes y correo; solo WhatsApp vía Meta permanece bloqueado por red.",
+        'text' => "Consideraremos resuelto el incidente cuando, ejecutado desde el mismo servidor:\n\n1. docheck.php?key=anlux99 muestre [OK] en TLS 443 a graph.facebook.com.\n2. docheck.php?key=anlux99&wa_test_meta=1 muestre HTTP 200 y datos display_phone_number / verified_name.\n3. Una notificación WhatsApp de prueba quede en status=accepted con provider_message_id (wamid) en base de datos.\n\nHasta entonces, el software Anlux permanece operativo para órdenes y correo; solo WhatsApp vía Meta permanece bloqueado por red.",
     ],
     [
         'title' => '11. Contacto y anexos',

@@ -20,7 +20,7 @@ final class EquipoTerminadoNoWhatsappTest extends TestCase
         Bus::fake();
         Http::fake();
         config([
-            'exacto.whatsapp_notifications_enabled' => true,
+            'anlux.whatsapp_notifications_enabled' => true,
             'services.whatsapp.enabled' => true,
         ]);
 
@@ -54,7 +54,7 @@ final class EquipoTerminadoNoWhatsappTest extends TestCase
         Bus::fake();
         Http::fake();
         config([
-            'exacto.whatsapp_notifications_enabled' => true,
+            'anlux.whatsapp_notifications_enabled' => true,
             'services.whatsapp.enabled' => true,
             'services.whatsapp.base_url' => 'https://graph.facebook.com',
             'services.whatsapp.graph_version' => 'v20.0',

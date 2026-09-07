@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Services\ExactoVaultService;
+use App\Services\AnluxVaultService;
 use Illuminate\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,7 +27,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     use HasFactory, MustVerifyEmail, Notifiable;
 
     /**
-     * Existing legacy table used by Exacto.
+     * Existing legacy table used by Anlux.
      */
     protected $table = 'login';
 
@@ -115,7 +115,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
             return $raw;
         }
 
-        $revealed = app(ExactoVaultService::class)->revealString($raw, false);
+        $revealed = app(AnluxVaultService::class)->revealString($raw, false);
 
         return $revealed !== '' ? $revealed : $raw;
     }
@@ -148,6 +148,6 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     public static function nombreToken(string $value): string
     {
-        return app(ExactoVaultService::class)->tecnicoNombreToken($value);
+        return app(AnluxVaultService::class)->tecnicoNombreToken($value);
     }
 }

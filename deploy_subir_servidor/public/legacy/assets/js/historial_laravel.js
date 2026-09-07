@@ -2,11 +2,11 @@
 (function () {
     'use strict';
 
-    window.EXACTO_HISTORIAL_READY = false;
+    window.ANLUX_HISTORIAL_READY = false;
 
     const normalizeStatus = (estatus) => String(estatus || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    const baseUrl = String(window.EXACTO_BASE_URL || '').replace(/\/$/, '');
-    const exactoUrl = (path) => {
+    const baseUrl = String(window.ANLUX_BASE_URL || '').replace(/\/$/, '');
+    const anluxUrl = (path) => {
         const p = path.startsWith('/') ? path : `/${path}`;
         return baseUrl ? `${baseUrl}${p}` : p;
     };
@@ -35,7 +35,7 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 
-    const urlPdfInline = (id) => exactoUrl(`/pdf/orden/${encodeURIComponent(id)}?inline=1&refresh_pdf=1&_=${Date.now()}`);
+    const urlPdfInline = (id) => anluxUrl(`/pdf/orden/${encodeURIComponent(id)}?inline=1&refresh_pdf=1&_=${Date.now()}`);
 
     const ABRIR_PESTANA_MS = 300;
     let lastAbrirPestanaAt = 0;
@@ -136,7 +136,7 @@
         params.set('sort', sortHistorial === 'estatus' ? 'estatus' : 'fecha');
 
         try {
-            const response = await fetch(exactoUrl(`/api/ordenes?${params.toString()}`), {
+            const response = await fetch(anluxUrl(`/api/ordenes?${params.toString()}`), {
                 credentials: 'same-origin',
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             });
@@ -153,7 +153,7 @@
 
             if (!response.ok || !data || data.success !== true) {
                 if (response.status === 401 || response.status === 419 || response.redirected) {
-                    window.location.href = exactoUrl('/login');
+                    window.location.href = anluxUrl('/login');
                     return;
                 }
                 showTableMessage(tabla, (data && data.message) ? data.message : 'No se pudo cargar el historial.');
@@ -218,7 +218,7 @@
             lastAbrirPestanaAt = now;
         });
 
-        window.EXACTO_HISTORIAL_READY = true;
+        window.ANLUX_HISTORIAL_READY = true;
         updateSortEstatusUi();
         cargarOrdenes(tabla, searchInput);
     };

@@ -5,7 +5,7 @@ namespace App\Providers;
 use App\Auth\LegacyEloquentUserProvider;
 use App\Models\User;
 use App\Policies\OrderPolicy;
-use App\View\Composers\NavExactoUserBarComposer;
+use App\View\Composers\NavAnluxUserBarComposer;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -43,7 +43,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::define('order-access', [OrderPolicy::class, 'access']);
-        Gate::define('exacto-admin', static function (Authenticatable $user): bool {
+        Gate::define('anlux-admin', static function (Authenticatable $user): bool {
             if (! $user instanceof User) {
                 return false;
             }
@@ -52,10 +52,10 @@ class AppServiceProvider extends ServiceProvider
             return $perfil === 'administrador' || $perfil === 'admin';
         });
 
-        if (class_exists(NavExactoUserBarComposer::class)) {
-            View::composer('partials.nav-exacto-user-bar', NavExactoUserBarComposer::class);
+        if (class_exists(NavAnluxUserBarComposer::class)) {
+            View::composer('partials.nav-anlux-user-bar', NavAnluxUserBarComposer::class);
         } else {
-            View::composer('partials.nav-exacto-user-bar', static function ($view): void {
+            View::composer('partials.nav-anlux-user-bar', static function ($view): void {
                 $authUser = Auth::user();
                 $user = $authUser instanceof User ? $authUser : null;
                 $perfil = mb_strtolower(trim((string) ($user?->perfil ?? session('perfil_usuario', ''))), 'UTF-8');
@@ -67,14 +67,14 @@ class AppServiceProvider extends ServiceProvider
                 ));
 
                 $view->with([
-                    'exactoIsImpersonating' => (bool) session('exacto_impersonating', false),
-                    'exactoIsAdmin' => $isAdmin && ! session('exacto_impersonating', false),
-                    'exactoIsTechnician' => $user !== null && ! $isAdmin,
-                    'exactoCanSwitchAccount' => Auth::check() && ! session('exacto_impersonating', false),
-                    'exactoUserId' => $user !== null ? (int) $user->id_tecnico : 0,
+                    'anluxIsImpersonating' => (bool) session('anlux_impersonating', false),
+                    'anluxIsAdmin' => $isAdmin && ! session('anlux_impersonating', false),
+                    'anluxIsTechnician' => $user !== null && ! $isAdmin,
+                    'anluxCanSwitchAccount' => Auth::check() && ! session('anlux_impersonating', false),
+                    'anluxUserId' => $user !== null ? (int) $user->id_tecnico : 0,
                     'nombreTecnicoMostrado' => $nombre,
-                    'exactoUiJsV' => 1,
-                    'exactoNavImpV' => 1,
+                    'anluxUiJsV' => 1,
+                    'anluxNavImpV' => 1,
                 ]);
             });
         }

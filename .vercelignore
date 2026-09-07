@@ -1,0 +1,32 @@
+# Local / secrets
+.env
+.env.*
+!.env.example
+!.env.vercel.example
+
+# Dev / tooling
+.git
+.cursor
+.superdesign
+.idea
+.vscode
+.zed
+tests
+phpunit.xml
+.phpunit.cache
+.phpunit.result.cache
+
+# Heavy / duplicated deploy packs (not needed on Vercel)
+deploy_subir_servidor
+anlux-mantenimiento-cpanel.zip
+node_modules
+public/hot
+storage/logs
+storage/framework/cache
+storage/framework/sessions
+storage/pail
+
+# Docs / noise
+*.md
+!deploy/VERCEL.md
+agent-transcripts

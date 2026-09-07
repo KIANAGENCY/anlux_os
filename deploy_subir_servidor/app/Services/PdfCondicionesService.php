@@ -26,8 +26,8 @@ final class PdfCondicionesService
 
     public function ensureTable(): void
     {
-        if (! Schema::hasTable('exacto_settings')) {
-            throw new \RuntimeException('Falta la tabla exacto_settings. Ejecuta las migraciones pendientes.');
+        if (! Schema::hasTable('anlux_settings')) {
+            throw new \RuntimeException('Falta la tabla anlux_settings. Ejecuta las migraciones pendientes.');
         }
     }
 
@@ -38,11 +38,11 @@ final class PdfCondicionesService
 
     public function get(): string
     {
-        if (! Schema::hasTable('exacto_settings')) {
+        if (! Schema::hasTable('anlux_settings')) {
             return $this->defaultText();
         }
 
-        $row = DB::table('exacto_settings')->where('setting_key', self::SETTING_KEY)->first();
+        $row = DB::table('anlux_settings')->where('setting_key', self::SETTING_KEY)->first();
         $raw = trim((string) ($row->content ?? ''));
         if ($raw === '') {
             return $this->defaultText();
@@ -55,15 +55,15 @@ final class PdfCondicionesService
     {
         $this->ensureTable();
         $now = now();
-        if (DB::table('exacto_settings')->where('setting_key', self::SETTING_KEY)->exists()) {
-            DB::table('exacto_settings')->where('setting_key', self::SETTING_KEY)->update([
+        if (DB::table('anlux_settings')->where('setting_key', self::SETTING_KEY)->exists()) {
+            DB::table('anlux_settings')->where('setting_key', self::SETTING_KEY)->update([
                 'content' => $content,
                 'updated_at' => $now,
             ]);
 
             return;
         }
-        DB::table('exacto_settings')->insert([
+        DB::table('anlux_settings')->insert([
             'setting_key' => self::SETTING_KEY,
             'content' => $content,
             'created_at' => $now,

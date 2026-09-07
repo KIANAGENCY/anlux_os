@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 /**
  * Repara RegistrarOrdenService.php si quedó basura al final (p. ej. "--" en línea 1994).
- * URL: https://soporte.exactolp.mx/repair-registrar-orden.php?key=exacto2026repair
+ * URL: https://soporte.anlux.mx/repair-registrar-orden.php?key=anlux2026repair
  * BORRAR cuando termines.
  */
 
-const REPAIR_KEY = 'exacto2026repair';
+const REPAIR_KEY = 'anlux2026repair';
 
 if (($_GET['key'] ?? '') !== REPAIR_KEY) {
     http_response_code(403);
@@ -141,7 +141,7 @@ try {
     $kernel->bootstrap();
     app(App\Services\RegistrarOrdenService::class);
     echo "[OK] RegistrarOrdenService instanciado correctamente.\n";
-    echo "[OK] Prueba ahora: https://soporte.exactolp.mx/ordenes\n";
+    echo "[OK] Prueba ahora: https://soporte.anlux.mx/ordenes\n";
 } catch (Throwable $e) {
     echo '[ERROR Laravel] '.$e::class.': '.$e->getMessage()."\n";
     echo $e->getFile().':'.$e->getLine()."\n";

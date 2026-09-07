@@ -1,16 +1,18 @@
 // JavaScript de la pantalla de orden de servicio. Separado para permitir cache del navegador.
-
-const EXACTO_IVA_RATE = 0.16;
-function exactoRound2(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
-function exactoMontoConIva(montoSinIva) { return exactoRound2((Number(montoSinIva) || 0) * (1 + EXACTO_IVA_RATE)); }
-function exactoMontoSinIvaDesdeTotal(montoConIva) {
+// Si el bridge React/TS ya cargó IVA (resources/js/orden_form), reutilizarlo para paridad.
+const _iva = window.ANLUX_REACT_IVA || null;
+const ANLUX_IVA_RATE = _iva ? _iva.ANLUX_IVA_RATE : 0.16;
+function anluxRound2(n) { return _iva ? _iva.anluxRound2(n) : Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
+function anluxMontoConIva(montoSinIva) { return _iva ? _iva.anluxMontoConIva(montoSinIva) : anluxRound2((Number(montoSinIva) || 0) * (1 + ANLUX_IVA_RATE)); }
+function anluxMontoSinIvaDesdeTotal(montoConIva) {
+  if (_iva) return _iva.anluxMontoSinIvaDesdeTotal(montoConIva);
   const p = Number(montoConIva) || 0;
   if (p <= 0) return 0;
-  return exactoRound2(p / (1 + EXACTO_IVA_RATE));
+  return anluxRound2(p / (1 + ANLUX_IVA_RATE));
 }
 
 /** Materiales (precio) y anticipos (monto): se captura precio neto (c/IVA) y se guarda sin IVA. */
-function exactoCampoEsNetoConvertible(el) {
+function anluxCampoEsNetoConvertible(el) {
     return Boolean(
         el
         && el.tagName === 'INPUT'
@@ -20,8 +22,8 @@ function exactoCampoEsNetoConvertible(el) {
     );
 }
 
-function exactoActualizarHintNetoSinIva(input) {
-    if (!exactoCampoEsNetoConvertible(input)) return;
+function anluxActualizarHintNetoSinIva(input) {
+    if (!anluxCampoEsNetoConvertible(input)) return;
     const raw = String(input.value || '').trim();
     if (raw === '') {
         input.title = 'Escribe el precio neto (con IVA). Se convierte a sin IVA automáticamente.';
@@ -32,72 +34,72 @@ function exactoActualizarHintNetoSinIva(input) {
         input.title = 'Escribe el precio neto (con IVA). Se convierte a sin IVA automáticamente.';
         return;
     }
-    if (input.dataset.exactoNetoEditing === '1') {
-        const sinIva = exactoMontoSinIvaDesdeTotal(monto);
+    if (input.dataset.anluxNetoEditing === '1') {
+        const sinIva = anluxMontoSinIvaDesdeTotal(monto);
         input.title = `Neto $${monto.toFixed(2)} → sin IVA $${sinIva.toFixed(2)}`;
         return;
     }
-    input.title = `Sin IVA $${exactoRound2(monto).toFixed(2)} (equivale a neto $${exactoMontoConIva(monto).toFixed(2)})`;
+    input.title = `Sin IVA $${anluxRound2(monto).toFixed(2)} (equivale a neto $${anluxMontoConIva(monto).toFixed(2)})`;
 }
 
-function exactoIniciarEdicionPrecioNeto(input) {
-    if (!exactoCampoEsNetoConvertible(input)) return;
-    if (input.dataset.exactoNetoEditing === '1') return;
-    input.dataset.exactoNetoEditing = '1';
+function anluxIniciarEdicionPrecioNeto(input) {
+    if (!anluxCampoEsNetoConvertible(input)) return;
+    if (input.dataset.anluxNetoEditing === '1') return;
+    input.dataset.anluxNetoEditing = '1';
     const actual = Number(input.value);
     if (Number.isFinite(actual) && actual > 0) {
         // Mostrar el neto (c/IVA) para editar el monto del ticket/factura.
-        input.value = exactoMontoConIva(actual).toFixed(2);
+        input.value = anluxMontoConIva(actual).toFixed(2);
         try {
             input.select();
         } catch (e) {
             // ignore
         }
     }
-    exactoActualizarHintNetoSinIva(input);
+    anluxActualizarHintNetoSinIva(input);
 }
 
-function exactoRecalcularTrasConversionNeto(input) {
+function anluxRecalcularTrasConversionNeto(input) {
     if (!input) return;
     if (input.classList.contains('precio-input')) {
         const fila = input.closest('.material-row');
         if (fila) {
             calcularImporte(fila);
             calcularSubtotalMateriales();
-            exactoActualizarTicketsMateriales();
+            anluxActualizarTicketsMateriales();
         }
         return;
     }
     if (input.classList.contains('anticipo-input')) {
-        exactoActualizarTotalesAnticipos();
+        anluxActualizarTotalesAnticipos();
     }
 }
 
-function exactoAplicarConversionNetoASinIva(input) {
-    if (!exactoCampoEsNetoConvertible(input)) return false;
-    if (input.dataset.exactoNetoEditing !== '1') return false;
+function anluxAplicarConversionNetoASinIva(input) {
+    if (!anluxCampoEsNetoConvertible(input)) return false;
+    if (input.dataset.anluxNetoEditing !== '1') return false;
 
     const raw = String(input.value || '').trim();
     if (raw === '') {
-        delete input.dataset.exactoNetoEditing;
-        delete input.dataset.exactoLastSinIva;
-        exactoActualizarHintNetoSinIva(input);
-        exactoRecalcularTrasConversionNeto(input);
+        delete input.dataset.anluxNetoEditing;
+        delete input.dataset.anluxLastSinIva;
+        anluxActualizarHintNetoSinIva(input);
+        anluxRecalcularTrasConversionNeto(input);
         return false;
     }
 
     const neto = Number(raw);
     if (!Number.isFinite(neto) || neto < 0) return false;
 
-    const sinIva = neto === 0 ? 0 : exactoMontoSinIvaDesdeTotal(neto);
+    const sinIva = neto === 0 ? 0 : anluxMontoSinIvaDesdeTotal(neto);
     const nuevo = sinIva.toFixed(2);
     const cambio = input.value !== nuevo;
     input.value = nuevo;
-    input.dataset.exactoLastSinIva = String(sinIva);
-    delete input.dataset.exactoNetoEditing;
-    exactoActualizarHintNetoSinIva(input);
+    input.dataset.anluxLastSinIva = String(sinIva);
+    delete input.dataset.anluxNetoEditing;
+    anluxActualizarHintNetoSinIva(input);
     if (cambio) {
-        exactoRecalcularTrasConversionNeto(input);
+        anluxRecalcularTrasConversionNeto(input);
     }
     return cambio;
 }
@@ -109,7 +111,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             return s.replace(' ', 'T').slice(0, 16);
         }
 
-        function exactoNormalizarEstatusOrden(valor) {
+        function anluxNormalizarEstatusOrden(valor) {
             const key = String(valor || '').trim().toLowerCase();
             // BD/legado: Enproceso sin espacio; canonico UI: En proceso.
             const keyCompact = key.replace(/\s+/g, '');
@@ -129,7 +131,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             return mapa[key] || mapa[keyCompact] || 'Recepcion';
         }
 
-        function exactoTipoServicioKey(valor) {
+        function anluxTipoServicioKey(valor) {
             const key = String(valor || '')
                 .normalize('NFD')
                 .replace(/[\u0300-\u036f]/g, '')
@@ -142,7 +144,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             return key.trim();
         }
 
-        function exactoSeleccionarTipoServicio(select, valorGuardado) {
+        function anluxSeleccionarTipoServicio(select, valorGuardado) {
             if (!select) return;
             const valor = String(valorGuardado || '').trim();
             if (valor === '') {
@@ -152,9 +154,9 @@ function exactoAplicarConversionNetoASinIva(input) {
             select.value = valor;
             if (select.value === valor) return;
 
-            const keyGuardada = exactoTipoServicioKey(valor);
+            const keyGuardada = anluxTipoServicioKey(valor);
             for (const option of select.options) {
-                if (exactoTipoServicioKey(option.value || option.textContent) === keyGuardada) {
+                if (anluxTipoServicioKey(option.value || option.textContent) === keyGuardada) {
                     select.value = option.value;
                     return;
                 }
@@ -167,7 +169,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             select.value = valor;
         }
 
-        function exactoAplicarColorEstatus() {
+        function anluxAplicarColorEstatus() {
             const estatusEl = document.getElementById('inputEstatus');
             if (!estatusEl || estatusEl.tagName !== 'SELECT') return;
 
@@ -177,88 +179,88 @@ function exactoAplicarConversionNetoASinIva(input) {
                 'Terminado': { bg: '#fef3c7', color: '#92400e', border: '#eab308' },
                 'Entregado': { bg: '#dcfce7', color: '#166534', border: '#22c55e' },
             };
-            const estilo = estilos[exactoNormalizarEstatusOrden(estatusEl.value)] || estilos['Recepcion'];
+            const estilo = estilos[anluxNormalizarEstatusOrden(estatusEl.value)] || estilos['Recepcion'];
             estatusEl.style.backgroundColor = estilo.bg;
             estatusEl.style.color = estilo.color;
             estatusEl.style.borderColor = estilo.border;
         }
 
-        function exactoGetServiciosSersop() {
-            return Array.isArray(window.EXACTO_SERVICIOS_SERSOP) ? window.EXACTO_SERVICIOS_SERSOP : [];
+        function anluxGetServiciosSersop() {
+            return Array.isArray(window.ANLUX_SERVICIOS_SERSOP) ? window.ANLUX_SERVICIOS_SERSOP : [];
         }
 
-        function exactoBaseUrlApp() {
-            const b = typeof window.EXACTO_BASE_URL === 'string' ? window.EXACTO_BASE_URL.trim() : '';
+        function anluxBaseUrlApp() {
+            const b = typeof window.ANLUX_BASE_URL === 'string' ? window.ANLUX_BASE_URL.trim() : '';
             return b.replace(/\/+$/, '');
         }
 
-        function exactoUrlApiRegistrar() {
-            const fromPhp = typeof window.EXACTO_REGISTRAR_ORDEN_URL === 'string' ? window.EXACTO_REGISTRAR_ORDEN_URL.trim() : '';
+        function anluxUrlApiRegistrar() {
+            const fromPhp = typeof window.ANLUX_REGISTRAR_ORDEN_URL === 'string' ? window.ANLUX_REGISTRAR_ORDEN_URL.trim() : '';
             if (fromPhp) return fromPhp;
-            const base = exactoBaseUrlApp();
+            const base = anluxBaseUrlApp();
             return base ? `${base}/api/ordenes/registrar` : '/api/ordenes/registrar';
         }
 
-        function exactoUrlOrdenesIndex() {
-            const base = exactoBaseUrlApp();
+        function anluxUrlOrdenesIndex() {
+            const base = anluxBaseUrlApp();
             return base ? `${base}/ordenes` : '/ordenes';
         }
 
-        function exactoUrlWhatsappEstado(id) {
-            const base = exactoBaseUrlApp();
+        function anluxUrlWhatsappEstado(id) {
+            const base = anluxBaseUrlApp();
             return base ? `${base}/api/ordenes/whatsapp-estado/${id}` : `/api/ordenes/whatsapp-estado/${id}`;
         }
 
-        function exactoUrlSalidaTemporal(idOrden) {
-            const fromPhp = typeof window.EXACTO_SALIDA_TEMPORAL_URL === 'string' ? window.EXACTO_SALIDA_TEMPORAL_URL.trim() : '';
+        function anluxUrlSalidaTemporal(idOrden) {
+            const fromPhp = typeof window.ANLUX_SALIDA_TEMPORAL_URL === 'string' ? window.ANLUX_SALIDA_TEMPORAL_URL.trim() : '';
             if (fromPhp && Number(idOrden) > 0 && fromPhp.includes('/' + String(idOrden) + '/')) {
                 return fromPhp;
             }
-            const base = exactoBaseUrlApp();
+            const base = anluxBaseUrlApp();
             return base
                 ? `${base}/api/ordenes/${Number(idOrden)}/salida-temporal`
                 : `/api/ordenes/${Number(idOrden)}/salida-temporal`;
         }
 
-        function exactoUrlRegresoTemporal(idOrden) {
-            const fromPhp = typeof window.EXACTO_REGRESO_TEMPORAL_URL === 'string' ? window.EXACTO_REGRESO_TEMPORAL_URL.trim() : '';
+        function anluxUrlRegresoTemporal(idOrden) {
+            const fromPhp = typeof window.ANLUX_REGRESO_TEMPORAL_URL === 'string' ? window.ANLUX_REGRESO_TEMPORAL_URL.trim() : '';
             if (fromPhp && Number(idOrden) > 0 && fromPhp.includes('/' + String(idOrden) + '/')) {
                 return fromPhp;
             }
-            const base = exactoBaseUrlApp();
+            const base = anluxBaseUrlApp();
             return base
                 ? `${base}/api/ordenes/${Number(idOrden)}/regreso-temporal`
                 : `/api/ordenes/${Number(idOrden)}/regreso-temporal`;
         }
 
-        function exactoCsrfToken() {
+        function anluxCsrfToken() {
             return (
                 (document.querySelector('meta[name="csrf-token"]') || {}).content
-                || window.EXACTO_CSRF_TOKEN
+                || window.ANLUX_CSRF_TOKEN
                 || document.querySelector('#ordenForm input[name="_token"]')?.value
                 || ''
             );
         }
-        window.exactoCsrfToken = exactoCsrfToken;
+        window.anluxCsrfToken = anluxCsrfToken;
 
-        function exactoEsperar(ms) {
+        function anluxEsperar(ms) {
             return new Promise((resolve) => setTimeout(resolve, ms));
         }
 
-        let exactoSalidaTemporalPendienteId = 0;
+        let anluxSalidaTemporalPendienteId = 0;
         /** @type {'post'|'collect'} */
-        let exactoSalidaTemporalModo = 'post';
+        let anluxSalidaTemporalModo = 'post';
 
-        function exactoDebeOfrecerSalidaTemporal() {
-            if (window.EXACTO_ORDEN_SOLO_LECTURA || window.EXACTO_SALIDA_TEMPORAL_ACTIVA) {
+        function anluxDebeOfrecerSalidaTemporal() {
+            if (window.ANLUX_ORDEN_SOLO_LECTURA || window.ANLUX_SALIDA_TEMPORAL_ACTIVA) {
                 return false;
             }
             const estatusEl = document.getElementById('inputEstatus')
                 || document.querySelector('[name="estatus"]');
-            return exactoNormalizarEstatusOrden(estatusEl?.value) === 'En proceso';
+            return anluxNormalizarEstatusOrden(estatusEl?.value) === 'En proceso';
         }
 
-        function exactoHtmlModalSalidaTemporal() {
+        function anluxHtmlModalSalidaTemporal() {
             return `
     <div id="modalSalidaTemporal" class="hidden fixed inset-0 z-[10100]" role="dialog" aria-modal="true" aria-labelledby="modalSalidaTemporalTitle" style="display:none;align-items:center;justify-content:center;padding:0.5rem;background:rgba(2,6,23,0.75);z-index:10100;">
         <div id="cardSalidaTemporal" style="display:flex;flex-direction:column;background:#fff;max-width:48rem;width:100%;max-height:min(96dvh,96vh);overflow:hidden;border-radius:1rem;">
@@ -295,13 +297,13 @@ function exactoAplicarConversionNetoASinIva(input) {
     </div>`;
         }
 
-        function exactoAsegurarModalSalidaTemporalEnDom() {
+        function anluxAsegurarModalSalidaTemporalEnDom() {
             let modal = document.getElementById('modalSalidaTemporal');
             const layoutOk = !!(modal
                 && modal.querySelector('#salidaTempMotivoWrap')
                 && modal.querySelector('#salidaTempHeaderWrap')
                 && modal.querySelector('#motivoSalidaTemporalInput')
-                && modal.dataset.exactoLayoutVer === 'tablet-v3');
+                && modal.dataset.anluxLayoutVer === 'tablet-v3');
             if (!layoutOk) {
                 // Reemplaza el modal viejo (o incompleto) para que en tableta siempre se vea el motivo.
                 if (modal && modal.parentNode) {
@@ -310,24 +312,24 @@ function exactoAplicarConversionNetoASinIva(input) {
                 delete canvasContexts['firmaClienteSalidaTemp'];
                 delete canvasContexts['firmaTecnicoSalidaTemp'];
                 const wrap = document.createElement('div');
-                wrap.innerHTML = exactoHtmlModalSalidaTemporal();
+                wrap.innerHTML = anluxHtmlModalSalidaTemporal();
                 const node = wrap.firstElementChild;
                 if (node) {
                     document.body.appendChild(node);
                     modal = node;
-                    modal.dataset.exactoLayoutVer = 'tablet-v3';
-                    modal.dataset.exactoBound = '0';
+                    modal.dataset.anluxLayoutVer = 'tablet-v3';
+                    modal.dataset.anluxBound = '0';
                 }
             }
             if (!modal) {
                 return null;
             }
-            exactoRepararFooterModalSalidaTemporal(modal);
-            exactoBindModalSalidaTemporalUi(modal);
+            anluxRepararFooterModalSalidaTemporal(modal);
+            anluxBindModalSalidaTemporalUi(modal);
             return modal;
         }
 
-        function exactoRepararFooterModalSalidaTemporal(modal) {
+        function anluxRepararFooterModalSalidaTemporal(modal) {
             if (!modal) return;
             modal.style.cssText = 'position:fixed;inset:0;z-index:10100;display:none;align-items:center;justify-content:center;padding:0.5rem;background:rgba(2,6,23,0.75);';
             const card = modal.querySelector('#cardSalidaTemporal') || modal.firstElementChild;
@@ -373,16 +375,16 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoBindModalSalidaTemporalUi(modal) {
+        function anluxBindModalSalidaTemporalUi(modal) {
             if (!modal) {
                 return;
             }
             const btnGuardar = document.getElementById('btnConfirmarSalidaTemporal');
             const btnCancelar = document.getElementById('btnCancelarSalidaTemporal');
-            if (modal.dataset.exactoBound === '1' && btnGuardar?.dataset.exactoClickBound === '1') {
+            if (modal.dataset.anluxBound === '1' && btnGuardar?.dataset.anluxClickBound === '1') {
                 return;
             }
-            modal.dataset.exactoBound = '1';
+            modal.dataset.anluxBound = '1';
             document.getElementById('btnLimpiarFirmaClienteSalidaTemp')?.addEventListener('click', () => {
                 if (!canvasContexts['firmaClienteSalidaTemp']) return;
                 const canvas = document.getElementById('firmaClienteSalidaTemp');
@@ -395,24 +397,24 @@ function exactoAplicarConversionNetoASinIva(input) {
                 canvasContexts['firmaTecnicoSalidaTemp'].clearRect(0, 0, canvas.width, canvas.height);
                 pintarFondoBlancoFirma('firmaTecnicoSalidaTemp');
             });
-            if (btnCancelar && btnCancelar.dataset.exactoClickBound !== '1') {
-                btnCancelar.dataset.exactoClickBound = '1';
+            if (btnCancelar && btnCancelar.dataset.anluxClickBound !== '1') {
+                btnCancelar.dataset.anluxClickBound = '1';
                 btnCancelar.addEventListener('click', () => {
-                    exactoCerrarModalSalidaTemporal(false);
+                    anluxCerrarModalSalidaTemporal(false);
                 });
             }
-            if (btnGuardar && btnGuardar.dataset.exactoClickBound !== '1') {
-                btnGuardar.dataset.exactoClickBound = '1';
+            if (btnGuardar && btnGuardar.dataset.anluxClickBound !== '1') {
+                btnGuardar.dataset.anluxClickBound = '1';
                 btnGuardar.addEventListener('click', () => {
-                    void exactoConfirmarSalidaTemporalDesdeModal();
+                    void anluxConfirmarSalidaTemporalDesdeModal();
                 });
             }
         }
 
-        function exactoAbrirModalSalidaTemporal(idOrden, modo) {
-            exactoSalidaTemporalPendienteId = Number(idOrden) || 0;
-            exactoSalidaTemporalModo = modo === 'collect' ? 'collect' : 'post';
-            const modal = exactoAsegurarModalSalidaTemporalEnDom();
+        function anluxAbrirModalSalidaTemporal(idOrden, modo) {
+            anluxSalidaTemporalPendienteId = Number(idOrden) || 0;
+            anluxSalidaTemporalModo = modo === 'collect' ? 'collect' : 'post';
+            const modal = anluxAsegurarModalSalidaTemporalEnDom();
             const motivo = document.getElementById('motivoSalidaTemporalInput');
             if (!modal) {
                 console.error('modalSalidaTemporal no disponible en el DOM');
@@ -433,12 +435,12 @@ function exactoAplicarConversionNetoASinIva(input) {
             // La barra sticky (Cambiar de cuenta / estados WA) usa z-index 9999 y tapaba el motivo.
             const navBar = document.querySelector('nav[aria-label="Navegación principal"]');
             if (navBar) {
-                if (navBar.dataset.exactoPrevZ === undefined) {
-                    navBar.dataset.exactoPrevZ = navBar.style.zIndex || '9999';
+                if (navBar.dataset.anluxPrevZ === undefined) {
+                    navBar.dataset.anluxPrevZ = navBar.style.zIndex || '9999';
                 }
                 navBar.style.zIndex = '1';
             }
-            exactoRepararFooterModalSalidaTemporal(modal);
+            anluxRepararFooterModalSalidaTemporal(modal);
             modal.style.display = 'flex';
             modal.style.zIndex = '10100';
             const prepararFirmas = () => {
@@ -451,9 +453,9 @@ function exactoAplicarConversionNetoASinIva(input) {
                             inicializarFirma('firmaTecnicoSalidaTemp');
                         }
                     }
-                    if (typeof exactoPrepararCanvasFirmaVisible === 'function') {
-                        exactoPrepararCanvasFirmaVisible('firmaClienteSalidaTemp');
-                        exactoPrepararCanvasFirmaVisible('firmaTecnicoSalidaTemp');
+                    if (typeof anluxPrepararCanvasFirmaVisible === 'function') {
+                        anluxPrepararCanvasFirmaVisible('firmaClienteSalidaTemp');
+                        anluxPrepararCanvasFirmaVisible('firmaTecnicoSalidaTemp');
                     }
                     if (canvasContexts['firmaClienteSalidaTemp']) {
                         pintarFondoBlancoFirma('firmaClienteSalidaTemp');
@@ -468,11 +470,11 @@ function exactoAplicarConversionNetoASinIva(input) {
             requestAnimationFrame(prepararFirmas);
             setTimeout(prepararFirmas, 80);
             return new Promise((resolve) => {
-                modal._exactoResolve = resolve;
+                modal._anluxResolve = resolve;
             });
         }
 
-        function exactoCerrarModalSalidaTemporal(resultado) {
+        function anluxCerrarModalSalidaTemporal(resultado) {
             const modal = document.getElementById('modalSalidaTemporal');
             if (!modal) {
                 return;
@@ -483,56 +485,56 @@ function exactoAplicarConversionNetoASinIva(input) {
             document.body.style.overflow = '';
             const navBar = document.querySelector('nav[aria-label="Navegación principal"]');
             if (navBar) {
-                navBar.style.zIndex = navBar.dataset.exactoPrevZ || '9999';
-                delete navBar.dataset.exactoPrevZ;
+                navBar.style.zIndex = navBar.dataset.anluxPrevZ || '9999';
+                delete navBar.dataset.anluxPrevZ;
             }
-            const resolve = modal._exactoResolve;
-            modal._exactoResolve = null;
-            exactoSalidaTemporalModo = 'post';
+            const resolve = modal._anluxResolve;
+            modal._anluxResolve = null;
+            anluxSalidaTemporalModo = 'post';
             if (typeof resolve === 'function') {
                 resolve(resultado);
             }
         }
 
-        async function exactoEnviarSalidaTemporalCapturada(idOrden, payload) {
+        async function anluxEnviarSalidaTemporalCapturada(idOrden, payload) {
             const id = Number(idOrden) || 0;
             if (!id || !payload || typeof payload !== 'object') {
                 return false;
             }
             try {
-                const res = await fetch(exactoUrlSalidaTemporal(id), {
+                const res = await fetch(anluxUrlSalidaTemporal(id), {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: {
                         Accept: 'application/json',
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': exactoCsrfToken(),
+                        'X-CSRF-TOKEN': anluxCsrfToken(),
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                     body: JSON.stringify({
                         motivo: String(payload.motivo || '').trim(),
                         firma_cliente: payload.firma_cliente || '',
                         firma_tecnico: payload.firma_tecnico || '',
-                        _token: exactoCsrfToken(),
+                        _token: anluxCsrfToken(),
                     }),
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok || !data.success) {
-                    await exactoShowAlert(data.message || 'No se pudo registrar la salida temporal.', {
+                    await anluxShowAlert(data.message || 'No se pudo registrar la salida temporal.', {
                         title: 'Salida temporal',
                         icon: 'error',
                     });
                     return false;
                 }
-                window.EXACTO_SALIDA_TEMPORAL_ACTIVA = true;
-                await exactoShowAlert(data.message || 'Salida temporal registrada.', {
+                window.ANLUX_SALIDA_TEMPORAL_ACTIVA = true;
+                await anluxShowAlert(data.message || 'Salida temporal registrada.', {
                     title: 'Salida temporal',
                     icon: 'success',
                 });
                 return true;
             } catch (e) {
                 console.error('salida temporal:', e);
-                await exactoShowAlert('Error de red al registrar la salida temporal.', {
+                await anluxShowAlert('Error de red al registrar la salida temporal.', {
                     title: 'Salida temporal',
                     icon: 'error',
                 });
@@ -540,24 +542,24 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        async function exactoConfirmarSalidaTemporalDesdeModal() {
-            const idOrden = exactoSalidaTemporalPendienteId
+        async function anluxConfirmarSalidaTemporalDesdeModal() {
+            const idOrden = anluxSalidaTemporalPendienteId
                 || Number(document.getElementById('id_orden_c')?.value || 0);
             const motivo = String(document.getElementById('motivoSalidaTemporalInput')?.value || '').trim();
             if (!motivo) {
-                await exactoShowAlert('Escribe el motivo de la salida temporal.', { title: 'Salida temporal', icon: 'warning' });
+                await anluxShowAlert('Escribe el motivo de la salida temporal.', { title: 'Salida temporal', icon: 'warning' });
                 return false;
             }
-            const firmaCliente = exactoFirmaDataUrlSiHay('firmaClienteSalidaTemp');
-            const firmaTecnico = exactoFirmaDataUrlSiHay('firmaTecnicoSalidaTemp');
+            const firmaCliente = anluxFirmaDataUrlSiHay('firmaClienteSalidaTemp');
+            const firmaTecnico = anluxFirmaDataUrlSiHay('firmaTecnicoSalidaTemp');
             if (!firmaCliente || !firmaTecnico) {
-                await exactoShowAlert('Se requieren las firmas del cliente y del técnico.', { title: 'Salida temporal', icon: 'warning' });
+                await anluxShowAlert('Se requieren las firmas del cliente y del técnico.', { title: 'Salida temporal', icon: 'warning' });
                 return false;
             }
 
             // Antes de guardar: solo capturar; el POST va después del save exitoso.
-            if (exactoSalidaTemporalModo === 'collect') {
-                exactoCerrarModalSalidaTemporal({
+            if (anluxSalidaTemporalModo === 'collect') {
+                anluxCerrarModalSalidaTemporal({
                     motivo,
                     firma_cliente: firmaCliente,
                     firma_tecnico: firmaTecnico,
@@ -566,7 +568,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
 
             if (!idOrden) {
-                await exactoShowAlert('No se encontró el ID de la orden.', { title: 'Salida temporal', icon: 'error' });
+                await anluxShowAlert('No se encontró el ID de la orden.', { title: 'Salida temporal', icon: 'error' });
                 return false;
             }
 
@@ -575,13 +577,13 @@ function exactoAplicarConversionNetoASinIva(input) {
                 btn.disabled = true;
             }
             try {
-                const ok = await exactoEnviarSalidaTemporalCapturada(idOrden, {
+                const ok = await anluxEnviarSalidaTemporalCapturada(idOrden, {
                     motivo,
                     firma_cliente: firmaCliente,
                     firma_tecnico: firmaTecnico,
                 });
                 if (ok) {
-                    exactoCerrarModalSalidaTemporal(true);
+                    anluxCerrarModalSalidaTemporal(true);
                 }
                 return ok;
             } finally {
@@ -598,11 +600,11 @@ function exactoAplicarConversionNetoASinIva(input) {
          *   null = no aplica o eligió No;
          *   objeto = capturado, enviar tras save.
          */
-        async function exactoPreguntarSalidaTemporalAntesDeGuardar() {
-            if (!exactoDebeOfrecerSalidaTemporal()) {
+        async function anluxPreguntarSalidaTemporalAntesDeGuardar() {
+            if (!anluxDebeOfrecerSalidaTemporal()) {
                 return null;
             }
-            const quiere = await exactoShowConfirm(
+            const quiere = await anluxShowConfirm(
                 '¿El equipo saldrá temporalmente del taller?',
                 {
                     title: 'Salida temporal',
@@ -615,12 +617,12 @@ function exactoAplicarConversionNetoASinIva(input) {
                 return null;
             }
             // Esperar a que cierre el diálogo Sí/No antes de abrir el modal grande.
-            await exactoEsperar(30);
+            await anluxEsperar(30);
             const idOrden = Number(document.getElementById('id_orden_c')?.value || 0);
-            const capturado = await exactoAbrirModalSalidaTemporal(idOrden, 'collect');
+            const capturado = await anluxAbrirModalSalidaTemporal(idOrden, 'collect');
             // Falló crear/abrir el modal (no confundir con Cancelar).
             if (capturado && typeof capturado === 'object' && capturado.__openFailed) {
-                await exactoShowAlert(
+                await anluxShowAlert(
                     'No se pudo abrir el modal de salida temporal. Sube también la vista orden_form.blade.php o recarga con Ctrl+F5.',
                     { title: 'Salida temporal', icon: 'error' }
                 );
@@ -633,12 +635,12 @@ function exactoAplicarConversionNetoASinIva(input) {
             return capturado;
         }
 
-        async function exactoRegistrarRegresoTemporal() {
+        async function anluxRegistrarRegresoTemporal() {
             const idOrden = Number(document.getElementById('id_orden_c')?.value || 0);
             if (!idOrden) {
                 return;
             }
-            const ok = await exactoShowConfirm(
+            const ok = await anluxShowConfirm(
                 '¿Confirmas que el cliente regresó el equipo al taller?',
                 {
                     title: 'Regreso al taller',
@@ -651,41 +653,41 @@ function exactoAplicarConversionNetoASinIva(input) {
                 return;
             }
             try {
-                const res = await fetch(exactoUrlRegresoTemporal(idOrden), {
+                const res = await fetch(anluxUrlRegresoTemporal(idOrden), {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: {
                         Accept: 'application/json',
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': exactoCsrfToken(),
+                        'X-CSRF-TOKEN': anluxCsrfToken(),
                         'X-Requested-With': 'XMLHttpRequest',
                     },
-                    body: JSON.stringify({ _token: exactoCsrfToken() }),
+                    body: JSON.stringify({ _token: anluxCsrfToken() }),
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok || !data.success) {
-                    await exactoShowAlert(data.message || 'No se pudo registrar el regreso.', {
+                    await anluxShowAlert(data.message || 'No se pudo registrar el regreso.', {
                         title: 'Regreso al taller',
                         icon: 'error',
                     });
                     return;
                 }
-                window.EXACTO_SALIDA_TEMPORAL_ACTIVA = false;
-                await exactoShowAlert(data.message || 'Regreso registrado.', {
+                window.ANLUX_SALIDA_TEMPORAL_ACTIVA = false;
+                await anluxShowAlert(data.message || 'Regreso registrado.', {
                     title: 'Regreso al taller',
                     icon: 'success',
                 });
                 window.location.reload();
             } catch (e) {
-                await exactoShowAlert('Error de red al registrar el regreso.', {
+                await anluxShowAlert('Error de red al registrar el regreso.', {
                     title: 'Regreso al taller',
                     icon: 'error',
                 });
             }
         }
 
-        function exactoAplicarSoloLecturaEntregado() {
-            if (!window.EXACTO_ORDEN_SOLO_LECTURA) {
+        function anluxAplicarSoloLecturaEntregado() {
+            if (!window.ANLUX_ORDEN_SOLO_LECTURA) {
                 return;
             }
             const form = document.getElementById('ordenForm');
@@ -710,8 +712,8 @@ function exactoAplicarConversionNetoASinIva(input) {
             });
         }
 
-        async function exactoConfirmarEntregaWhatsapp(data) {
-            if (window.EXACTO_WHATSAPP_ENABLED === false) {
+        async function anluxConfirmarEntregaWhatsapp(data) {
+            if (window.ANLUX_WHATSAPP_ENABLED === false) {
                 return;
             }
             const notificationId = data && data.whatsapp_notification_id ? Number(data.whatsapp_notification_id) : 0;
@@ -727,12 +729,12 @@ function exactoAplicarConversionNetoASinIva(input) {
                 return;
             }
 
-            const csrf = window.EXACTO_CSRF_TOKEN || '';
+            const csrf = window.ANLUX_CSRF_TOKEN || '';
             const maxIntentos = 4;
             for (let intento = 0; intento < maxIntentos; intento++) {
-                await exactoEsperar(1500);
+                await anluxEsperar(1500);
                 try {
-                    const resp = await fetch(exactoUrlWhatsappEstado(notificationId), {
+                    const resp = await fetch(anluxUrlWhatsappEstado(notificationId), {
                         method: 'GET',
                         headers: {
                             'Accept': 'application/json',
@@ -759,29 +761,29 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoUrlOrdenLockApi(orderId, action) {
-            const base = exactoBaseUrlApp();
+        function anluxUrlOrdenLockApi(orderId, action) {
+            const base = anluxBaseUrlApp();
             const path = `/api/ordenes/${encodeURIComponent(orderId)}/lock/${action}`;
             return base ? `${base}${path}` : path;
         }
 
-        let exactoOrdenLockHeartbeatTimer = null;
+        let anluxOrdenLockHeartbeatTimer = null;
 
-        let exactoOrdenLockPerdido = false;
+        let anluxOrdenLockPerdido = false;
 
-        function exactoLiberarLockEdicionOrden() {
+        function anluxLiberarLockEdicionOrden() {
             const idOc = document.getElementById('id_orden_c');
             const orderId = idOc ? parseInt(String(idOc.value || ''), 10) : 0;
             if (!orderId) {
                 return;
             }
-            if (exactoOrdenLockHeartbeatTimer) {
-                clearInterval(exactoOrdenLockHeartbeatTimer);
-                exactoOrdenLockHeartbeatTimer = null;
+            if (anluxOrdenLockHeartbeatTimer) {
+                clearInterval(anluxOrdenLockHeartbeatTimer);
+                anluxOrdenLockHeartbeatTimer = null;
             }
-            const csrf = window.EXACTO_CSRF_TOKEN || '';
+            const csrf = window.ANLUX_CSRF_TOKEN || '';
             try {
-                fetch(exactoUrlOrdenLockApi(orderId, 'release'), {
+                fetch(anluxUrlOrdenLockApi(orderId, 'release'), {
                     method: 'POST',
                     credentials: 'same-origin',
                     keepalive: true,
@@ -796,33 +798,33 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        async function exactoAvisarLockEdicionPerdido() {
-            if (exactoOrdenLockPerdido) {
+        async function anluxAvisarLockEdicionPerdido() {
+            if (anluxOrdenLockPerdido) {
                 return;
             }
-            exactoOrdenLockPerdido = true;
-            if (exactoOrdenLockHeartbeatTimer) {
-                clearInterval(exactoOrdenLockHeartbeatTimer);
-                exactoOrdenLockHeartbeatTimer = null;
+            anluxOrdenLockPerdido = true;
+            if (anluxOrdenLockHeartbeatTimer) {
+                clearInterval(anluxOrdenLockHeartbeatTimer);
+                anluxOrdenLockHeartbeatTimer = null;
             }
-            await exactoShowAlert(
+            await anluxShowAlert(
                 'Ya no tienes el bloqueo de esta orden (otro usuario la tomó o expiró). Se abrirá el listado.',
                 { title: 'Orden liberada', icon: 'warning' }
             );
-            exactoPermitirSalidaOrdenForm();
-            window.location.href = exactoUrlOrdenesIndex();
+            anluxPermitirSalidaOrdenForm();
+            window.location.href = anluxUrlOrdenesIndex();
         }
 
-        function exactoIniciarLockEdicionOrden() {
+        function anluxIniciarLockEdicionOrden() {
             const idOc = document.getElementById('id_orden_c');
             const orderId = idOc ? parseInt(String(idOc.value || ''), 10) : 0;
             if (!orderId) {
                 return;
             }
-            exactoOrdenLockPerdido = false;
-            const csrf = window.EXACTO_CSRF_TOKEN || '';
+            anluxOrdenLockPerdido = false;
+            const csrf = window.ANLUX_CSRF_TOKEN || '';
             const ping = () => {
-                fetch(exactoUrlOrdenLockApi(orderId, 'heartbeat'), {
+                fetch(anluxUrlOrdenLockApi(orderId, 'heartbeat'), {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: {
@@ -834,21 +836,21 @@ function exactoAplicarConversionNetoASinIva(input) {
                     .then((res) => (res.ok ? res.json() : { success: false }))
                     .then((data) => {
                         if (!data || data.success !== true) {
-                            exactoAvisarLockEdicionPerdido();
+                            anluxAvisarLockEdicionPerdido();
                         }
                     })
                     .catch(() => {});
             };
             ping();
-            if (exactoOrdenLockHeartbeatTimer) {
-                clearInterval(exactoOrdenLockHeartbeatTimer);
+            if (anluxOrdenLockHeartbeatTimer) {
+                clearInterval(anluxOrdenLockHeartbeatTimer);
             }
-            exactoOrdenLockHeartbeatTimer = setInterval(ping, 30000);
-            window.addEventListener('beforeunload', exactoLiberarLockEdicionOrden);
-            window.addEventListener('pagehide', exactoLiberarLockEdicionOrden);
+            anluxOrdenLockHeartbeatTimer = setInterval(ping, 30000);
+            window.addEventListener('beforeunload', anluxLiberarLockEdicionOrden);
+            window.addEventListener('pagehide', anluxLiberarLockEdicionOrden);
         }
 
-        function exactoUiFocusField(target) {
+        function anluxUiFocusField(target) {
             if (!target || typeof target.focus !== 'function') return;
             try {
                 if (typeof target.scrollIntoView === 'function') {
@@ -864,14 +866,14 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        const EXACTO_ETIQUETAS_FIRMA = {
+        const ANLUX_ETIQUETAS_FIRMA = {
             firmaClienteInicial: 'Firma del cliente',
             firmaTecnicoInicial: 'Firma del tecnico',
             firmaCliente: 'Firma del cliente',
             firmaTecnico: 'Firma del tecnico',
         };
 
-        const EXACTO_NOMBRES_CAMPOS = {
+        const ANLUX_NOMBRES_CAMPOS = {
             nombreCliente: 'Nombre o razon social',
             telefono: 'Celular',
             poblacion: 'Poblacion/Ciudad',
@@ -883,7 +885,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             comentariosTecnico: 'Comentarios del tecnico',
         };
 
-        const EXACTO_SUBCAMPOS_TABLA = {
+        const ANLUX_SUBCAMPOS_TABLA = {
             marca: 'Marca',
             modelo: 'Modelo o descripcion',
             serie: 'Serie',
@@ -900,7 +902,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             monto: 'MONTO SIN IVA',
         };
 
-        function exactoHtmlTicketFacturaInput(name, extraClass, readonly) {
+        function anluxHtmlTicketFacturaInput(name, extraClass, readonly) {
             const cls = 'px-2 py-1 w-full text-sm rounded border border-blue-300 ticket-factura-input'
                 + (extraClass ? ' ' + extraClass : '')
                 + (readonly ? ' bg-gray-100 text-gray-700 cursor-not-allowed' : '');
@@ -908,12 +910,12 @@ function exactoAplicarConversionNetoASinIva(input) {
             return `<input type="text" name="${name}" class="${cls}" placeholder="Ticket, factura o folio"${ro}>`;
         }
 
-        function exactoNumeroEquipos() {
+        function anluxNumeroEquipos() {
             return document.querySelectorAll('#equiposTableBody .equipo-row').length;
         }
 
-        function exactoHtmlSelectEquipo(name, seleccionado) {
-            const numEquipos = Math.max(1, exactoNumeroEquipos());
+        function anluxHtmlSelectEquipo(name, seleccionado) {
+            const numEquipos = Math.max(1, anluxNumeroEquipos());
             const selVal = Number(seleccionado) || 1;
             let opciones = '';
             for (let i = 1; i <= numEquipos; i++) {
@@ -923,8 +925,8 @@ function exactoAplicarConversionNetoASinIva(input) {
             return `<select name="${name}" class="px-2 py-1 w-full text-sm rounded border border-blue-300">${opciones}</select>`;
         }
 
-        function exactoActualizarSelectsEquipo() {
-            const numEquipos = Math.max(1, exactoNumeroEquipos());
+        function anluxActualizarSelectsEquipo() {
+            const numEquipos = Math.max(1, anluxNumeroEquipos());
             document.querySelectorAll('#trabajosTableBody select[name$="[id_equipo]"], #materialesTableBody select[name$="[id_equipo]"], #anticiposTableBody select[name$="[id_equipo]"]').forEach((select) => {
                 const actual = Number(select.value) || 1;
                 const target = Math.min(actual, numEquipos);
@@ -939,11 +941,11 @@ function exactoAplicarConversionNetoASinIva(input) {
         }
 
         // Compatibilidad con llamadas antiguas.
-        function exactoHtmlTicketFacturaSelect(name, extraClass, disabled) {
-            return exactoHtmlTicketFacturaInput(name, extraClass, Boolean(disabled));
+        function anluxHtmlTicketFacturaSelect(name, extraClass, disabled) {
+            return anluxHtmlTicketFacturaInput(name, extraClass, Boolean(disabled));
         }
 
-        function exactoCampoDebeMayusculas(el) {
+        function anluxCampoDebeMayusculas(el) {
             if (!el || el.disabled || el.readOnly) {
                 return false;
             }
@@ -971,8 +973,8 @@ function exactoAplicarConversionNetoASinIva(input) {
             return true;
         }
 
-        function exactoForzarMayusculasCampo(el) {
-            if (!exactoCampoDebeMayusculas(el)) {
+        function anluxForzarMayusculasCampo(el) {
+            if (!anluxCampoDebeMayusculas(el)) {
                 return;
             }
             const valor = String(el.value || '');
@@ -992,37 +994,37 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoConfigurarMayusculasOrdenForm(form) {
-            if (!form || form.dataset.exactoMayusculasConfiguradas === '1') {
+        function anluxConfigurarMayusculasOrdenForm(form) {
+            if (!form || form.dataset.anluxMayusculasConfiguradas === '1') {
                 return;
             }
-            form.dataset.exactoMayusculasConfiguradas = '1';
+            form.dataset.anluxMayusculasConfiguradas = '1';
             const handler = (evento) => {
                 const el = evento.target;
                 if (!el || !form.contains(el)) {
                     return;
                 }
-                exactoForzarMayusculasCampo(el);
+                anluxForzarMayusculasCampo(el);
             };
             form.addEventListener('input', handler, true);
             form.addEventListener('blur', handler, true);
         }
 
-        function exactoHtmlAnticipoTicketSelect(name, extraClass, disabled) {
-            return exactoHtmlTicketFacturaInput(name, (extraClass ? extraClass + ' ' : '') + 'anticipo-ticket-input', Boolean(disabled));
+        function anluxHtmlAnticipoTicketSelect(name, extraClass, disabled) {
+            return anluxHtmlTicketFacturaInput(name, (extraClass ? extraClass + ' ' : '') + 'anticipo-ticket-input', Boolean(disabled));
         }
 
-        function exactoCampoTicket(row) {
+        function anluxCampoTicket(row) {
             if (!row) return null;
             return row.querySelector('input[name*="[ticket]"], select[name*="[ticket]"]');
         }
 
-        function exactoAsignarTicketFactura(campo, valor) {
+        function anluxAsignarTicketFactura(campo, valor) {
             if (!campo) return;
             campo.value = String(valor || '').trim().toLocaleUpperCase('es-MX');
         }
 
-        function exactoSetCampoTicketFactura(campo, habilitar) {
+        function anluxSetCampoTicketFactura(campo, habilitar) {
             if (!campo) return;
             if (campo.tagName === 'SELECT') {
                 campo.disabled = !habilitar;
@@ -1048,14 +1050,14 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoAnticipoTicketSaldoPagoHtml(name, valor) {
+        function anluxAnticipoTicketSaldoPagoHtml(name, valor) {
             const esc = String(valor || 'PAGO SALDO PENDIENTE')
                 .replace(/&/g, '&amp;')
                 .replace(/"/g, '&quot;');
             return `<input type="text" class="px-2 py-1 w-full text-sm text-gray-700 bg-gray-100 rounded border border-blue-300 cursor-not-allowed anticipo-ticket-input ticket-factura-input" name="${name}" value="${esc}" readonly>`;
         }
 
-        function exactoNumeroFilaTabla(row) {
+        function anluxNumeroFilaTabla(row) {
             if (!row) {
                 return 1;
             }
@@ -1071,12 +1073,12 @@ function exactoAplicarConversionNetoASinIva(input) {
             return indice >= 0 ? indice + 1 : 1;
         }
 
-        function exactoEtiquetaCampo(el) {
+        function anluxEtiquetaCampo(el) {
             if (!el) {
                 return 'Campo';
             }
 
-            const personalizada = el.getAttribute('data-exacto-label');
+            const personalizada = el.getAttribute('data-anlux-label');
             if (personalizada && personalizada.trim() !== '') {
                 return personalizada.trim();
             }
@@ -1102,7 +1104,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                     if (indice >= 0 && encabezados[indice]) {
                         const texto = encabezados[indice].textContent.trim();
                         if (texto !== '') {
-                            const filaNum = exactoNumeroFilaTabla(fila);
+                            const filaNum = anluxNumeroFilaTabla(fila);
                             return `${texto} (fila ${filaNum})`;
                         }
                     }
@@ -1121,8 +1123,8 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
 
             const nombre = String(el.getAttribute('name') || '').trim();
-            if (EXACTO_NOMBRES_CAMPOS[nombre]) {
-                return EXACTO_NOMBRES_CAMPOS[nombre];
+            if (ANLUX_NOMBRES_CAMPOS[nombre]) {
+                return ANLUX_NOMBRES_CAMPOS[nombre];
             }
 
             const coincidencia = nombre.match(/^(equipos|trabajos|materiales|anticipos)\[(\d+)\]\[(\w+)\]$/);
@@ -1134,7 +1136,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                     anticipos: 'Anticipo',
                 }[coincidencia[1]] || 'Registro';
                 const fila = Number.parseInt(coincidencia[2], 10) + 1;
-                const subcampo = EXACTO_SUBCAMPOS_TABLA[coincidencia[3]] || coincidencia[3];
+                const subcampo = ANLUX_SUBCAMPOS_TABLA[coincidencia[3]] || coincidencia[3];
 
                 return `${seccion} (fila ${fila}): ${subcampo}`;
             }
@@ -1146,8 +1148,8 @@ function exactoAplicarConversionNetoASinIva(input) {
             return nombre !== '' ? nombre : 'Campo';
         }
 
-        function exactoMensajeValidacionCampo(el) {
-            const etiqueta = exactoEtiquetaCampo(el);
+        function anluxMensajeValidacionCampo(el) {
+            const etiqueta = anluxEtiquetaCampo(el);
             const validez = el.validity || {};
 
             if (validez.valueMissing) {
@@ -1180,7 +1182,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             return `${etiqueta}: revisa el valor capturado.`;
         }
 
-        function exactoConfigurarMensajesValidacionOrden(form) {
+        function anluxConfigurarMensajesValidacionOrden(form) {
             if (!form) {
                 return;
             }
@@ -1198,24 +1200,24 @@ function exactoAplicarConversionNetoASinIva(input) {
                     el.addEventListener('invalid', (evento) => {
                         evento.preventDefault();
                         const campo = evento.target;
-                        campo.setCustomValidity(exactoMensajeValidacionCampo(campo));
+                        campo.setCustomValidity(anluxMensajeValidacionCampo(campo));
                     });
                 }
             });
         }
 
-        function exactoUiDialog(config) {
-            const modal = document.getElementById('exactoUiModal');
-            const titleEl = document.getElementById('exactoUiModalTitle');
-            const iconWrapEl = document.getElementById('exactoUiModalIconWrap');
-            const iconCircleEl = document.getElementById('exactoUiModalIconCircle');
-            const iconEl = document.getElementById('exactoUiModalIcon');
-            const messageEl = document.getElementById('exactoUiModalMessage');
-            const confirmBtn = document.getElementById('exactoUiModalConfirm');
-            const cancelBtn = document.getElementById('exactoUiModalCancel');
-            const inputWrap = document.getElementById('exactoUiModalInputWrap');
-            const inputLabel = document.getElementById('exactoUiModalInputLabel');
-            const inputEl = document.getElementById('exactoUiModalInput');
+        function anluxUiDialog(config) {
+            const modal = document.getElementById('anluxUiModal');
+            const titleEl = document.getElementById('anluxUiModalTitle');
+            const iconWrapEl = document.getElementById('anluxUiModalIconWrap');
+            const iconCircleEl = document.getElementById('anluxUiModalIconCircle');
+            const iconEl = document.getElementById('anluxUiModalIcon');
+            const messageEl = document.getElementById('anluxUiModalMessage');
+            const confirmBtn = document.getElementById('anluxUiModalConfirm');
+            const cancelBtn = document.getElementById('anluxUiModalCancel');
+            const inputWrap = document.getElementById('anluxUiModalInputWrap');
+            const inputLabel = document.getElementById('anluxUiModalInputLabel');
+            const inputEl = document.getElementById('anluxUiModalInput');
             const wantsInput = Boolean(config.showInput);
             if (!modal || !titleEl || !messageEl || !confirmBtn || !cancelBtn || !iconWrapEl || !iconCircleEl || !iconEl) {
                 if (wantsInput) {
@@ -1341,8 +1343,8 @@ function exactoAplicarConversionNetoASinIva(input) {
             });
         }
 
-        function exactoShowAlert(message, options = {}) {
-            return exactoUiDialog({
+        function anluxShowAlert(message, options = {}) {
+            return anluxUiDialog({
                 title: options.title || 'Aviso',
                 message,
                 confirmText: options.confirmText || 'Aceptar',
@@ -1351,8 +1353,8 @@ function exactoAplicarConversionNetoASinIva(input) {
             });
         }
 
-        function exactoShowConfirm(message, options = {}) {
-            return exactoUiDialog({
+        function anluxShowConfirm(message, options = {}) {
+            return anluxUiDialog({
                 title: options.title || 'Confirmar',
                 message,
                 confirmText: options.confirmText || 'Continuar',
@@ -1362,8 +1364,8 @@ function exactoAplicarConversionNetoASinIva(input) {
             });
         }
 
-        function exactoShowPrompt(message, options = {}) {
-            return exactoUiDialog({
+        function anluxShowPrompt(message, options = {}) {
+            return anluxUiDialog({
                 title: options.title || 'Captura',
                 message,
                 confirmText: options.confirmText || 'Aceptar',
@@ -1378,36 +1380,36 @@ function exactoAplicarConversionNetoASinIva(input) {
             });
         }
 
-        let exactoOrdenSubmitInFlight = false;
-        let exactoOrdenFormTieneCambios = false;
-        let exactoOrdenPermitirSalirSinConfirmar = false;
+        let anluxOrdenSubmitInFlight = false;
+        let anluxOrdenFormTieneCambios = false;
+        let anluxOrdenPermitirSalirSinConfirmar = false;
 
-        function exactoReiniciarEstadoSucioOrdenForm() {
-            exactoOrdenFormTieneCambios = false;
+        function anluxReiniciarEstadoSucioOrdenForm() {
+            anluxOrdenFormTieneCambios = false;
         }
 
-        function exactoMarcarOrdenFormSucio() {
-            if (exactoOrdenPermitirSalirSinConfirmar || exactoOrdenSubmitInFlight) {
+        function anluxMarcarOrdenFormSucio() {
+            if (anluxOrdenPermitirSalirSinConfirmar || anluxOrdenSubmitInFlight) {
                 return;
             }
-            exactoOrdenFormTieneCambios = true;
+            anluxOrdenFormTieneCambios = true;
         }
 
-        function exactoPermitirSalidaOrdenForm() {
-            exactoOrdenPermitirSalirSinConfirmar = true;
-            exactoOrdenFormTieneCambios = false;
-            exactoLiberarLockEdicionOrden();
-            exactoBorrarBorradorOrdenLocal();
+        function anluxPermitirSalidaOrdenForm() {
+            anluxOrdenPermitirSalirSinConfirmar = true;
+            anluxOrdenFormTieneCambios = false;
+            anluxLiberarLockEdicionOrden();
+            anluxBorrarBorradorOrdenLocal();
         }
-        window.exactoPermitirSalidaOrdenForm = exactoPermitirSalidaOrdenForm;
+        window.anluxPermitirSalidaOrdenForm = anluxPermitirSalidaOrdenForm;
 
-        const EXACTO_BORRADOR_KEY_PREFIX = 'exacto_orden_borrador_v3:';
-        const EXACTO_BORRADOR_LEGACY_KEY_PREFIX = 'exacto_orden_borrador_v2:';
-        const EXACTO_BORRADOR_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-        let exactoBorradorTimer = null;
-        let exactoBorradorRestaurando = false;
+        const ANLUX_BORRADOR_KEY_PREFIX = 'anlux_orden_borrador_v3:';
+        const ANLUX_BORRADOR_LEGACY_KEY_PREFIX = 'anlux_orden_borrador_v2:';
+        const ANLUX_BORRADOR_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+        let anluxBorradorTimer = null;
+        let anluxBorradorRestaurando = false;
 
-        function exactoBorradorStorageSuffix() {
+        function anluxBorradorStorageSuffix() {
             const id = Number(document.getElementById('id_orden_c')?.value || 0);
             const modo = String(document.getElementById('modo_completar')?.value || '0');
             if (id > 0) {
@@ -1416,21 +1418,21 @@ function exactoAplicarConversionNetoASinIva(input) {
             return 'nueva:' + (modo === '1' ? 'completar' : 'registro');
         }
 
-        function exactoBorradorStorageKey() {
-            return EXACTO_BORRADOR_KEY_PREFIX + exactoBorradorStorageSuffix();
+        function anluxBorradorStorageKey() {
+            return ANLUX_BORRADOR_KEY_PREFIX + anluxBorradorStorageSuffix();
         }
 
-        function exactoBorradorSoloParaOrdenNueva() {
+        function anluxBorradorSoloParaOrdenNueva() {
             return Number(document.getElementById('id_orden_c')?.value || 0) <= 0;
         }
 
-        function exactoBorradorUiSet(texto, tono) {
-            let el = document.getElementById('exactoBorradorEstado');
+        function anluxBorradorUiSet(texto, tono) {
+            let el = document.getElementById('anluxBorradorEstado');
             if (!el) {
                 const form = document.getElementById('ordenForm');
                 if (!form) return;
                 el = document.createElement('div');
-                el.id = 'exactoBorradorEstado';
+                el.id = 'anluxBorradorEstado';
                 el.className = 'mb-4 rounded-lg border px-4 py-2 text-sm font-semibold';
                 form.insertBefore(el, form.firstChild);
             }
@@ -1444,7 +1446,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                         : 'border-slate-300 bg-slate-50 text-slate-800');
         }
 
-        function exactoFirmaDataUrlSiHay(canvasId) {
+        function anluxFirmaDataUrlSiHay(canvasId) {
             const canvas = document.getElementById(canvasId);
             if (!canvas || !canvasPareceFirmado(canvasId)) {
                 return '';
@@ -1456,7 +1458,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoRecolectarBorradorOrden() {
+        function anluxRecolectarBorradorOrden() {
             const form = document.getElementById('ordenForm');
             if (!form) return null;
 
@@ -1480,7 +1482,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             const trabajos = [];
             document.querySelectorAll('#trabajosTableBody .trabajo-row').forEach((row) => {
                 if (row.dataset.sersop01Auto === '1') return;
-                const ticketEl = exactoCampoTicket(row);
+                const ticketEl = anluxCampoTicket(row);
                 trabajos.push({
                     clave: row.querySelector('[name*="[clave]"]')?.value || '',
                     descripcion: row.querySelector('[name*="[descripcion]"]')?.value || '',
@@ -1492,7 +1494,7 @@ function exactoAplicarConversionNetoASinIva(input) {
 
             const materiales = [];
             document.querySelectorAll('#materialesTableBody .material-row').forEach((row) => {
-                const ticketEl = exactoCampoTicket(row);
+                const ticketEl = anluxCampoTicket(row);
                 materiales.push({
                     vale: row.querySelector('[name*="[vale]"]')?.value || '',
                     codigo: row.querySelector('[name*="[codigo]"]')?.value || '',
@@ -1506,7 +1508,7 @@ function exactoAplicarConversionNetoASinIva(input) {
 
             const anticipos = [];
             document.querySelectorAll('#anticiposTableBody .anticipo-row').forEach((row) => {
-                const ticketEl = exactoCampoTicket(row);
+                const ticketEl = anluxCampoTicket(row);
                 anticipos.push({
                     folio: row.querySelector('[name*="[folio]"]')?.value || '',
                     descripcion: row.querySelector('[name*="[descripcion]"]')?.value || '',
@@ -1517,7 +1519,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             });
 
             const sersop01 = {};
-            document.querySelectorAll('#exactoSersop01Campos input[data-sersop01-auto="1"]').forEach((input) => {
+            document.querySelectorAll('#anluxSersop01Campos input[data-sersop01-auto="1"]').forEach((input) => {
                 const name = String(input.getAttribute('name') || '');
                 const m = name.match(/\[(clave|descripcion|importe|ticket)\]$/);
                 if (m) sersop01[m[1]] = String(input.value || '');
@@ -1547,20 +1549,20 @@ function exactoAplicarConversionNetoASinIva(input) {
                 trabajos,
                 materiales,
                 anticipos,
-                observaciones_items: exactoLeerTextosObservaciones(),
+                observaciones_items: anluxLeerTextosObservaciones(),
                 abono_saldo: pick('#abonoSaldoAplicado'),
                 saldo_pagado_confirmado: pick('#saldoPagadoConfirmado'),
                 sersop01,
                 firmas: {
-                    firma_c_e: exactoFirmaDataUrlSiHay('firmaClienteInicial'),
-                    firma_t_r: exactoFirmaDataUrlSiHay('firmaTecnicoInicial'),
-                    firma_c_r: exactoFirmaDataUrlSiHay('firmaCliente'),
-                    firma_t_e: exactoFirmaDataUrlSiHay('firmaTecnico'),
+                    firma_c_e: anluxFirmaDataUrlSiHay('firmaClienteInicial'),
+                    firma_t_r: anluxFirmaDataUrlSiHay('firmaTecnicoInicial'),
+                    firma_c_r: anluxFirmaDataUrlSiHay('firmaCliente'),
+                    firma_t_e: anluxFirmaDataUrlSiHay('firmaTecnico'),
                 },
             };
         }
 
-        function exactoBorradorTieneContenidoUtil(draft) {
+        function anluxBorradorTieneContenidoUtil(draft) {
             if (!draft || !draft.cab) return false;
             const cab = draft.cab;
             const textoCab = [cab.nombre_cliente, cab.direccion, cab.telefono, cab.correo, cab.poblacion]
@@ -1592,64 +1594,64 @@ function exactoAplicarConversionNetoASinIva(input) {
             return false;
         }
 
-        function exactoGuardarBorradorOrdenLocal(forzar) {
-            if (exactoBorradorRestaurando || exactoOrdenSubmitInFlight) {
+        function anluxGuardarBorradorOrdenLocal(forzar) {
+            if (anluxBorradorRestaurando || anluxOrdenSubmitInFlight) {
                 return false;
             }
             // Las órdenes existentes siempre se recuperan desde el servidor. Un snapshot parcial
             // puede borrar IDs, relaciones y estados por equipo al aplicarse encima.
-            if (!exactoBorradorSoloParaOrdenNueva()) {
-                exactoBorrarBorradorOrdenLocal();
+            if (!anluxBorradorSoloParaOrdenNueva()) {
+                anluxBorrarBorradorOrdenLocal();
                 return false;
             }
             // "forzar" solo adelanta el guardado al ocultar/salir; no crea un borrador
             // si el usuario no hizo ningún cambio real.
-            if (!exactoOrdenFormTieneCambios) {
+            if (!anluxOrdenFormTieneCambios) {
                 return false;
             }
             try {
-                const draft = exactoRecolectarBorradorOrden();
-                if (!draft || !exactoBorradorTieneContenidoUtil(draft)) {
-                    exactoBorrarBorradorOrdenLocal();
+                const draft = anluxRecolectarBorradorOrden();
+                if (!draft || !anluxBorradorTieneContenidoUtil(draft)) {
+                    anluxBorrarBorradorOrdenLocal();
                     return false;
                 }
-                localStorage.setItem(exactoBorradorStorageKey(), JSON.stringify(draft));
+                localStorage.setItem(anluxBorradorStorageKey(), JSON.stringify(draft));
                 const hora = new Date(draft.savedAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-                exactoBorradorUiSet('Borrador local guardado a las ' + hora + ' (se recupera si se recarga o sale el modo PC).', 'ok');
+                anluxBorradorUiSet('Borrador local guardado a las ' + hora + ' (se recupera si se recarga o sale el modo PC).', 'ok');
                 return true;
             } catch (e) {
                 console.warn('No se pudo guardar borrador local', e);
-                exactoBorradorUiSet('No se pudo guardar el borrador local (¿almacenamiento lleno?).', 'warn');
+                anluxBorradorUiSet('No se pudo guardar el borrador local (¿almacenamiento lleno?).', 'warn');
                 return false;
             }
         }
 
-        function exactoProgramarGuardadoBorradorOrden() {
-            if (exactoBorradorRestaurando) return;
-            if (exactoBorradorTimer) clearTimeout(exactoBorradorTimer);
-            exactoBorradorTimer = setTimeout(() => {
-                exactoBorradorTimer = null;
-                exactoGuardarBorradorOrdenLocal(false);
+        function anluxProgramarGuardadoBorradorOrden() {
+            if (anluxBorradorRestaurando) return;
+            if (anluxBorradorTimer) clearTimeout(anluxBorradorTimer);
+            anluxBorradorTimer = setTimeout(() => {
+                anluxBorradorTimer = null;
+                anluxGuardarBorradorOrdenLocal(false);
             }, 700);
         }
 
-        function exactoLeerBorradorOrdenLocal() {
+        function anluxLeerBorradorOrdenLocal() {
             try {
                 // La versión 2 podía sobrescribir datos del servidor; descartarla al encontrarla.
-                localStorage.removeItem(EXACTO_BORRADOR_LEGACY_KEY_PREFIX + exactoBorradorStorageSuffix());
-                if (!exactoBorradorSoloParaOrdenNueva()) {
-                    exactoBorrarBorradorOrdenLocal();
+                localStorage.removeItem(ANLUX_BORRADOR_LEGACY_KEY_PREFIX + anluxBorradorStorageSuffix());
+                if (!anluxBorradorSoloParaOrdenNueva()) {
+                    anluxBorrarBorradorOrdenLocal();
                     return null;
                 }
-                const raw = localStorage.getItem(exactoBorradorStorageKey());
+                const raw = localStorage.getItem(anluxBorradorStorageKey());
                 if (!raw) return null;
                 const draft = JSON.parse(raw);
                 if (!draft || Number(draft.version) !== 3 || !draft.savedAt) {
-                    exactoBorrarBorradorOrdenLocal();
+                    anluxBorrarBorradorOrdenLocal();
                     return null;
                 }
-                if ((Date.now() - Number(draft.savedAt)) > EXACTO_BORRADOR_TTL_MS) {
-                    exactoBorrarBorradorOrdenLocal();
+                if ((Date.now() - Number(draft.savedAt)) > ANLUX_BORRADOR_TTL_MS) {
+                    anluxBorrarBorradorOrdenLocal();
                     return null;
                 }
                 return draft;
@@ -1658,22 +1660,22 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoBorrarBorradorOrdenLocal() {
+        function anluxBorrarBorradorOrdenLocal() {
             try {
-                localStorage.removeItem(exactoBorradorStorageKey());
-                localStorage.removeItem(EXACTO_BORRADOR_LEGACY_KEY_PREFIX + exactoBorradorStorageSuffix());
+                localStorage.removeItem(anluxBorradorStorageKey());
+                localStorage.removeItem(ANLUX_BORRADOR_LEGACY_KEY_PREFIX + anluxBorradorStorageSuffix());
             } catch (_) { /* ignore */ }
-            const el = document.getElementById('exactoBorradorEstado');
+            const el = document.getElementById('anluxBorradorEstado');
             if (el) el.classList.add('hidden');
         }
 
-        async function exactoAplicarBorradorOrdenLocal(draft) {
+        async function anluxAplicarBorradorOrdenLocal(draft) {
             if (!draft) return;
-            if (!exactoBorradorSoloParaOrdenNueva()) {
-                exactoBorrarBorradorOrdenLocal();
+            if (!anluxBorradorSoloParaOrdenNueva()) {
+                anluxBorrarBorradorOrdenLocal();
                 return;
             }
-            exactoBorradorRestaurando = true;
+            anluxBorradorRestaurando = true;
             try {
                 const idActual = Number(document.getElementById('id_orden_c')?.value || 0);
                 const cab = Object.assign({}, draft.cab || {});
@@ -1724,12 +1726,12 @@ function exactoAplicarConversionNetoASinIva(input) {
                 if (idActual > 0 && cab.estatus) {
                     const estatusEl = document.getElementById('inputEstatus');
                     if (estatusEl) {
-                        estatusEl.value = exactoNormalizarEstatusOrden(cab.estatus);
-                        if (typeof exactoAplicarColorEstatus === 'function') {
-                            exactoAplicarColorEstatus();
+                        estatusEl.value = anluxNormalizarEstatusOrden(cab.estatus);
+                        if (typeof anluxAplicarColorEstatus === 'function') {
+                            anluxAplicarColorEstatus();
                         }
-                        if (typeof exactoSincronizarFirmasEntregaPorEstatus === 'function') {
-                            exactoSincronizarFirmasEntregaPorEstatus();
+                        if (typeof anluxSincronizarFirmasEntregaPorEstatus === 'function') {
+                            anluxSincronizarFirmasEntregaPorEstatus();
                         }
                         if (typeof actualizarColumnaAccionesEquipos === 'function') {
                             actualizarColumnaAccionesEquipos();
@@ -1737,7 +1739,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                     }
                 }
 
-                exactoAsegurarCamposAbonoNuevaOrden();
+                anluxAsegurarCamposAbonoNuevaOrden();
                 const abonoEl = document.getElementById('abonoSaldoAplicado');
                 if (abonoEl && draft.abono_saldo != null) {
                     abonoEl.value = String(draft.abono_saldo || '0');
@@ -1748,8 +1750,8 @@ function exactoAplicarConversionNetoASinIva(input) {
                 }
 
                 if (draft.sersop01 && String(draft.sersop01.clave || '').toUpperCase() === 'SERSOP01') {
-                    exactoAgregarSersop01Oculto(draft.sersop01.ticket || '');
-                    const box = document.getElementById('exactoSersop01Campos');
+                    anluxAgregarSersop01Oculto(draft.sersop01.ticket || '');
+                    const box = document.getElementById('anluxSersop01Campos');
                     if (box && draft.sersop01.importe) {
                         const imp = box.querySelector('input[name*="[importe]"]');
                         if (imp) imp.value = String(draft.sersop01.importe);
@@ -1760,18 +1762,18 @@ function exactoAplicarConversionNetoASinIva(input) {
                     try { calcularTotalFactura(); } catch (_) { /* ignore */ }
                 }
             } finally {
-                exactoBorradorRestaurando = false;
-                setTimeout(exactoReiniciarEstadoSucioOrdenForm, 80);
+                anluxBorradorRestaurando = false;
+                setTimeout(anluxReiniciarEstadoSucioOrdenForm, 80);
             }
         }
 
-        async function exactoOfrecerRestaurarBorradorSiHay() {
-            const draft = exactoLeerBorradorOrdenLocal();
-            if (!draft || !exactoBorradorTieneContenidoUtil(draft)) {
+        async function anluxOfrecerRestaurarBorradorSiHay() {
+            const draft = anluxLeerBorradorOrdenLocal();
+            if (!draft || !anluxBorradorTieneContenidoUtil(draft)) {
                 return;
             }
             const cuando = new Date(draft.savedAt).toLocaleString('es-MX');
-            const restaurar = await exactoShowConfirm(
+            const restaurar = await anluxShowConfirm(
                 'Se encontró un borrador local sin guardar (por ejemplo si la tablet salió del modo PC o se recargó la página).\n\n'
                 + 'Guardado: ' + cuando + '\n\n'
                 + '¿Quieres recuperar esos datos?\n\n'
@@ -1784,67 +1786,67 @@ function exactoAplicarConversionNetoASinIva(input) {
                 }
             );
             if (!restaurar) {
-                exactoBorrarBorradorOrdenLocal();
-                exactoBorradorUiSet('Borrador local descartado.', 'warn');
+                anluxBorrarBorradorOrdenLocal();
+                anluxBorradorUiSet('Borrador local descartado.', 'warn');
                 return;
             }
-            await exactoAplicarBorradorOrdenLocal(draft);
+            await anluxAplicarBorradorOrdenLocal(draft);
             // Reescribe el borrador ya con el estatus correcto del servidor.
-            try { exactoGuardarBorradorOrdenLocal(true); } catch (_) { /* ignore */ }
-            exactoBorradorUiSet('Borrador recuperado (estatus del servidor conservado). Recuerda guardar la orden.', 'ok');
-            exactoOrdenFormTieneCambios = true;
+            try { anluxGuardarBorradorOrdenLocal(true); } catch (_) { /* ignore */ }
+            anluxBorradorUiSet('Borrador recuperado (estatus del servidor conservado). Recuerda guardar la orden.', 'ok');
+            anluxOrdenFormTieneCambios = true;
         }
 
-        function exactoIniciarAutosaveBorradorOrden() {
+        function anluxIniciarAutosaveBorradorOrden() {
             const form = document.getElementById('ordenForm');
-            if (!form || form.dataset.exactoBorradorConfigurado === '1') {
+            if (!form || form.dataset.anluxBorradorConfigurado === '1') {
                 return;
             }
-            if (!exactoBorradorSoloParaOrdenNueva()) {
-                exactoBorrarBorradorOrdenLocal();
+            if (!anluxBorradorSoloParaOrdenNueva()) {
+                anluxBorrarBorradorOrdenLocal();
                 return;
             }
-            form.dataset.exactoBorradorConfigurado = '1';
+            form.dataset.anluxBorradorConfigurado = '1';
 
             const onChange = () => {
-                exactoMarcarOrdenFormSucio();
-                exactoProgramarGuardadoBorradorOrden();
+                anluxMarcarOrdenFormSucio();
+                anluxProgramarGuardadoBorradorOrden();
             };
             form.addEventListener('input', onChange, true);
             form.addEventListener('change', onChange, true);
 
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'hidden') {
-                    exactoGuardarBorradorOrdenLocal(true);
+                    anluxGuardarBorradorOrdenLocal(true);
                 }
             });
             window.addEventListener('pagehide', () => {
-                exactoGuardarBorradorOrdenLocal(true);
+                anluxGuardarBorradorOrdenLocal(true);
             });
             // Tablets: al rotar / cambiar modo a veces solo dispara resize.
             window.addEventListener('orientationchange', () => {
-                exactoGuardarBorradorOrdenLocal(true);
+                anluxGuardarBorradorOrdenLocal(true);
             });
         }
 
-        function exactoOrdenDebeConfirmarSalida() {
-            return exactoOrdenFormTieneCambios && !exactoOrdenPermitirSalirSinConfirmar && !exactoOrdenSubmitInFlight;
+        function anluxOrdenDebeConfirmarSalida() {
+            return anluxOrdenFormTieneCambios && !anluxOrdenPermitirSalirSinConfirmar && !anluxOrdenSubmitInFlight;
         }
 
-        function exactoConfigurarAvisoSalidaOrdenForm(form) {
-            if (!form || form.dataset.exactoSalidaConfigurada === '1') {
+        function anluxConfigurarAvisoSalidaOrdenForm(form) {
+            if (!form || form.dataset.anluxSalidaConfigurada === '1') {
                 return;
             }
-            form.dataset.exactoSalidaConfigurada = '1';
+            form.dataset.anluxSalidaConfigurada = '1';
 
-            form.addEventListener('input', exactoMarcarOrdenFormSucio, true);
-            form.addEventListener('change', exactoMarcarOrdenFormSucio, true);
+            form.addEventListener('input', anluxMarcarOrdenFormSucio, true);
+            form.addEventListener('change', anluxMarcarOrdenFormSucio, true);
 
-            if (!window.EXACTO_ORDEN_AVISO_SALIDA_INSTALADO) {
-                window.EXACTO_ORDEN_AVISO_SALIDA_INSTALADO = true;
+            if (!window.ANLUX_ORDEN_AVISO_SALIDA_INSTALADO) {
+                window.ANLUX_ORDEN_AVISO_SALIDA_INSTALADO = true;
 
                 window.addEventListener('beforeunload', (evento) => {
-                    if (!exactoOrdenDebeConfirmarSalida()) {
+                    if (!anluxOrdenDebeConfirmarSalida()) {
                         return;
                     }
                     evento.preventDefault();
@@ -1855,7 +1857,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                     'click',
                     async (evento) => {
                         const enlace = evento.target.closest('a[href]');
-                        if (!enlace || !exactoOrdenDebeConfirmarSalida()) {
+                        if (!enlace || !anluxOrdenDebeConfirmarSalida()) {
                             return;
                         }
                         const href = String(enlace.getAttribute('href') || '').trim();
@@ -1865,14 +1867,14 @@ function exactoAplicarConversionNetoASinIva(input) {
                         if (enlace.target === '_blank' || enlace.hasAttribute('download')) {
                             return;
                         }
-                        if (enlace.closest('#exactoUiModal')) {
+                        if (enlace.closest('#anluxUiModal')) {
                             return;
                         }
 
                         evento.preventDefault();
                         evento.stopPropagation();
 
-                        const salir = await exactoShowConfirm(
+                        const salir = await anluxShowConfirm(
                             'Tienes datos sin guardar en esta orden. Si sales o recargas la página, se perderán.\n\n¿Quieres salir sin guardar?',
                             {
                                 title: 'Cambios sin guardar',
@@ -1882,7 +1884,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                             }
                         );
                         if (salir) {
-                            exactoPermitirSalidaOrdenForm();
+                            anluxPermitirSalidaOrdenForm();
                             window.location.assign(enlace.href);
                         }
                     },
@@ -1891,7 +1893,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoGuardarStatusElements() {
+        function anluxGuardarStatusElements() {
             return {
                 wrap: document.getElementById('ordenSubmitStatus'),
                 icon: document.getElementById('ordenSubmitStatusIcon'),
@@ -1899,8 +1901,8 @@ function exactoAplicarConversionNetoASinIva(input) {
             };
         }
 
-        function exactoMostrarEstadoGuardado(type, message) {
-            const { wrap, icon, text } = exactoGuardarStatusElements();
+        function anluxMostrarEstadoGuardado(type, message) {
+            const { wrap, icon, text } = anluxGuardarStatusElements();
             if (!wrap || !icon || !text) return;
 
             wrap.classList.remove(
@@ -1937,13 +1939,13 @@ function exactoAplicarConversionNetoASinIva(input) {
             text.className = 'w-full font-semibold leading-relaxed text-center whitespace-pre-line';
         }
 
-        function exactoOcultarEstadoGuardado() {
-            const { wrap } = exactoGuardarStatusElements();
+        function anluxOcultarEstadoGuardado() {
+            const { wrap } = anluxGuardarStatusElements();
             if (!wrap) return;
             wrap.classList.add('hidden');
         }
 
-        function exactoToggleBotonGuardar(disabled) {
+        function anluxToggleBotonGuardar(disabled) {
             const button = document.getElementById('btnGuardarOrden') || document.querySelector('#ordenForm button[type="submit"]');
             if (!button) return;
 
@@ -1959,34 +1961,34 @@ function exactoAplicarConversionNetoASinIva(input) {
                 : button.dataset.originalHtml;
         }
 
-        function exactoMarcarGuardadoEnCurso(message) {
+        function anluxMarcarGuardadoEnCurso(message) {
             const form = document.getElementById('ordenForm');
-            exactoOrdenSubmitInFlight = true;
+            anluxOrdenSubmitInFlight = true;
             if (form) {
                 form.setAttribute('aria-busy', 'true');
             }
-            exactoToggleBotonGuardar(true);
-            exactoMostrarEstadoGuardado('loading', message || 'Guardando orden y enviando correo, espere...');
+            anluxToggleBotonGuardar(true);
+            anluxMostrarEstadoGuardado('loading', message || 'Guardando orden y enviando correo, espere...');
         }
 
-        function exactoLiberarGuardado(options = {}) {
+        function anluxLiberarGuardado(options = {}) {
             const form = document.getElementById('ordenForm');
             if (form) {
                 form.setAttribute('aria-busy', 'false');
             }
 
-            exactoOrdenSubmitInFlight = false;
-            exactoToggleBotonGuardar(false);
+            anluxOrdenSubmitInFlight = false;
+            anluxToggleBotonGuardar(false);
 
             if (options.keepNotice && options.message) {
-                exactoMostrarEstadoGuardado(options.type || 'info', options.message);
+                anluxMostrarEstadoGuardado(options.type || 'info', options.message);
                 return;
             }
 
-            exactoOcultarEstadoGuardado();
+            anluxOcultarEstadoGuardado();
         }
 
-        function exactoEstadoCorreoTexto(data) {
+        function anluxEstadoCorreoTexto(data) {
             const notice = String(data && data.email_notice ? data.email_notice : '').trim();
             const level = String(data && data.email_notice_level ? data.email_notice_level : '').trim().toLowerCase();
 
@@ -2013,7 +2015,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             return 'Estado del correo: enviado.\n' + notice;
         }
 
-        function exactoEstadoWhatsappTexto(data) {
+        function anluxEstadoWhatsappTexto(data) {
             const notice = String(data && data.whatsapp_notice ? data.whatsapp_notice : '').trim();
             const level = String(data && data.whatsapp_notice_level ? data.whatsapp_notice_level : '').trim().toLowerCase();
 
@@ -2034,11 +2036,11 @@ function exactoAplicarConversionNetoASinIva(input) {
             return 'Estado de WhatsApp: ' + notice;
         }
 
-        function exactoResumenGuardado(data) {
+        function anluxResumenGuardado(data) {
             const parts = [];
             const orderMessage = String(data && data.message ? data.message : '').trim();
-            const emailMessage = exactoEstadoCorreoTexto(data);
-            const whatsappMessage = exactoEstadoWhatsappTexto(data);
+            const emailMessage = anluxEstadoCorreoTexto(data);
+            const whatsappMessage = anluxEstadoWhatsappTexto(data);
 
             if (orderMessage) {
                 parts.push('Estado de la orden: guardada.\n' + orderMessage);
@@ -2053,7 +2055,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             return parts.filter(Boolean).join('\n\n');
         }
 
-        function exactoTituloGuardadoOrden(data) {
+        function anluxTituloGuardadoOrden(data) {
             const correoLevel = String(data && data.email_notice_level ? data.email_notice_level : '').trim().toLowerCase();
             const whatsappLevel = String(data && data.whatsapp_notice_level ? data.whatsapp_notice_level : '').trim().toLowerCase();
             const correoError = !!(data && data.email_notice && correoLevel === 'error');
@@ -2094,7 +2096,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             return 'Orden guardada';
         }
 
-        function exactoIconoGuardadoOrden(data) {
+        function anluxIconoGuardadoOrden(data) {
             const correoLevel = String(data && data.email_notice_level ? data.email_notice_level : '').trim().toLowerCase();
             const whatsappLevel = String(data && data.whatsapp_notice_level ? data.whatsapp_notice_level : '').trim().toLowerCase();
             const hayErrorCorreo = correoLevel === 'error';
@@ -2104,7 +2106,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             return (hayErrorCorreo || hayErrorWhatsapp || hayWarningCorreo) ? 'error' : 'success';
         }
 
-        function exactoElementoVisibleParaValidar(el) {
+        function anluxElementoVisibleParaValidar(el) {
             if (!el || typeof el.checkValidity !== 'function' || el.disabled) return false;
             const type = String(el.type || '').toLowerCase();
             if (['hidden', 'button', 'submit', 'reset'].includes(type)) return false;
@@ -2113,8 +2115,8 @@ function exactoAplicarConversionNetoASinIva(input) {
             return true;
         }
 
-        function exactoCampoPasaValidacionHtml(el) {
-            if (!exactoElementoVisibleParaValidar(el)) {
+        function anluxCampoPasaValidacionHtml(el) {
+            if (!anluxElementoVisibleParaValidar(el)) {
                 return true;
             }
             const pattern = String(el.getAttribute('pattern') || '').trim();
@@ -2133,24 +2135,24 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        async function exactoValidarFormularioHtml(form) {
+        async function anluxValidarFormularioHtml(form) {
             const invalidos = Array.from(form.elements || []).filter(
-                (el) => !exactoCampoPasaValidacionHtml(el)
+                (el) => !anluxCampoPasaValidacionHtml(el)
             );
             if (invalidos.length === 0) {
                 return true;
             }
 
-            const mensajes = [...new Set(invalidos.map((el) => exactoMensajeValidacionCampo(el)))];
+            const mensajes = [...new Set(invalidos.map((el) => anluxMensajeValidacionCampo(el)))];
             const texto =
                 mensajes.length === 1
                     ? mensajes[0]
                     : 'Corrige los siguientes campos:\n\n' + mensajes.map((m) => `• ${m}`).join('\n');
 
-            await exactoShowAlert(texto, {
+            await anluxShowAlert(texto, {
                 title: 'Faltan datos en la orden',
             });
-            exactoUiFocusField(invalidos[0]);
+            anluxUiFocusField(invalidos[0]);
 
             return false;
         }
@@ -2158,7 +2160,7 @@ function exactoAplicarConversionNetoASinIva(input) {
         /**
          * Datos del catálogo: primero el arreglo global; si está vacío o no coincide, el option (data-*) del HTML.
          */
-        function exactoServicioParaSelect(selectEl) {
+        function anluxServicioParaSelect(selectEl) {
             if (!selectEl) {
                 return null;
             }
@@ -2167,7 +2169,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 return null;
             }
 
-            const fromWin = exactoGetServiciosSersop().find(
+            const fromWin = anluxGetServiciosSersop().find(
                 (servicio) => String(servicio.clave || '').trim().toUpperCase() === clave.toUpperCase()
             );
             if (fromWin) {
@@ -2199,7 +2201,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             };
         }
 
-        function exactoEscapeHtml(valor) {
+        function anluxEscapeHtml(valor) {
             return String(valor == null ? '' : valor)
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
@@ -2208,8 +2210,8 @@ function exactoAplicarConversionNetoASinIva(input) {
                 .replace(/'/g, '&#039;');
         }
 
-        function exactoOpcionesServiciosSersop() {
-            const list = exactoGetServiciosSersop();
+        function anluxOpcionesServiciosSersop() {
+            const list = anluxGetServiciosSersop();
             if (list.length > 0) {
                 return list.map((servicio) => {
                     const clave = String(servicio.clave || '');
@@ -2217,7 +2219,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                     const precio = Number.parseFloat(servicio.precio || 0).toFixed(2);
                     const editable = servicio.editable ? '1' : '0';
                     const label = `${clave} - ${descripcion} ($${precio})`;
-                    return `<option value="${exactoEscapeHtml(clave)}" data-descripcion="${exactoEscapeHtml(descripcion)}" data-precio="${exactoEscapeHtml(precio)}" data-editable="${editable}">${exactoEscapeHtml(label)}</option>`;
+                    return `<option value="${anluxEscapeHtml(clave)}" data-descripcion="${anluxEscapeHtml(descripcion)}" data-precio="${anluxEscapeHtml(precio)}" data-editable="${editable}">${anluxEscapeHtml(label)}</option>`;
                 }).join('');
             }
 
@@ -2226,16 +2228,16 @@ function exactoAplicarConversionNetoASinIva(input) {
             return Array.from(ref.options)
                 .filter((opt) => String(opt.value || '').trim() !== '')
                 .map((opt) => {
-                    const val = exactoEscapeHtml(opt.value || '');
-                    const desc = exactoEscapeHtml(opt.dataset.descripcion || '');
-                    const precio = exactoEscapeHtml(opt.dataset.precio || '');
+                    const val = anluxEscapeHtml(opt.value || '');
+                    const desc = anluxEscapeHtml(opt.dataset.descripcion || '');
+                    const precio = anluxEscapeHtml(opt.dataset.precio || '');
                     const editable = opt.dataset.editable === '1' ? '1' : '0';
                     return `<option value="${val}" data-descripcion="${desc}" data-precio="${precio}" data-editable="${editable}">${val}</option>`;
                 })
                 .join('');
         }
 
-        function exactoAsegurarOpcionClaveGuardada(select, clave) {
+        function anluxAsegurarOpcionClaveGuardada(select, clave) {
             const claveTrim = String(clave || '').trim();
             if (!select || claveTrim === '') return;
             const existe = Array.from(select.options).some((option) => option.value === claveTrim);
@@ -2247,33 +2249,33 @@ function exactoAplicarConversionNetoASinIva(input) {
             select.appendChild(option);
         }
 
-        function exactoCamposTrabajo(fila) {
+        function anluxCamposTrabajo(fila) {
             if (!fila) return {};
             return {
                 clave: fila.querySelector('select[name*="[clave]"]'),
                 descripcion: fila.querySelector('input[name*="[descripcion]"]'),
                 importe: fila.querySelector('input[name*="[importe]"]'),
-                ticket: exactoCampoTicket(fila),
+                ticket: anluxCampoTicket(fila),
             };
         }
 
-        function exactoTrabajoTieneClave(fila) {
-            const campos = exactoCamposTrabajo(fila);
+        function anluxTrabajoTieneClave(fila) {
+            const campos = anluxCamposTrabajo(fila);
             return Boolean(campos.clave && String(campos.clave.value || '').trim() !== '');
         }
 
-        function exactoActualizarTicketTrabajoFila(fila) {
-            const campos = exactoCamposTrabajo(fila);
+        function anluxActualizarTicketTrabajoFila(fila) {
+            const campos = anluxCamposTrabajo(fila);
             if (!campos.ticket) return;
             // Ticket/factura opcional y siempre editable.
-            exactoSetCampoTicketFactura(campos.ticket, true);
+            anluxSetCampoTicketFactura(campos.ticket, true);
         }
 
-        function exactoActualizarTicketsTrabajos() {
-            document.querySelectorAll('#trabajosTableBody .trabajo-row').forEach(exactoActualizarTicketTrabajoFila);
+        function anluxActualizarTicketsTrabajos() {
+            document.querySelectorAll('#trabajosTableBody .trabajo-row').forEach(anluxActualizarTicketTrabajoFila);
         }
 
-        function exactoSetReadOnlyServicio(input, bloqueado) {
+        function anluxSetReadOnlyServicio(input, bloqueado) {
             if (!input) return;
             input.readOnly = Boolean(bloqueado);
             if (bloqueado) {
@@ -2292,7 +2294,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             input.classList.toggle('cursor-not-allowed', Boolean(bloqueado));
         }
 
-        function exactoServicioTrabajoEsEditable(servicio, claveSelect) {
+        function anluxServicioTrabajoEsEditable(servicio, claveSelect) {
             if (servicio && servicio.editable) {
                 return true;
             }
@@ -2302,14 +2304,14 @@ function exactoAplicarConversionNetoASinIva(input) {
             return clave === 'SERSOPSA';
         }
 
-        function exactoAplicarBloqueoCamposTrabajo(campos, editable) {
+        function anluxAplicarBloqueoCamposTrabajo(campos, editable) {
             if (!campos) return;
             // Descripción y precio: editables solo en SERVICIO EXTRA; resto del catálogo bloqueado.
-            exactoSetReadOnlyServicio(campos.descripcion, !editable);
-            exactoSetReadOnlyServicio(campos.importe, !editable);
+            anluxSetReadOnlyServicio(campos.descripcion, !editable);
+            anluxSetReadOnlyServicio(campos.importe, !editable);
         }
 
-        function exactoConfigurarValidacionServicio(campos, editable) {
+        function anluxConfigurarValidacionServicio(campos, editable) {
             if (!campos.descripcion || !campos.importe) return;
             campos.descripcion.required = Boolean(editable);
             campos.importe.required = Boolean(editable);
@@ -2320,12 +2322,12 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoPrevisualizarServicioTrabajo(fila) {
-            const campos = exactoCamposTrabajo(fila);
+        function anluxPrevisualizarServicioTrabajo(fila) {
+            const campos = anluxCamposTrabajo(fila);
             if (!campos.clave || !campos.descripcion || !campos.importe) return;
-            const servicio = exactoServicioParaSelect(campos.clave);
-            const editable = exactoServicioTrabajoEsEditable(servicio, campos.clave);
-            exactoAplicarBloqueoCamposTrabajo(campos, editable);
+            const servicio = anluxServicioParaSelect(campos.clave);
+            const editable = anluxServicioTrabajoEsEditable(servicio, campos.clave);
+            anluxAplicarBloqueoCamposTrabajo(campos, editable);
             if (!servicio) return;
             if (editable) {
                 campos.descripcion.placeholder = 'Descripción del servicio extra';
@@ -2336,18 +2338,18 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoPrevisualizarDesdeOption(optionEl) {
+        function anluxPrevisualizarDesdeOption(optionEl) {
             if (!optionEl || optionEl.tagName !== 'OPTION') return;
             const selectEl = optionEl.parentElement;
             if (!selectEl || selectEl.tagName !== 'SELECT' || !selectEl.matches('select[name*="[clave]"]')) return;
             const fila = selectEl.closest('.trabajo-row');
             if (!fila) return;
-            const campos = exactoCamposTrabajo(fila);
+            const campos = anluxCamposTrabajo(fila);
             if (!campos.descripcion || !campos.importe) return;
 
             const valor = String(optionEl.value || '').trim();
             const editable = optionEl.dataset.editable === '1' || valor.toUpperCase() === 'SERSOPSA';
-            exactoAplicarBloqueoCamposTrabajo(campos, editable);
+            anluxAplicarBloqueoCamposTrabajo(campos, editable);
 
             if (valor === '') {
                 campos.descripcion.placeholder = 'Descripción del trabajo';
@@ -2363,26 +2365,26 @@ function exactoAplicarConversionNetoASinIva(input) {
             campos.importe.placeholder = String(optionEl.dataset.precio || '0.00');
         }
 
-        function exactoAplicarServicioTrabajo(fila, autocompletar, completarSiVacio) {
-            const campos = exactoCamposTrabajo(fila);
+        function anluxAplicarServicioTrabajo(fila, autocompletar, completarSiVacio) {
+            const campos = anluxCamposTrabajo(fila);
             if (!campos.clave || !campos.descripcion || !campos.importe) return;
 
-            const servicio = exactoServicioParaSelect(campos.clave);
+            const servicio = anluxServicioParaSelect(campos.clave);
             if (!servicio) {
                 if (autocompletar) {
                     campos.descripcion.value = '';
                     campos.importe.value = '';
                 }
-                exactoAplicarBloqueoCamposTrabajo(campos, false);
-                exactoConfigurarValidacionServicio(campos, false);
+                anluxAplicarBloqueoCamposTrabajo(campos, false);
+                anluxConfigurarValidacionServicio(campos, false);
                 campos.descripcion.placeholder = 'Descripción del trabajo';
                 campos.importe.placeholder = 'PRECIO SIN IVA';
-                exactoActualizarTicketTrabajoFila(fila);
+                anluxActualizarTicketTrabajoFila(fila);
                 calcularSubtotalTrabajos();
                 return;
             }
 
-            const editable = exactoServicioTrabajoEsEditable(servicio, campos.clave);
+            const editable = anluxServicioTrabajoEsEditable(servicio, campos.clave);
             if (autocompletar) {
                 if (editable) {
                     campos.descripcion.value = '';
@@ -2400,54 +2402,54 @@ function exactoAplicarConversionNetoASinIva(input) {
                 }
             }
 
-            exactoAplicarBloqueoCamposTrabajo(campos, editable);
-            exactoConfigurarValidacionServicio(campos, editable);
-            exactoPrevisualizarServicioTrabajo(fila);
-            exactoActualizarTicketTrabajoFila(fila);
+            anluxAplicarBloqueoCamposTrabajo(campos, editable);
+            anluxConfigurarValidacionServicio(campos, editable);
+            anluxPrevisualizarServicioTrabajo(fila);
+            anluxActualizarTicketTrabajoFila(fila);
             calcularSubtotalTrabajos();
         }
 
-        async function exactoValidarServiciosSersop(form) {
+        async function anluxValidarServiciosSersop(form) {
             const filas = form.querySelectorAll('#trabajosTableBody .trabajo-row');
             for (const fila of filas) {
-                const campos = exactoCamposTrabajo(fila);
+                const campos = anluxCamposTrabajo(fila);
                 if (!campos.clave || !campos.descripcion || !campos.importe) continue;
                 const claveUp = String(campos.clave.value || '').trim().toUpperCase();
-                const servicio = exactoServicioParaSelect(campos.clave);
+                const servicio = anluxServicioParaSelect(campos.clave);
                 if (!servicio && claveUp !== 'SERSOPSA') {
                     continue;
                 }
 
-                const editable = exactoServicioTrabajoEsEditable(servicio, campos.clave);
-                exactoAplicarServicioTrabajo(fila, false, !editable);
-                exactoAplicarBloqueoCamposTrabajo(campos, editable);
+                const editable = anluxServicioTrabajoEsEditable(servicio, campos.clave);
+                anluxAplicarServicioTrabajo(fila, false, !editable);
+                anluxAplicarBloqueoCamposTrabajo(campos, editable);
 
                 if (!editable) continue;
 
                 const descripcion = String(campos.descripcion.value || '').trim();
                 const precio = Number.parseFloat(campos.importe.value || '0');
-                const filaNum = exactoNumeroFilaTabla(fila);
+                const filaNum = anluxNumeroFilaTabla(fila);
                 if (descripcion === '') {
-                    await exactoShowAlert(
+                    await anluxShowAlert(
                         `Trabajo (fila ${filaNum}, SERVICIO EXTRA): captura la descripción.`,
                         { title: 'Faltan datos en la orden' }
                     );
-                    exactoUiFocusField(campos.descripcion);
+                    anluxUiFocusField(campos.descripcion);
                     return false;
                 }
                 if (String(campos.importe.value || '').trim() === '' || !Number.isFinite(precio)) {
-                    await exactoShowAlert(
+                    await anluxShowAlert(
                         `Trabajo (fila ${filaNum}, SERVICIO EXTRA): captura un precio sin IVA válido.`,
                         { title: 'Faltan datos en la orden' }
                     );
-                    exactoUiFocusField(campos.importe);
+                    anluxUiFocusField(campos.importe);
                     return false;
                 }
             }
             return true;
         }
 
-        function exactoCamposEquipo(fila) {
+        function anluxCamposEquipo(fila) {
             return {
                 marca: fila.querySelector('[name*="[marca]"]'),
                 modelo: fila.querySelector('[name*="[modelo]"]'),
@@ -2457,7 +2459,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             };
         }
 
-        async function exactoValidarEquipos() {
+        async function anluxValidarEquipos() {
             const filas = Array.from(document.querySelectorAll('#equiposTableBody .equipo-row'));
             const requeridos = [
                 ['marca', 'la marca'],
@@ -2469,7 +2471,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             let filasCompletas = 0;
 
             for (const fila of filas) {
-                const campos = exactoCamposEquipo(fila);
+                const campos = anluxCamposEquipo(fila);
                 const valores = {};
                 let conAlgo = false;
                 let faltantes = 0;
@@ -2487,14 +2489,14 @@ function exactoAplicarConversionNetoASinIva(input) {
                     continue;
                 }
 
-                const filaNum = exactoNumeroFilaTabla(fila);
+                const filaNum = anluxNumeroFilaTabla(fila);
                 for (const [clave, etiqueta] of requeridos) {
                     if (valores[clave] === '') {
-                        await exactoShowAlert(
+                        await anluxShowAlert(
                             `Equipo (fila ${filaNum}): falta ${etiqueta}. Completa todos los campos de la fila.`,
                             { title: 'Faltan datos en la orden' }
                         );
-                        exactoUiFocusField(campos[clave]);
+                        anluxUiFocusField(campos[clave]);
                         return false;
                     }
                 }
@@ -2506,13 +2508,13 @@ function exactoAplicarConversionNetoASinIva(input) {
 
             if (filasCompletas === 0) {
                 const primera = filas[0];
-                const campos = primera ? exactoCamposEquipo(primera) : null;
-                await exactoShowAlert(
+                const campos = primera ? anluxCamposEquipo(primera) : null;
+                await anluxShowAlert(
                     'Captura al menos un equipo con todos sus campos: marca, modelo, número de serie, descripción de falla y tipo de servicio.',
                     { title: 'Faltan datos en la orden' }
                 );
                 if (campos && campos.marca) {
-                    exactoUiFocusField(campos.marca);
+                    anluxUiFocusField(campos.marca);
                 }
                 return false;
             }
@@ -2524,7 +2526,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             const tbody = document.getElementById('equiposTableBody');
             let rows = tbody.querySelectorAll('.equipo-row');
             // Durante la recuperación de un borrador no eliminar filas: solo completar hasta n.
-            if (!exactoBorradorRestaurando) {
+            if (!anluxBorradorRestaurando) {
                 while (rows.length > n) {
                     const last = rows[rows.length - 1];
                     if (rows.length <= 1) break;
@@ -2543,7 +2545,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             const tbody = document.getElementById('trabajosTableBody');
             if (!tbody) return;
             let rows = tbody.querySelectorAll('.trabajo-row');
-            if (!exactoBorradorRestaurando) {
+            if (!anluxBorradorRestaurando) {
                 while (rows.length > n) {
                     if (rows.length <= 1) break;
                     eliminarTrabajo(rows[rows.length - 1]);
@@ -2561,7 +2563,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             const tbody = document.getElementById('materialesTableBody');
             if (!tbody) return;
             let rows = tbody.querySelectorAll('.material-row');
-            if (!exactoBorradorRestaurando) {
+            if (!anluxBorradorRestaurando) {
                 while (rows.length > n) {
                     if (rows.length <= 1) break;
                     eliminarMaterial(rows[rows.length - 1]);
@@ -2578,7 +2580,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             const tbody = document.getElementById('anticiposTableBody');
             if (!tbody) return;
             let rows = tbody.querySelectorAll('.anticipo-row');
-            if (!exactoBorradorRestaurando) {
+            if (!anluxBorradorRestaurando) {
                 while (rows.length > n) {
                     if (rows.length <= 1) break;
                     eliminarAnticipo(rows[rows.length - 1]);
@@ -2629,10 +2631,10 @@ function exactoAplicarConversionNetoASinIva(input) {
             document.querySelector('[name="fechaEntrada"]').value = toDatetimeLocalValue(cab.fecha_entrada);
             const estatusEl = document.getElementById('inputEstatus');
             if (estatusEl) {
-                estatusEl.value = exactoNormalizarEstatusOrden(cab.estatus);
-                exactoAplicarColorEstatus();
+                estatusEl.value = anluxNormalizarEstatusOrden(cab.estatus);
+                anluxAplicarColorEstatus();
             }
-            exactoSincronizarFirmasEntregaPorEstatus();
+            anluxSincronizarFirmasEntregaPorEstatus();
             actualizarColumnaAccionesEquipos();
             const ct = document.getElementById('clienteTexto');
             const ct2 = document.getElementById('clienteTexto2');
@@ -2659,7 +2661,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 if (inpModelo) inpModelo.value = eq.modelo || '';
                 if (inpSerie) inpSerie.value = eq.serie || '';
                 if (inpDesc) inpDesc.value = eq.descripcion_falla || '';
-                exactoSeleccionarTipoServicio(selTipo, eq.tipo_servicio || '');
+                anluxSeleccionarTipoServicio(selTipo, eq.tipo_servicio || '');
                 const dbId = Number(eq.id_equipo) || 0;
                 row.dataset.idEquipoDb = dbId > 0 ? String(dbId) : '';
                 row.dataset.acciones = String(Number(eq.acciones) || 0);
@@ -2667,7 +2669,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 row.dataset.entregaRecibidoCliente = String(eq.entrega_recibido_cliente || '');
                 row.dataset.entregaFecha = String(eq.entrega_fecha || '');
                 row.dataset.entregaTecnico = String(eq.entrega_tecnico || '');
-                exactoPintarEstatusEquipoFila(row, Number(eq.acciones) || 0);
+                anluxPintarEstatusEquipoFila(row, Number(eq.acciones) || 0);
                 const btnEntrega = row.querySelector('.btn-entrega-equipo-row');
                 if (btnEntrega) {
                     btnEntrega.dataset.idEquipo = String(i + 1);
@@ -2690,16 +2692,16 @@ function exactoAplicarConversionNetoASinIva(input) {
                 const imp = row.querySelector(`[name="trabajos[${i}][importe]"]`);
                 const claveGuardada = tr.clave || (equipos[i] && equipos[i].clave) || '';
                 if (clave) {
-                    exactoAsegurarOpcionClaveGuardada(clave, claveGuardada);
+                    anluxAsegurarOpcionClaveGuardada(clave, claveGuardada);
                     clave.value = claveGuardada;
                 }
                 if (d) d.value = tr.descripcion || '';
                 if (imp) imp.value = tr.importe != null ? String(tr.importe) : '';
-                const ticket = exactoCampoTicket(row);
-                exactoAsignarTicketFactura(ticket, tr.ticket || '');
-                exactoAplicarServicioTrabajo(row, false, true);
+                const ticket = anluxCampoTicket(row);
+                anluxAsignarTicketFactura(ticket, tr.ticket || '');
+                anluxAplicarServicioTrabajo(row, false, true);
             });
-            exactoActualizarSelectsEquipo();
+            anluxActualizarSelectsEquipo();
             trRows.forEach((row, i) => {
                 const eqSel = row.querySelector(`[name="trabajos[${i}][id_equipo]"]`);
                 const eqVal = trabajos[i] ? Number(trabajos[i].id_equipo) || 0 : 0;
@@ -2720,19 +2722,19 @@ function exactoAplicarConversionNetoASinIva(input) {
                 if (q('descripcion')) q('descripcion').value = m.descripcion || '';
                 if (q('anticipo')) q('anticipo').value = m.anticipo != null ? String(m.anticipo) : '';
                 if (q('precio')) q('precio').value = m.precio_unitario != null ? String(m.precio_unitario) : '';
-                exactoAsignarTicketFactura(q('ticket'), m.ticket || '');
+                anluxAsignarTicketFactura(q('ticket'), m.ticket || '');
                 calcularImporte(row);
                 if (sp && (!sp.textContent || sp.textContent === '0.00') && m.importe != null) {
                     sp.textContent = parseFloat(m.importe).toFixed(2);
                 }
             });
-            exactoActualizarSelectsEquipo();
+            anluxActualizarSelectsEquipo();
             matRows.forEach((row, i) => {
                 const eqSel = row.querySelector(`[name="materiales[${i}][id_equipo]"]`);
                 const eqVal = mats[i] ? Number(mats[i].id_equipo) || 0 : 0;
                 if (eqSel && eqVal > 0) eqSel.value = String(eqVal);
             });
-            exactoActualizarTicketsMateriales();
+            anluxActualizarTicketsMateriales();
 
             const anticipos = data.anticipos || [];
             ensureAnticipoRowCount(Math.max(1, anticipos.length));
@@ -2748,7 +2750,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 if (folio) folio.value = String(anticipo.folio || '').trim();
                 if (descripcion) descripcion.value = String(anticipo.descripcion || '').trim();
                 if (ticketValor.toUpperCase() === 'PAGO SALDO PENDIENTE' && ticketCell) {
-                    ticketCell.innerHTML = exactoAnticipoTicketSaldoPagoHtml(`anticipos[${i}][ticket]`, ticketValor);
+                    ticketCell.innerHTML = anluxAnticipoTicketSaldoPagoHtml(`anticipos[${i}][ticket]`, ticketValor);
                     row.dataset.saldoPago = '1';
                     if (folio) {
                         folio.readOnly = true;
@@ -2760,21 +2762,21 @@ function exactoAplicarConversionNetoASinIva(input) {
                     }
                 } else {
                     const ticket = row.querySelector(`[name="anticipos[${i}][ticket]"]`);
-                    exactoAsignarTicketFactura(ticket, ticketValor);
+                    anluxAsignarTicketFactura(ticket, ticketValor);
                 }
                 if (monto) {
                     const montoValor = parseFloat(anticipo.monto || '0') || 0;
                     monto.value = Math.abs(montoValor) < 0.009 ? '' : String(anticipo.monto);
                 }
             });
-            exactoActualizarSelectsEquipo();
+            anluxActualizarSelectsEquipo();
             anticipoRows.forEach((row, i) => {
                 const eqSel = row.querySelector(`[name="anticipos[${i}][id_equipo]"]`);
                 const eqVal = anticipos[i] ? Number(anticipos[i].id_equipo) || 0 : 0;
                 if (eqSel && eqVal > 0) eqSel.value = String(eqVal);
             });
-            exactoSincronizarTicketsAnticipos();
-            exactoActualizarTotalesAnticipos();
+            anluxSincronizarTicketsAnticipos();
+            anluxActualizarTotalesAnticipos();
 
             const abonoSaldoAplicado = document.getElementById('abonoSaldoAplicado');
             const abonoSaldoValor = parseFloat(data.abono_saldo || '0') || 0;
@@ -2824,17 +2826,17 @@ function exactoAplicarConversionNetoASinIva(input) {
                 calcularSubtotalTrabajos();
                 document.querySelectorAll('#materialesTableBody .material-row').forEach((fila) => calcularImporte(fila));
                 calcularSubtotalMateriales();
-                exactoActualizarTotalesAnticipos();
+                anluxActualizarTotalesAnticipos();
                 // Orden ya liquidada en BD: no repreguntar "¿Cliente pagó?" si no cambian pagos.
                 const confirmadoEl = document.getElementById('saldoPagadoConfirmado');
                 const saldoEl = document.getElementById('saldoPendiente');
                 const saldo = parseFloat(saldoEl ? saldoEl.textContent : '0') || 0;
-                const pagos = calcularTotalAnticipos() + exactoTotalAbonoSaldo();
+                const pagos = calcularTotalAnticipos() + anluxTotalAbonoSaldo();
                 if (confirmadoEl && Math.abs(saldo) <= 0.009 && pagos > 0.009) {
                     confirmadoEl.value = '1';
                 }
             };
-            if (window.EXACTO_ORDEN_FIRMAS_DESHABILITADAS) {
+            if (window.ANLUX_ORDEN_FIRMAS_DESHABILITADAS) {
                 return Promise.resolve().then(finCalculos);
             }
             return Promise.all([
@@ -2863,7 +2865,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             return false;
         }
 
-        function exactoPrepararCanvasFirmaVisible(canvasId) {
+        function anluxPrepararCanvasFirmaVisible(canvasId) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
             if (!canvasContexts[canvasId]) {
@@ -2889,12 +2891,12 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoEstatusEsEntregado(valor) {
-            return exactoNormalizarEstatusOrden(valor) === 'Entregado';
+        function anluxEstatusEsEntregado(valor) {
+            return anluxNormalizarEstatusOrden(valor) === 'Entregado';
         }
 
         /** Firmas de entrega siempre justo encima del botón Guardar. */
-        function exactoRestaurarFirmasEntregaAlFinal() {
+        function anluxRestaurarFirmasEntregaAlFinal() {
             const seccion = document.getElementById('ordenSeccionFirmasEntrega');
             const btnGuardar = document.getElementById('btnGuardarOrden');
             const form = document.getElementById('ordenForm');
@@ -2911,16 +2913,16 @@ function exactoAplicarConversionNetoASinIva(input) {
             seccion.classList.remove('bg-transparent', 'p-0', 'pl-0');
         }
 
-        function exactoSincronizarFirmasEntregaPorEstatus() {
+        function anluxSincronizarFirmasEntregaPorEstatus() {
             const estatusEl = document.getElementById('inputEstatus');
             const seccionFirmas = document.getElementById('ordenSeccionFirmasEntrega');
             const seccionIniciales = document.getElementById('ordenSeccionFirmasIniciales');
             const idOrdenEl = document.getElementById('id_orden_c');
             if (!estatusEl || !seccionFirmas) return;
 
-            exactoRestaurarFirmasEntregaAlFinal();
+            anluxRestaurarFirmasEntregaAlFinal();
 
-            const mostrarFirmasEntrega = exactoEstatusEsEntregado(estatusEl.value);
+            const mostrarFirmasEntrega = anluxEstatusEsEntregado(estatusEl.value);
             const esEdicion = idOrdenEl && String(idOrdenEl.value || '').trim() !== '';
 
             seccionFirmas.classList.toggle('hidden', !mostrarFirmasEntrega);
@@ -2928,21 +2930,21 @@ function exactoAplicarConversionNetoASinIva(input) {
             seccionFirmas.style.display = mostrarFirmasEntrega ? 'block' : 'none';
 
             if (seccionIniciales) {
-                const ocultarIniciales = esEdicion || mostrarFirmasEntrega || !!window.EXACTO_ORDEN_MODO_COMPLETAR;
+                const ocultarIniciales = esEdicion || mostrarFirmasEntrega || !!window.ANLUX_ORDEN_MODO_COMPLETAR;
                 seccionIniciales.classList.toggle('hidden', ocultarIniciales);
                 seccionIniciales.classList.toggle('orden-firmas-skip', ocultarIniciales);
                 seccionIniciales.style.display = ocultarIniciales ? 'none' : 'block';
             }
 
-            if (typeof window.exactoSyncFirmasEntregaInline === 'function') {
-                window.exactoSyncFirmasEntregaInline();
+            if (typeof window.anluxSyncFirmasEntregaInline === 'function') {
+                window.anluxSyncFirmasEntregaInline();
             }
 
             if (mostrarFirmasEntrega) {
                 requestAnimationFrame(function () {
                     requestAnimationFrame(function () {
-                        exactoPrepararCanvasFirmaVisible('firmaCliente');
-                        exactoPrepararCanvasFirmaVisible('firmaTecnico');
+                        anluxPrepararCanvasFirmaVisible('firmaCliente');
+                        anluxPrepararCanvasFirmaVisible('firmaTecnico');
                         try {
                             seccionFirmas.scrollIntoView({ behavior: 'smooth', block: 'end' });
                         } catch (e) {
@@ -2953,15 +2955,15 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        window.exactoSincronizarFirmasEntregaPorEstatus = exactoSincronizarFirmasEntregaPorEstatus;
+        window.anluxSincronizarFirmasEntregaPorEstatus = anluxSincronizarFirmasEntregaPorEstatus;
 
         // Establecer fecha de entrada automáticamente (alta) o cargar orden (edición)
         window.addEventListener('load', function() {
             const ordenFormEl = document.getElementById('ordenForm');
             if (ordenFormEl) {
-                exactoConfigurarMensajesValidacionOrden(ordenFormEl);
-                exactoConfigurarAvisoSalidaOrdenForm(ordenFormEl);
-                exactoConfigurarMayusculasOrdenForm(ordenFormEl);
+                anluxConfigurarMensajesValidacionOrden(ordenFormEl);
+                anluxConfigurarAvisoSalidaOrdenForm(ordenFormEl);
+                anluxConfigurarMayusculasOrdenForm(ordenFormEl);
                 // Evita que ↑/↓ del teclado incrementen/decrementen type="number"
                 ordenFormEl.addEventListener('keydown', function (e) {
                     const t = e.target;
@@ -2980,7 +2982,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 }
             }
 
-            if (!window.EXACTO_ORDEN_FIRMAS_DESHABILITADAS) {
+            if (!window.ANLUX_ORDEN_FIRMAS_DESHABILITADAS) {
                 inicializarFirma('firmaClienteInicial');
                 inicializarFirma('firmaTecnicoInicial');
                 inicializarFirma('firmaCliente');
@@ -2993,9 +2995,9 @@ function exactoAplicarConversionNetoASinIva(input) {
                 inicializarFirma('firmaTecnicoSalidaTemp');
             }
 
-            exactoBindModalSalidaTemporalUi(document.getElementById('modalSalidaTemporal'));
+            anluxBindModalSalidaTemporalUi(document.getElementById('modalSalidaTemporal'));
             document.getElementById('btnRegresoTemporal')?.addEventListener('click', () => {
-                void exactoRegistrarRegresoTemporal();
+                void anluxRegistrarRegresoTemporal();
             });
 
             const jsonEl = document.getElementById('ordenExistenteJson');
@@ -3006,7 +3008,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                     promesaCargaInicial = Promise.resolve(aplicarOrdenExistente(data));
                 } catch (e) {
                     console.error(e);
-                    void exactoShowAlert('No se pudo cargar la orden.', { title: 'Error al cargar' });
+                    void anluxShowAlert('No se pudo cargar la orden.', { title: 'Error al cargar' });
                 }
             } else {
                 const ahora = new Date();
@@ -3016,45 +3018,45 @@ function exactoAplicarConversionNetoASinIva(input) {
                 document.querySelectorAll('#trabajosTableBody .trabajo-row').forEach((fila) => {
                     const sel = fila.querySelector('select[name*="[clave]"]');
                     if (sel && String(sel.value || '').trim() !== '') {
-                        exactoAplicarServicioTrabajo(fila, true);
+                        anluxAplicarServicioTrabajo(fila, true);
                     } else {
-                        exactoAplicarServicioTrabajo(fila, false);
+                        anluxAplicarServicioTrabajo(fila, false);
                     }
                 });
             }
-            exactoSincronizarFirmasEntregaPorEstatus();
-            exactoAplicarColorEstatus();
-            exactoRepararSelectsTipoServicio();
-            exactoActualizarSelectsEquipo();
+            anluxSincronizarFirmasEntregaPorEstatus();
+            anluxAplicarColorEstatus();
+            anluxRepararSelectsTipoServicio();
+            anluxActualizarSelectsEquipo();
             promesaCargaInicial.finally(() => {
-                exactoRestaurarFirmasEntregaAlFinal();
-                exactoSincronizarFirmasEntregaPorEstatus();
-                exactoRepararSelectsTipoServicio();
-                exactoActualizarSelectsEquipo();
-                setTimeout(exactoReiniciarEstadoSucioOrdenForm, 50);
-                if (window.EXACTO_ORDEN_SOLO_LECTURA) {
-                    exactoAplicarSoloLecturaEntregado();
+                anluxRestaurarFirmasEntregaAlFinal();
+                anluxSincronizarFirmasEntregaPorEstatus();
+                anluxRepararSelectsTipoServicio();
+                anluxActualizarSelectsEquipo();
+                setTimeout(anluxReiniciarEstadoSucioOrdenForm, 50);
+                if (window.ANLUX_ORDEN_SOLO_LECTURA) {
+                    anluxAplicarSoloLecturaEntregado();
                     return;
                 }
-                exactoIniciarLockEdicionOrden();
-                exactoIniciarAutosaveBorradorOrden();
+                anluxIniciarLockEdicionOrden();
+                anluxIniciarAutosaveBorradorOrden();
                 // Ofrecer recuperación después de pintar la orden base.
                 setTimeout(() => {
-                    void exactoOfrecerRestaurarBorradorSiHay();
+                    void anluxOfrecerRestaurarBorradorSiHay();
                 }, 120);
             });
         });
 
-        const exactoSelectorEstatus = document.getElementById('inputEstatus');
-        if (exactoSelectorEstatus) {
+        const anluxSelectorEstatus = document.getElementById('inputEstatus');
+        if (anluxSelectorEstatus) {
             const onEstatusOrdenChange = function () {
-                exactoSincronizarFirmasEntregaPorEstatus();
-                exactoAplicarColorEstatus();
+                anluxSincronizarFirmasEntregaPorEstatus();
+                anluxAplicarColorEstatus();
                 actualizarColumnaAccionesEquipos();
             };
-            exactoSelectorEstatus.addEventListener('change', onEstatusOrdenChange);
-            exactoSelectorEstatus.addEventListener('input', onEstatusOrdenChange);
-            exactoAplicarColorEstatus();
+            anluxSelectorEstatus.addEventListener('change', onEstatusOrdenChange);
+            anluxSelectorEstatus.addEventListener('input', onEstatusOrdenChange);
+            anluxAplicarColorEstatus();
             actualizarColumnaAccionesEquipos();
         }
 
@@ -3066,27 +3068,27 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
             const marcarSucioSiOrdenForm = () => {
                 if (t.closest('#ordenForm')) {
-                    exactoMarcarOrdenFormSucio();
+                    anluxMarcarOrdenFormSucio();
                 }
             };
             if (t.closest('.btn-agregar-equipo')) {
                 e.preventDefault();
                 agregarEquipo();
                 actualizarNumerosEquipos();
-                exactoActualizarSelectsEquipo();
+                anluxActualizarSelectsEquipo();
                 marcarSucioSiOrdenForm();
             }
             if (t.closest('.btn-eliminar-equipo')) {
                 e.preventDefault();
                 eliminarEquipo(t.closest('.equipo-row'));
-                exactoActualizarSelectsEquipo();
+                anluxActualizarSelectsEquipo();
                 marcarSucioSiOrdenForm();
             }
             if (t.closest('.btn-entrega-equipo-row')) {
                 e.preventDefault();
                 const btn = t.closest('.btn-entrega-equipo-row');
                 // Pasar el botón real para que la función lea la fila (marca/modelo) y resalte la fila
-                window.exactoBtnEntregaEquipo.call(btn);
+                window.anluxBtnEntregaEquipo.call(btn);
                 marcarSucioSiOrdenForm();
             }
             if (t.closest('.btn-agregar-obs')) {
@@ -3139,22 +3141,22 @@ function exactoAplicarConversionNetoASinIva(input) {
                         modalEntrega.style.display = 'none';
                     }
                 }
-                exactoAbrirModalLiquidarSaldo();
+                anluxAbrirModalLiquidarSaldo();
                 return;
             }
             if (t.closest('#btnCancelarLiquidarSaldo')) {
                 e.preventDefault();
-                exactoCerrarModalLiquidarSaldo();
+                anluxCerrarModalLiquidarSaldo();
                 return;
             }
             if (t.closest('#btnConfirmarLiquidarSaldo')) {
                 e.preventDefault();
-                void exactoConfirmarLiquidarSaldo();
+                void anluxConfirmarLiquidarSaldo();
                 return;
             }
         });
 
-        function exactoInfoEstatusEquipo(acciones) {
+        function anluxInfoEstatusEquipo(acciones) {
             const a = Math.max(0, Number(acciones) || 0);
             if (a >= 2) {
                 return { text: 'Entregado', cls: 'bg-emerald-600 text-white', style: 'background-color:#059669;color:#ffffff;', acciones: 2 };
@@ -3165,17 +3167,17 @@ function exactoAplicarConversionNetoASinIva(input) {
             return { text: 'Pendiente', cls: 'bg-slate-400 text-white', style: 'background-color:#64748b;color:#ffffff;', acciones: 0 };
         }
 
-        function exactoHtmlCeldaEstatusEquipo(index, acciones) {
-            const info = exactoInfoEstatusEquipo(acciones);
+        function anluxHtmlCeldaEstatusEquipo(index, acciones) {
+            const info = anluxInfoEstatusEquipo(acciones);
             return `<td class="p-3 text-center border equipo-estatus-cell">
                 <input type="hidden" name="equipos[${index}][acciones]" class="equipo-acciones-input" value="${info.acciones}">
                 <span class="equipo-estatus-badge inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${info.cls}" style="${info.style}">${info.text}</span>
             </td>`;
         }
 
-        function exactoPintarEstatusEquipoFila(fila, acciones) {
+        function anluxPintarEstatusEquipoFila(fila, acciones) {
             if (!fila) return;
-            const info = exactoInfoEstatusEquipo(acciones);
+            const info = anluxInfoEstatusEquipo(acciones);
             fila.dataset.acciones = String(info.acciones);
             const hidden = fila.querySelector('.equipo-acciones-input');
             if (hidden) hidden.value = String(info.acciones);
@@ -3197,8 +3199,8 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        window.exactoPintarEstatusEquipoFila = exactoPintarEstatusEquipoFila;
-        window.exactoInfoEstatusEquipo = exactoInfoEstatusEquipo;
+        window.anluxPintarEstatusEquipoFila = anluxPintarEstatusEquipoFila;
+        window.anluxInfoEstatusEquipo = anluxInfoEstatusEquipo;
 
         function agregarEquipo() {
             const tbody = document.getElementById('equiposTableBody');
@@ -3217,7 +3219,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             // ESTATUS + ACCIONES cuando estatus es En proceso/Terminado
             let extraCeldasHtml = '';
             if (mostrarAcciones) {
-                extraCeldasHtml += exactoHtmlCeldaEstatusEquipo(contador - 1, 0);
+                extraCeldasHtml += anluxHtmlCeldaEstatusEquipo(contador - 1, 0);
             }
             extraCeldasHtml += `
                 <td class="p-3 border"></td>
@@ -3240,7 +3242,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 <td class="p-3 border"><input type="text" class="px-2 py-1 w-full rounded border border-blue-300" name="equipos[${contador - 1}][modelo]" placeholder="Modelo o descripción"></td>
                 <td class="p-3 border"><input type="text" class="px-2 py-1 w-full rounded border border-blue-300" name="equipos[${contador - 1}][serie]" placeholder="Serie"></td>
                 <td class="p-3 border"><input type="text" class="px-2 py-1 w-full rounded border border-blue-300" name="equipos[${contador - 1}][descripcionFalla]" placeholder="Descripción de falla"></td>
-                <td class="p-3 border"><select class="px-2 py-1 w-full rounded border border-blue-300" name="equipos[${contador - 1}][tipoServicio]"><option value="">Seleccionar...</option>${exactoBuildTipoServicioOptionsHtml()}</select></td>
+                <td class="p-3 border"><select class="px-2 py-1 w-full rounded border border-blue-300" name="equipos[${contador - 1}][tipoServicio]"><option value="">Seleccionar...</option>${anluxBuildTipoServicioOptionsHtml()}</select></td>
                 ${extraCeldasHtml}
             `;
             tbody.appendChild(fila);
@@ -3252,7 +3254,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 fila.remove();
                 actualizarNumerosEquipos();
             } else {
-                void exactoShowAlert('Debe haber al menos una fila de equipo.', { title: 'Acción no permitida' });
+                void anluxShowAlert('Debe haber al menos una fila de equipo.', { title: 'Acción no permitida' });
             }
         }
 
@@ -3329,7 +3331,7 @@ function exactoAplicarConversionNetoASinIva(input) {
 
                 if (mostrarAcciones && !tieneEstatus) {
                     const wrap = document.createElement('tbody');
-                    wrap.innerHTML = exactoHtmlCeldaEstatusEquipo(index, Number(fila.dataset.acciones) || 0);
+                    wrap.innerHTML = anluxHtmlCeldaEstatusEquipo(index, Number(fila.dataset.acciones) || 0);
                     const tdEst = wrap.firstElementChild;
                     if (tdEst && tdAnadir) {
                         fila.insertBefore(tdEst, tdAnadir);
@@ -3339,7 +3341,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 } else if (!mostrarAcciones && tieneEstatus) {
                     fila.querySelector('.equipo-estatus-cell')?.remove();
                 } else if (mostrarAcciones && tieneEstatus) {
-                    exactoPintarEstatusEquipoFila(fila, Number(fila.dataset.acciones) || 0);
+                    anluxPintarEstatusEquipoFila(fila, Number(fila.dataset.acciones) || 0);
                 }
 
                 if (mostrarAcciones && !tieneAcciones) {
@@ -3354,7 +3356,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                             <i class="fas fa-trash"></i>
                         </button>`;
                     fila.appendChild(tdAcciones);
-                    exactoPintarEstatusEquipoFila(fila, Number(fila.dataset.acciones) || 0);
+                    anluxPintarEstatusEquipoFila(fila, Number(fila.dataset.acciones) || 0);
                 } else if (!mostrarAcciones && tieneAcciones) {
                     fila.querySelector('.btn-eliminar-equipo')?.closest('td')?.remove();
                 }
@@ -3410,7 +3412,7 @@ function exactoAplicarConversionNetoASinIva(input) {
         let firmaScrollLock = 0;
         let firmaPointerActivo = {};
 
-        function exactoFirmaBloquearScroll() {
+        function anluxFirmaBloquearScroll() {
             firmaScrollLock += 1;
             if (firmaScrollLock === 1) {
                 document.documentElement.style.overflow = 'hidden';
@@ -3418,7 +3420,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoFirmaDesbloquearScroll() {
+        function anluxFirmaDesbloquearScroll() {
             firmaScrollLock = Math.max(0, firmaScrollLock - 1);
             if (firmaScrollLock === 0) {
                 document.documentElement.style.overflow = '';
@@ -3426,7 +3428,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoFirmaPuntoCanvas(e, canvas) {
+        function anluxFirmaPuntoCanvas(e, canvas) {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / Math.max(rect.width, 1);
             const scaleY = canvas.height / Math.max(rect.height, 1);
@@ -3462,14 +3464,14 @@ function exactoAplicarConversionNetoASinIva(input) {
 
         function inicializarFirma(canvasId) {
             const canvas = document.getElementById(canvasId);
-            if (!canvas || canvas.dataset.exactoFirmaInicializada === '1') {
+            if (!canvas || canvas.dataset.anluxFirmaInicializada === '1') {
                 return;
             }
             const pad = canvas.parentElement;
             if (pad) {
-                pad.classList.add('exacto-firma-pad');
+                pad.classList.add('anlux-firma-pad');
             }
-            canvas.classList.add('exacto-firma-canvas');
+            canvas.classList.add('anlux-firma-canvas');
 
             const rect = pad ? pad.getBoundingClientRect() : canvas.getBoundingClientRect();
             canvas.width = Math.max(1, Math.round(rect.width));
@@ -3483,7 +3485,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             firmaPointerActivo[canvasId] = false;
 
             const finalizarTrazo = () => {
-                exactoFirmaDesbloquearScroll();
+                anluxFirmaDesbloquearScroll();
                 stopDrawing(canvasId);
                 firmaPointerActivo[canvasId] = false;
             };
@@ -3516,7 +3518,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 } catch (err) {
                     /* ignore */
                 }
-                exactoFirmaBloquearScroll();
+                anluxFirmaBloquearScroll();
                 startDrawing(e, canvasId);
             });
             canvas.addEventListener('pointermove', (e) => {
@@ -3541,7 +3543,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 if (e.cancelable) {
                     e.preventDefault();
                 }
-                exactoFirmaBloquearScroll();
+                anluxFirmaBloquearScroll();
                 startDrawing(e, canvasId);
             }, { passive: false });
             canvas.addEventListener('touchmove', (e) => {
@@ -3564,7 +3566,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             }, { passive: false });
             canvas.addEventListener('touchcancel', finalizarTrazo, { passive: false });
 
-            canvas.dataset.exactoFirmaInicializada = '1';
+            canvas.dataset.anluxFirmaInicializada = '1';
         }
 
         function limpiarFirma(canvasId) {
@@ -3579,9 +3581,9 @@ function exactoAplicarConversionNetoASinIva(input) {
 
         window.inicializarFirma = inicializarFirma;
         window.pintarFondoBlancoFirma = pintarFondoBlancoFirma;
-        window.exactoPrepararCanvasFirmaVisible = exactoPrepararCanvasFirmaVisible;
+        window.anluxPrepararCanvasFirmaVisible = anluxPrepararCanvasFirmaVisible;
         window.limpiarFirma = limpiarFirma;
-        window.exactoFirmaDataUrlSiHay = exactoFirmaDataUrlSiHay;
+        window.anluxFirmaDataUrlSiHay = anluxFirmaDataUrlSiHay;
 
         function startDrawing(e, canvasId) {
             const canvas = document.getElementById(canvasId);
@@ -3590,7 +3592,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 return;
             }
             isDrawing[canvasId] = true;
-            const { x, y } = exactoFirmaPuntoCanvas(e, canvas);
+            const { x, y } = anluxFirmaPuntoCanvas(e, canvas);
 
             ctx.beginPath();
             ctx.moveTo(x, y);
@@ -3606,11 +3608,11 @@ function exactoAplicarConversionNetoASinIva(input) {
             if (!canvas || !ctx) {
                 return;
             }
-            const { x, y } = exactoFirmaPuntoCanvas(e, canvas);
+            const { x, y } = anluxFirmaPuntoCanvas(e, canvas);
 
             ctx.lineTo(x, y);
             ctx.stroke();
-            exactoMarcarOrdenFormSucio();
+            anluxMarcarOrdenFormSucio();
         }
 
         function stopDrawing(canvasId) {
@@ -3622,7 +3624,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             const canvas = document.getElementById('firmaCliente');
             canvasContexts['firmaCliente'].clearRect(0, 0, canvas.width, canvas.height);
             pintarFondoBlancoFirma('firmaCliente');
-            exactoMarcarOrdenFormSucio();
+            anluxMarcarOrdenFormSucio();
         }
 
         function limpiarFirmaTecnico() {
@@ -3630,7 +3632,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             const canvas = document.getElementById('firmaTecnico');
             canvasContexts['firmaTecnico'].clearRect(0, 0, canvas.width, canvas.height);
             pintarFondoBlancoFirma('firmaTecnico');
-            exactoMarcarOrdenFormSucio();
+            anluxMarcarOrdenFormSucio();
         }
 
         function limpiarFirmaClienteInicial() {
@@ -3652,12 +3654,12 @@ function exactoAplicarConversionNetoASinIva(input) {
             window.print();
         }
 
-        function exactoEsOrdenNueva() {
+        function anluxEsOrdenNueva() {
             return Number(document.getElementById('id_orden_c')?.value || 0) <= 0;
         }
 
-        function exactoGetServicioSersop01() {
-            const fromWin = exactoGetServiciosSersop().find(
+        function anluxGetServicioSersop01() {
+            const fromWin = anluxGetServiciosSersop().find(
                 (servicio) => String(servicio.clave || '').trim().toUpperCase() === 'SERSOP01'
             );
             if (fromWin) {
@@ -3674,7 +3676,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             };
         }
 
-        function exactoFormularioYaTieneSersop01Visible() {
+        function anluxFormularioYaTieneSersop01Visible() {
             const filas = document.querySelectorAll('#trabajosTableBody .trabajo-row:not([data-sersop01-auto="1"])');
             for (const fila of filas) {
                 const clave = fila.querySelector('select[name*="[clave]"]');
@@ -3685,8 +3687,8 @@ function exactoAplicarConversionNetoASinIva(input) {
             return false;
         }
 
-        function exactoQuitarSersop01Oculto() {
-            const box = document.getElementById('exactoSersop01Campos');
+        function anluxQuitarSersop01Oculto() {
+            const box = document.getElementById('anluxSersop01Campos');
             if (box) {
                 box.innerHTML = '';
             }
@@ -3710,7 +3712,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoSiguienteIndiceTrabajos() {
+        function anluxSiguienteIndiceTrabajos() {
             let max = -1;
             document.querySelectorAll('#ordenForm [name^="trabajos["]').forEach((el) => {
                 const m = String(el.getAttribute('name') || '').match(/^trabajos\[(\d+)\]/);
@@ -3721,7 +3723,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             return max + 1;
         }
 
-        function exactoAsegurarCamposAbonoNuevaOrden() {
+        function anluxAsegurarCamposAbonoNuevaOrden() {
             const form = document.getElementById('ordenForm');
             if (!form) return;
             if (!document.getElementById('abonoSaldoAplicado')) {
@@ -3750,10 +3752,10 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoAgregarSersop01Oculto(ticket) {
-            exactoQuitarSersop01Oculto();
-            exactoAsegurarCamposAbonoNuevaOrden();
-            const servicio = exactoGetServicioSersop01();
+        function anluxAgregarSersop01Oculto(ticket) {
+            anluxQuitarSersop01Oculto();
+            anluxAsegurarCamposAbonoNuevaOrden();
+            const servicio = anluxGetServicioSersop01();
             const ticketNorm = String(ticket || '').trim().toUpperCase();
             const precio = Number(servicio.precio || 603.45).toFixed(2);
             const descripcion = String(servicio.descripcion || 'SOPORTE REVISION/VALORACION TECNICA');
@@ -3767,21 +3769,21 @@ function exactoAplicarConversionNetoASinIva(input) {
                 fila.dataset.sersop01Auto = '1';
                 fila.style.display = 'none';
                 fila.setAttribute('aria-hidden', 'true');
-                const ticketSafe = exactoEscapeHtml(ticketNorm);
-                const descSafe = exactoEscapeHtml(descripcion);
+                const ticketSafe = anluxEscapeHtml(ticketNorm);
+                const descSafe = anluxEscapeHtml(descripcion);
                 fila.innerHTML = `
                     <td class="p-3 border"><span class="trabajo-numero">${indice + 1}</span></td>
                     <td class="p-3 border">
                         <select class="px-2 py-1 w-full rounded border border-blue-300" name="trabajos[${indice}][clave]">
                             <option value="">Clave...</option>
-                            ${exactoOpcionesServiciosSersop()}
+                            ${anluxOpcionesServiciosSersop()}
                         </select>
                     </td>
                     <td class="p-3 border">
                         <input type="text" class="px-2 py-1 w-full rounded border border-blue-300" name="trabajos[${indice}][descripcion]" value="${descSafe}" readonly>
                     </td>
                     <td class="p-3 border">
-                        <div class="exacto-money-field"><span class="exacto-money-prefix">$</span>
+                        <div class="anlux-money-field"><span class="anlux-money-prefix">$</span>
                         <input type="number" step="0.01" class="px-2 py-1 w-full rounded border border-blue-300 importe-input" name="trabajos[${indice}][importe]" value="${precio}" readonly>
                         </div>
                     </td>
@@ -3795,7 +3797,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 if (select) {
                     select.value = 'SERSOP01';
                     if (select.value !== 'SERSOP01') {
-                        exactoAsegurarOpcionClaveGuardada(select, 'SERSOP01');
+                        anluxAsegurarOpcionClaveGuardada(select, 'SERSOP01');
                         select.value = 'SERSOP01';
                     }
                 }
@@ -3804,12 +3806,12 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
 
             // Orden nueva (Recepción): no hay tabla de trabajos en el DOM → campos ocultos.
-            const box = document.getElementById('exactoSersop01Campos');
+            const box = document.getElementById('anluxSersop01Campos');
             if (!box) {
-                console.error('exactoSersop01Campos no existe; no se pudo registrar SERSOP01');
+                console.error('anluxSersop01Campos no existe; no se pudo registrar SERSOP01');
                 return null;
             }
-            const indice = exactoSiguienteIndiceTrabajos();
+            const indice = anluxSiguienteIndiceTrabajos();
             const mk = (name, value) => {
                 const input = document.createElement('input');
                 input.type = 'hidden';
@@ -3830,21 +3832,21 @@ function exactoAplicarConversionNetoASinIva(input) {
          * - Si el cliente no pagó: no se registra SERSOP01.
          * - Si pagó: pide ticket/factura y registra SERSOP01 oculto.
          */
-        async function exactoConfirmarCobroSersop01RevisionNueva() {
-            exactoQuitarSersop01Oculto();
+        async function anluxConfirmarCobroSersop01RevisionNueva() {
+            anluxQuitarSersop01Oculto();
 
-            if (!exactoEsOrdenNueva()) {
+            if (!anluxEsOrdenNueva()) {
                 return true;
             }
             // Si el técnico ya eligió SERSOP01 a mano, no duplicar el cobro oculto.
-            if (exactoFormularioYaTieneSersop01Visible()) {
+            if (anluxFormularioYaTieneSersop01Visible()) {
                 return true;
             }
 
-            const servicio = exactoGetServicioSersop01();
+            const servicio = anluxGetServicioSersop01();
             const precioSinIva = Number(servicio.precio || 603.45);
-            const precioConIva = exactoMontoConIva(precioSinIva);
-            const clientePago = await exactoShowConfirm(
+            const precioConIva = anluxMontoConIva(precioSinIva);
+            const clientePago = await anluxShowConfirm(
                 `COBRO POR DEFECTO EN ESTA ORDEN NUEVA\n\n`
                 + `SERSOP01 — ${servicio.descripcion}\n`
                 + `$${precioSinIva.toFixed(2)} sin IVA ($${precioConIva.toFixed(2)} con IVA).\n\n`
@@ -3864,7 +3866,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 return true;
             }
 
-            const ticket = await exactoShowPrompt(
+            const ticket = await anluxShowPrompt(
                 'Captura el ticket / factura del pago de SERSOP01 para registrarlo en la orden.',
                 {
                     title: 'Ticket / Factura SERSOP01',
@@ -3877,7 +3879,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             );
 
             if (ticket === null) {
-                await exactoShowAlert('Guardado cancelado. Sin ticket/factura no se registra el cobro SERSOP01.', {
+                await anluxShowAlert('Guardado cancelado. Sin ticket/factura no se registra el cobro SERSOP01.', {
                     title: 'Operación cancelada',
                 });
                 return false;
@@ -3885,15 +3887,15 @@ function exactoAplicarConversionNetoASinIva(input) {
 
             const ticketNorm = String(ticket || '').trim().toUpperCase();
             if (ticketNorm === '') {
-                await exactoShowAlert('Debes capturar ticket o factura para registrar SERSOP01.', {
+                await anluxShowAlert('Debes capturar ticket o factura para registrar SERSOP01.', {
                     title: 'Falta ticket / factura',
                 });
                 return false;
             }
 
-            const agregado = exactoAgregarSersop01Oculto(ticketNorm);
+            const agregado = anluxAgregarSersop01Oculto(ticketNorm);
             if (!agregado) {
-                await exactoShowAlert(
+                await anluxShowAlert(
                     'No se pudo preparar el cobro SERSOP01 en el formulario. Recarga la página (Ctrl+F5) e intenta de nuevo.',
                     { title: 'Error al registrar SERSOP01', icon: 'error' }
                 );
@@ -3901,13 +3903,13 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
 
             // Cliente pagó la revisión: abonar el monto sin IVA para que el saldo refleje el pago.
-            exactoAsegurarCamposAbonoNuevaOrden();
-            exactoSetAbonoSaldo(exactoTotalAbonoSaldo() + precioSinIva);
+            anluxAsegurarCamposAbonoNuevaOrden();
+            anluxSetAbonoSaldo(anluxTotalAbonoSaldo() + precioSinIva);
             if (typeof calcularSaldoPendiente === 'function') {
                 try { calcularSaldoPendiente(); } catch (_) { /* ignore */ }
             }
-            const saldoTrasCobro = typeof exactoSaldoPendienteActual === 'function'
-                ? exactoSaldoPendienteActual()
+            const saldoTrasCobro = typeof anluxSaldoPendienteActual === 'function'
+                ? anluxSaldoPendienteActual()
                 : 0;
             const confirmadoEl = document.getElementById('saldoPagadoConfirmado');
             if (confirmadoEl && Math.abs(saldoTrasCobro) <= 0.009) {
@@ -3916,18 +3918,18 @@ function exactoAplicarConversionNetoASinIva(input) {
             return true;
         }
 
-        function exactoUrlPdfOrden(idOrden) {
-            const base = exactoBaseUrlApp();
+        function anluxUrlPdfOrden(idOrden) {
+            const base = anluxBaseUrlApp();
             const id = encodeURIComponent(String(idOrden || ''));
             const bust = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
             const path = `/pdf/orden/${id}?inline=1&refresh_pdf=1&nocache=1&_=${bust}`;
             return base ? `${base}${path}` : path;
         }
 
-        async function exactoAbrirReportePdfOrden(idOrden) {
+        async function anluxAbrirReportePdfOrden(idOrden) {
             const id = Number(idOrden || 0);
             if (id <= 0) return;
-            const url = exactoUrlPdfOrden(id);
+            const url = anluxUrlPdfOrden(id);
             try {
                 const res = await fetch(url, {
                     method: 'GET',
@@ -3988,7 +3990,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                   class="px-2 py-1 w-full rounded border border-blue-300"
                  name="trabajos[${contador - 1}][clave]">
                   <option value="">Clave...</option>
-                  ${exactoOpcionesServiciosSersop()}
+                  ${anluxOpcionesServiciosSersop()}
                 </select></td>
                 <td
                   class="p-3 border"
@@ -3997,15 +3999,15 @@ function exactoAplicarConversionNetoASinIva(input) {
                  name="trabajos[${contador - 1}][descripcion]" placeholder="Trabajo ${contador}" readonly title="Este campo se toma del catálogo SERSOP."></td>
                 <td
                   class="p-3 border"
-                ><div class="exacto-money-field"><span class="exacto-money-prefix">$</span><input type="number" step="0.01"
+                ><div class="anlux-money-field"><span class="anlux-money-prefix">$</span><input type="number" step="0.01"
                   class="px-2 py-1 w-full rounded border border-blue-300 importe-input bg-gray-100 text-gray-600 cursor-not-allowed"
                  name="trabajos[${contador - 1}][importe]" placeholder="PRECIO SIN IVA" readonly title="Este campo se toma del catálogo SERSOP."></div></td>
                 <td
                   class="p-3 border"
-                >${exactoHtmlTicketFacturaInput(`trabajos[${contador - 1}][ticket]`, '', false)}</td>
+                >${anluxHtmlTicketFacturaInput(`trabajos[${contador - 1}][ticket]`, '', false)}</td>
                 <td
                   class="p-3 border"
-                >${exactoHtmlSelectEquipo(`trabajos[${contador - 1}][id_equipo]`)}</td>
+                >${anluxHtmlSelectEquipo(`trabajos[${contador - 1}][id_equipo]`)}</td>
                 <td
                   class="p-3 text-center border"
                 >
@@ -4019,7 +4021,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 </td>
             `;
             tbody.appendChild(fila);
-            exactoAplicarServicioTrabajo(fila, false);
+            anluxAplicarServicioTrabajo(fila, false);
         }
         function eliminarTrabajo(fila) {
             const tbody = document.getElementById('trabajosTableBody');
@@ -4029,7 +4031,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 actualizarNumerosTrabajos();
                 calcularSubtotalTrabajos();
             } else {
-                void exactoShowAlert('Debe haber al menos una fila de trabajo.', { title: 'Acción no permitida' });
+                void anluxShowAlert('Debe haber al menos una fila de trabajo.', { title: 'Acción no permitida' });
             }
         }
         function actualizarNumerosTrabajos() {
@@ -4042,10 +4044,10 @@ function exactoAplicarConversionNetoASinIva(input) {
                         input.setAttribute('name', name.replace(/trabajos\[\d+\]/, `trabajos[${index}]`));
                     }
                 });
-                exactoAplicarServicioTrabajo(fila, false);
+                anluxAplicarServicioTrabajo(fila, false);
             });
         }
-        function exactoTotalTrabajosSinIva() {
+        function anluxTotalTrabajosSinIva() {
             let total = 0;
             document.querySelectorAll('.importe-input').forEach((input) => { total += parseFloat(input.value) || 0; });
             return total;
@@ -4069,10 +4071,10 @@ function exactoAplicarConversionNetoASinIva(input) {
                 <td class="p-2 border sm:p-3"><input type="text" class="px-2 py-1 w-full text-sm rounded border border-blue-300" name="materiales[${indice}][codigo]" placeholder="Código"></td>
                 <td class="p-2 border sm:p-3"><input type="number" min="0" class="px-2 py-1 w-full text-sm rounded border border-blue-300 cant-input" name="materiales[${indice}][cant]" placeholder="Cant"></td>
                 <td class="p-2 border sm:p-3"><input type="text" class="px-2 py-1 w-full text-sm rounded border border-blue-300" name="materiales[${indice}][descripcion]" placeholder="Descripción"></td>
-                <td class="p-2 border sm:p-3"><div class="exacto-money-field"><span class="exacto-money-prefix">$</span><input type="number" step="0.01" min="0" class="px-2 py-1 w-full text-sm rounded border border-blue-300 precio-input" name="materiales[${indice}][precio]" placeholder="Neto c/IVA" title="Escribe el precio neto (con IVA). Se convierte a sin IVA automáticamente."></div></td>
-                <td class="p-2 border sm:p-3"><span class="exacto-money-prefix">$</span><span class="text-sm importe-calc">0.00</span></td>
-                <td class="p-2 border sm:p-3">${exactoHtmlTicketFacturaInput(`materiales[${indice}][ticket]`, 'text-sm', false)}</td>
-                <td class="p-2 border sm:p-3">${exactoHtmlSelectEquipo(`materiales[${indice}][id_equipo]`)}</td>
+                <td class="p-2 border sm:p-3"><div class="anlux-money-field"><span class="anlux-money-prefix">$</span><input type="number" step="0.01" min="0" class="px-2 py-1 w-full text-sm rounded border border-blue-300 precio-input" name="materiales[${indice}][precio]" placeholder="Neto c/IVA" title="Escribe el precio neto (con IVA). Se convierte a sin IVA automáticamente."></div></td>
+                <td class="p-2 border sm:p-3"><span class="anlux-money-prefix">$</span><span class="text-sm importe-calc">0.00</span></td>
+                <td class="p-2 border sm:p-3">${anluxHtmlTicketFacturaInput(`materiales[${indice}][ticket]`, 'text-sm', false)}</td>
+                <td class="p-2 border sm:p-3">${anluxHtmlSelectEquipo(`materiales[${indice}][id_equipo]`)}</td>
                 <td class="p-3 text-center border">
                     <button type="button" class="font-bold text-blue-600 hover:text-blue-800 btn-eliminar-material" title="Eliminar fila">
                         <i class="fas fa-trash"></i>
@@ -4080,7 +4082,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 </td>
             `;
             tbody.appendChild(fila);
-            exactoActualizarTicketMaterialFila(fila);
+            anluxActualizarTicketMaterialFila(fila);
             calcularSubtotalMateriales();
         }
         function eliminarMaterial(fila) {
@@ -4090,7 +4092,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 fila.remove();
                 calcularSubtotalMateriales();
             } else {
-                void exactoShowAlert('Debe haber al menos una fila de material.', { title: 'Acción no permitida' });
+                void anluxShowAlert('Debe haber al menos una fila de material.', { title: 'Acción no permitida' });
             }
         }
 
@@ -4104,9 +4106,9 @@ function exactoAplicarConversionNetoASinIva(input) {
             fila.innerHTML = `
                 <td class="p-2 border sm:p-3"><input type="text" class="px-2 py-1 w-full text-sm rounded border border-blue-300" name="anticipos[${indice}][folio]" placeholder="Folio pedido"></td>
                 <td class="p-2 border sm:p-3"><input type="text" class="px-2 py-1 w-full text-sm rounded border border-blue-300" name="anticipos[${indice}][descripcion]" placeholder="Descripcion de refaccion"></td>
-                <td class="p-2 border sm:p-3"><div class="exacto-money-field"><span class="exacto-money-prefix">$</span><input type="number" step="0.01" class="px-2 py-1 w-full text-sm rounded border border-blue-300 anticipo-input" name="anticipos[${indice}][monto]" value="" placeholder="Neto c/IVA" title="Escribe el monto neto (con IVA). Se convierte a sin IVA automáticamente."></div></td>
-                <td class="p-2 border sm:p-3">${exactoHtmlTicketFacturaInput(`anticipos[${indice}][ticket]`, 'anticipo-ticket-input', false)}</td>
-                <td class="p-2 border sm:p-3">${exactoHtmlSelectEquipo(`anticipos[${indice}][id_equipo]`)}</td>
+                <td class="p-2 border sm:p-3"><div class="anlux-money-field"><span class="anlux-money-prefix">$</span><input type="number" step="0.01" class="px-2 py-1 w-full text-sm rounded border border-blue-300 anticipo-input" name="anticipos[${indice}][monto]" value="" placeholder="Neto c/IVA" title="Escribe el monto neto (con IVA). Se convierte a sin IVA automáticamente."></div></td>
+                <td class="p-2 border sm:p-3">${anluxHtmlTicketFacturaInput(`anticipos[${indice}][ticket]`, 'anticipo-ticket-input', false)}</td>
+                <td class="p-2 border sm:p-3">${anluxHtmlSelectEquipo(`anticipos[${indice}][id_equipo]`)}</td>
                 <td class="p-3 text-center border">
                     <button type="button" class="font-bold text-blue-600 hover:text-blue-800 btn-eliminar-anticipo" title="Eliminar anticipo">
                         <i class="fas fa-trash"></i>
@@ -4114,8 +4116,8 @@ function exactoAplicarConversionNetoASinIva(input) {
                 </td>
             `;
             tbody.appendChild(fila);
-            exactoSincronizarTicketsAnticipos();
-            exactoActualizarTotalesAnticipos();
+            anluxSincronizarTicketsAnticipos();
+            anluxActualizarTotalesAnticipos();
         }
 
         function eliminarAnticipo(fila) {
@@ -4123,17 +4125,17 @@ function exactoAplicarConversionNetoASinIva(input) {
             if (!tbody) return;
             if (tbody.querySelectorAll('.anticipo-row').length > 1) {
                 fila.remove();
-                exactoActualizarTotalesAnticipos();
+                anluxActualizarTotalesAnticipos();
             } else {
                 const folio = fila.querySelector('[name*="[folio]"]');
                 const descripcion = fila.querySelector('[name*="[descripcion]"]');
                 const monto = fila.querySelector('[name*="[monto]"]');
-                const ticket = exactoCampoTicket(fila);
+                const ticket = anluxCampoTicket(fila);
                 if (folio) folio.value = '';
                 if (descripcion) descripcion.value = '';
                 if (monto) monto.value = '';
-                if (ticket) exactoAsignarTicketFactura(ticket, '');
-                exactoActualizarTotalesAnticipos();
+                if (ticket) anluxAsignarTicketFactura(ticket, '');
+                anluxActualizarTotalesAnticipos();
             }
         }
 
@@ -4143,13 +4145,13 @@ function exactoAplicarConversionNetoASinIva(input) {
             const precioInput = fila.querySelector('.precio-input');
             let precio = parseFloat(precioInput && precioInput.value) || 0;
             // Mientras se captura el neto (c/IVA), el importe usa ya el sin IVA.
-            if (precioInput && precioInput.dataset.exactoNetoEditing === '1') {
-                precio = exactoMontoSinIvaDesdeTotal(precio);
+            if (precioInput && precioInput.dataset.anluxNetoEditing === '1') {
+                precio = anluxMontoSinIvaDesdeTotal(precio);
             }
-            const importe = exactoRound2(cant * precio);
+            const importe = anluxRound2(cant * precio);
             fila.querySelector('.importe-calc').textContent = importe.toFixed(2);
         }
-        function exactoSubtotalMaterialesActual() {
+        function anluxSubtotalMaterialesActual() {
             const importes = document.querySelectorAll('.importe-calc');
             let subtotal = 0;
             importes.forEach(span => {
@@ -4162,19 +4164,19 @@ function exactoAplicarConversionNetoASinIva(input) {
             calcularTotalFactura();
         }
 
-        function exactoCamposMaterial(row) {
+        function anluxCamposMaterial(row) {
             if (!row) return {};
             return {
                 vale: row.querySelector('input[name*="[vale]"]'),
                 cantidad: row.querySelector('input[name*="[cant]"]'),
                 descripcion: row.querySelector('input[name*="[descripcion]"]'),
                 precio: row.querySelector('input[name*="[precio]"]'),
-                ticket: exactoCampoTicket(row),
+                ticket: anluxCampoTicket(row),
             };
         }
 
-        function exactoMaterialRequeridosCompletos(row) {
-            const campos = exactoCamposMaterial(row);
+        function anluxMaterialRequeridosCompletos(row) {
+            const campos = anluxCamposMaterial(row);
             return Boolean(
                 campos.vale && String(campos.vale.value || '').trim() !== ''
                 && campos.cantidad && String(campos.cantidad.value || '').trim() !== ''
@@ -4183,16 +4185,16 @@ function exactoAplicarConversionNetoASinIva(input) {
             );
         }
 
-        function exactoActualizarTicketMaterialFila(row) {
-            const campos = exactoCamposMaterial(row);
+        function anluxActualizarTicketMaterialFila(row) {
+            const campos = anluxCamposMaterial(row);
             if (!campos.ticket) return;
             // Ticket/factura opcional y siempre editable.
-            exactoSetCampoTicketFactura(campos.ticket, true);
+            anluxSetCampoTicketFactura(campos.ticket, true);
         }
 
-        function exactoActualizarTicketsMateriales() {
-            document.querySelectorAll('#materialesTableBody .material-row').forEach(exactoActualizarTicketMaterialFila);
-            exactoSincronizarTicketsAnticipos();
+        function anluxActualizarTicketsMateriales() {
+            document.querySelectorAll('#materialesTableBody .material-row').forEach(anluxActualizarTicketMaterialFila);
+            anluxSincronizarTicketsAnticipos();
         }
 
         function calcularTotalAnticipos() {
@@ -4200,26 +4202,26 @@ function exactoAplicarConversionNetoASinIva(input) {
             let total = 0;
             anticipos.forEach(input => {
                 let monto = parseFloat(input.value) || 0;
-                if (input.dataset.exactoNetoEditing === '1') {
-                    monto = exactoMontoSinIvaDesdeTotal(monto);
+                if (input.dataset.anluxNetoEditing === '1') {
+                    monto = anluxMontoSinIvaDesdeTotal(monto);
                 }
                 total += monto;
             });
             return total;
         }
 
-        function exactoTotalAbonoSaldo() {
+        function anluxTotalAbonoSaldo() {
             const input = document.getElementById('abonoSaldoAplicado');
             return parseFloat(input ? input.value : '0') || 0;
         }
 
-        function exactoSetAbonoSaldo(value) {
+        function anluxSetAbonoSaldo(value) {
             const safeValue = Math.max(0, Number.parseFloat(value || '0') || 0);
             const input = document.getElementById('abonoSaldoAplicado');
             if (input) input.value = safeValue.toFixed(2);
         }
 
-        function exactoSincronizarTicketsAnticipos() {
+        function anluxSincronizarTicketsAnticipos() {
             document.querySelectorAll('#anticiposTableBody .anticipo-ticket-input').forEach((campo) => {
                 const fila = campo.closest('.anticipo-row');
                 const esSaldoPago = fila && fila.dataset.saldoPago === '1';
@@ -4231,16 +4233,16 @@ function exactoAplicarConversionNetoASinIva(input) {
             });
         }
 
-        function exactoActualizarTotalesAnticipos() {
-            exactoRenderListaAnticipos();
+        function anluxActualizarTotalesAnticipos() {
+            anluxRenderListaAnticipos();
             calcularSaldoPendiente();
         }
 
-        function exactoEsEdicionOrden() {
+        function anluxEsEdicionOrden() {
             return Number(document.getElementById('id_orden_c')?.value || 0) > 0;
         }
 
-        function exactoRenderListaAnticipos() {
+        function anluxRenderListaAnticipos() {
             const cont = document.getElementById('anticiposListaTotales');
             if (!cont) return;
             const filas = document.querySelectorAll('#anticiposTableBody .anticipo-row');
@@ -4261,9 +4263,9 @@ function exactoAplicarConversionNetoASinIva(input) {
                 }
                 nro += 1;
                 const partes = [];
-                if (folio !== '') partes.push(`Folio: ${exactoEscapeHtml(folio)}`);
-                if (desc !== '') partes.push(exactoEscapeHtml(desc));
-                if (ticket !== '') partes.push(`Ticket/Factura: ${exactoEscapeHtml(ticket)}`);
+                if (folio !== '') partes.push(`Folio: ${anluxEscapeHtml(folio)}`);
+                if (desc !== '') partes.push(anluxEscapeHtml(desc));
+                if (ticket !== '') partes.push(`Ticket/Factura: ${anluxEscapeHtml(ticket)}`);
                 const extra = partes.length ? ` - ${partes.join(' | ')}` : '';
                 html += `<strong>ANTICIPO ${nro}${extra}: $${monto.toFixed(2)} (SIN IVA)</strong><br>`;
             });
@@ -4273,9 +4275,9 @@ function exactoAplicarConversionNetoASinIva(input) {
         function calcularTotalFactura() {
             const elTot = document.getElementById('total');
             if (!elTot) return;
-            const subtotalCombinado = exactoRound2(exactoTotalTrabajosSinIva() + exactoSubtotalMaterialesActual());
-            const ivaTotal = exactoRound2(subtotalCombinado * EXACTO_IVA_RATE);
-            const total = exactoRound2(subtotalCombinado + ivaTotal);
+            const subtotalCombinado = anluxRound2(anluxTotalTrabajosSinIva() + anluxSubtotalMaterialesActual());
+            const ivaTotal = anluxRound2(subtotalCombinado * ANLUX_IVA_RATE);
+            const total = anluxRound2(subtotalCombinado + ivaTotal);
 
             const elSubtotalCombinado = document.getElementById('subtotalCombinado');
             const elIvaTotal = document.getElementById('ivaTotal');
@@ -4293,19 +4295,19 @@ function exactoAplicarConversionNetoASinIva(input) {
             const total = parseFloat(elTot.textContent) || 0;
             const anticipos = calcularTotalAnticipos();
             const abonoEl = document.getElementById('abonoSaldoAplicado');
-            const abono = exactoTotalAbonoSaldo();
+            const abono = anluxTotalAbonoSaldo();
             const pagosSinIva = anticipos + abono;
-            let saldo = exactoRound2(total - exactoMontoConIva(pagosSinIva));
+            let saldo = anluxRound2(total - anluxMontoConIva(pagosSinIva));
 
             // Al liquidar (o al recargar una orden ya liquidada, donde el abono
             // vuelve redondeado a 2 decimales) el ida-vuelta del IVA deja un
             // residuo de ±$0.01. Con pagos ya hechos, se ajusta el abono con
-            // precisión completa para que el saldo quede en $0.00 exacto y
+            // precisión completa para que el saldo quede en $0.00 anlux y
             // coincida con el cálculo del servidor (tolerancia 0.009).
             if (abonoEl && Math.abs(saldo) > 0.004 && Math.abs(saldo) <= 0.011 && pagosSinIva > 0.009) {
-                const abonoExacto = Math.max(0, total / (1 + EXACTO_IVA_RATE) - anticipos);
-                abonoEl.value = String(abonoExacto);
-                saldo = exactoRound2(total - exactoMontoConIva(anticipos + abonoExacto));
+                const abonoAnlux = Math.max(0, total / (1 + ANLUX_IVA_RATE) - anticipos);
+                abonoEl.value = String(abonoAnlux);
+                saldo = anluxRound2(total - anluxMontoConIva(anticipos + abonoAnlux));
             }
 
             elSal.textContent = saldo.toFixed(2);
@@ -4322,38 +4324,38 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoIdEquipoDeFilaLiquidar(row) {
+        function anluxIdEquipoDeFilaLiquidar(row) {
             return Number(row.querySelector('select[name*="[id_equipo]"]')?.value) || 1;
         }
 
-        function exactoCalcularSaldoEquipo(numEquipo) {
+        function anluxCalcularSaldoEquipo(numEquipo) {
             let trabajos = 0;
             document.querySelectorAll('#trabajosTableBody .trabajo-row').forEach((row) => {
-                if (exactoIdEquipoDeFilaLiquidar(row) !== numEquipo) return;
+                if (anluxIdEquipoDeFilaLiquidar(row) !== numEquipo) return;
                 trabajos += parseFloat(row.querySelector('.importe-input')?.value) || 0;
             });
             let materiales = 0;
             document.querySelectorAll('#materialesTableBody .material-row').forEach((row) => {
-                if (exactoIdEquipoDeFilaLiquidar(row) !== numEquipo) return;
+                if (anluxIdEquipoDeFilaLiquidar(row) !== numEquipo) return;
                 materiales += parseFloat(row.querySelector('.importe-calc')?.textContent) || 0;
             });
             let anticipos = 0;
             document.querySelectorAll('#anticiposTableBody .anticipo-row').forEach((row) => {
-                if (exactoIdEquipoDeFilaLiquidar(row) !== numEquipo) return;
+                if (anluxIdEquipoDeFilaLiquidar(row) !== numEquipo) return;
                 const input = row.querySelector('.anticipo-input');
                 let monto = parseFloat(input?.value) || 0;
-                if (input && input.dataset.exactoNetoEditing === '1') {
-                    monto = exactoMontoSinIvaDesdeTotal(monto);
+                if (input && input.dataset.anluxNetoEditing === '1') {
+                    monto = anluxMontoSinIvaDesdeTotal(monto);
                 }
                 anticipos += monto;
             });
-            const map = exactoLeerAbonoEquiposMap();
+            const map = anluxLeerAbonoEquiposMap();
             const yaLiquidado = parseFloat(map[String(numEquipo)] || map[numEquipo] || 0) || 0;
-            const saldoSinIva = Math.max(0, exactoRound2(trabajos + materiales - anticipos - yaLiquidado));
-            return exactoMontoConIva(saldoSinIva);
+            const saldoSinIva = Math.max(0, anluxRound2(trabajos + materiales - anticipos - yaLiquidado));
+            return anluxMontoConIva(saldoSinIva);
         }
 
-        function exactoLeerEquiposParaLiquidar() {
+        function anluxLeerEquiposParaLiquidar() {
             const filas = document.querySelectorAll('#equiposTableBody .equipo-row');
             if (filas.length) {
                 return Array.from(filas).map((fila, idx) => {
@@ -4363,7 +4365,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                         marca: String(fila.querySelector('[name*="[marca]"]')?.value || '').trim() || 'Sin marca',
                         modelo: String(fila.querySelector('[name*="[modelo]"]')?.value || '').trim() || 'Sin modelo',
                         serie: String(fila.querySelector('[name*="[serie]"]')?.value || '').trim(),
-                        saldo: exactoCalcularSaldoEquipo(num),
+                        saldo: anluxCalcularSaldoEquipo(num),
                     };
                 });
             }
@@ -4379,12 +4381,12 @@ function exactoAplicarConversionNetoASinIva(input) {
                     marca: eq.marca || 'Sin marca',
                     modelo: eq.modelo || 'Sin modelo',
                     serie: eq.serie || '',
-                    saldo: exactoCalcularSaldoEquipo(num),
+                    saldo: anluxCalcularSaldoEquipo(num),
                 };
             });
         }
 
-        function exactoCerrarModalLiquidarSaldo() {
+        function anluxCerrarModalLiquidarSaldo() {
             const modal = document.getElementById('modalLiquidarSaldo');
             if (!modal) return;
             modal.classList.add('hidden');
@@ -4393,10 +4395,10 @@ function exactoAplicarConversionNetoASinIva(input) {
             document.body.style.overflow = '';
         }
 
-        function exactoAbrirModalLiquidarSaldo() {
+        function anluxAbrirModalLiquidarSaldo() {
             const modal = document.getElementById('modalLiquidarSaldo');
             if (!modal) {
-                void exactoShowAlert('No se encontró la ventana de liquidar saldo.', { title: 'Error', icon: 'error' });
+                void anluxShowAlert('No se encontró la ventana de liquidar saldo.', { title: 'Error', icon: 'error' });
                 return;
             }
             if (modal.parentNode !== document.body) {
@@ -4405,12 +4407,12 @@ function exactoAplicarConversionNetoASinIva(input) {
             const container = document.getElementById('equiposLiquidarSaldoContainer');
             if (container) {
                 container.innerHTML = '';
-                const equipos = exactoLeerEquiposParaLiquidar();
+                const equipos = anluxLeerEquiposParaLiquidar();
                 if (!equipos.length) {
                     container.innerHTML = '<p class="text-slate-500">No hay equipos registrados en esta orden.</p>';
                 } else {
                     equipos.forEach((eq) => {
-                        const serieTxt = eq.serie ? ` · Serie: ${exactoEscapeHtml(eq.serie)}` : '';
+                        const serieTxt = eq.serie ? ` · Serie: ${anluxEscapeHtml(eq.serie)}` : '';
                         const row = document.createElement('div');
                         row.className = 'p-3 border-2 border-blue-200 rounded-lg bg-blue-50';
                         row.innerHTML = `
@@ -4418,7 +4420,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                                 <span class="flex items-start gap-2 min-w-0">
                                     <input type="checkbox" class="mt-1 w-4 h-4 rounded border-blue-600" name="equipo_liquidar[]" value="${eq.num}" data-saldo="${eq.saldo}">
                                     <span class="text-sm text-blue-900">
-                                        <span class="font-bold">Equipo ${eq.num}:</span> ${exactoEscapeHtml(eq.marca)} - ${exactoEscapeHtml(eq.modelo)}${serieTxt}
+                                        <span class="font-bold">Equipo ${eq.num}:</span> ${anluxEscapeHtml(eq.marca)} - ${anluxEscapeHtml(eq.modelo)}${serieTxt}
                                     </span>
                                 </span>
                                 <span class="rounded-lg bg-red-600 px-3 py-2 text-center text-sm font-bold text-white sm:min-w-[10rem]">
@@ -4436,18 +4438,18 @@ function exactoAplicarConversionNetoASinIva(input) {
             document.body.style.overflow = 'hidden';
         }
 
-        async function exactoConfirmarLiquidarSaldo() {
+        async function anluxConfirmarLiquidarSaldo() {
             const checkboxes = document.querySelectorAll('#modalLiquidarSaldo input[name="equipo_liquidar[]"]:checked');
             const items = Array.from(checkboxes).map((c) => ({
                 num: Number(c.value),
                 saldoConIva: parseFloat(c.dataset.saldo) || 0,
             }));
             if (!items.length) {
-                await exactoShowAlert('Selecciona al menos un equipo', { title: 'Error', icon: 'error' });
+                await anluxShowAlert('Selecciona al menos un equipo', { title: 'Error', icon: 'error' });
                 return;
             }
             const saldoSeleccionado = items.reduce((acc, it) => acc + it.saldoConIva, 0);
-            const confirmar = await exactoShowConfirm(
+            const confirmar = await anluxShowConfirm(
                 `¿Liquidar el saldo de $${saldoSeleccionado.toFixed(2)} de ${items.length} equipo(s) seleccionado(s)? El resto de la orden puede seguir con saldo.`,
                 {
                     title: 'Confirmar liquidación',
@@ -4459,15 +4461,15 @@ function exactoAplicarConversionNetoASinIva(input) {
             if (!confirmar) {
                 return;
             }
-            const ok = await window.exactoAplicarLiquidacionEquipos(items);
+            const ok = await window.anluxAplicarLiquidacionEquipos(items);
             if (ok) {
-                exactoCerrarModalLiquidarSaldo();
+                anluxCerrarModalLiquidarSaldo();
             }
         }
 
-        window.exactoBtnLiquidarSaldo = exactoAbrirModalLiquidarSaldo;
+        window.anluxBtnLiquidarSaldo = anluxAbrirModalLiquidarSaldo;
 
-        function exactoLeerAbonoEquiposMap() {
+        function anluxLeerAbonoEquiposMap() {
             const el = document.getElementById('abonoSaldoEquiposJson');
             if (!el) return {};
             try {
@@ -4478,59 +4480,59 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoGuardarAbonoEquiposMap(map) {
+        function anluxGuardarAbonoEquiposMap(map) {
             const el = document.getElementById('abonoSaldoEquiposJson');
             if (el) el.value = JSON.stringify(map || {});
         }
 
-        window.exactoAbonoLiquidadoEquipoSinIva = function (numEquipo) {
-            const map = exactoLeerAbonoEquiposMap();
+        window.anluxAbonoLiquidadoEquipoSinIva = function (numEquipo) {
+            const map = anluxLeerAbonoEquiposMap();
             return parseFloat(map[String(numEquipo)] || map[numEquipo] || 0) || 0;
         };
 
-        window.exactoAplicarLiquidacionEquipos = async function (items) {
+        window.anluxAplicarLiquidacionEquipos = async function (items) {
             calcularTotalFactura();
-            let restanteOrden = exactoSaldoPendienteActual();
+            let restanteOrden = anluxSaldoPendienteActual();
             if (restanteOrden <= 0.009) {
-                await exactoShowAlert('No hay saldo pendiente por pagar.', { title: 'Saldo pendiente' });
+                await anluxShowAlert('No hay saldo pendiente por pagar.', { title: 'Saldo pendiente' });
                 return false;
             }
 
-            const map = exactoLeerAbonoEquiposMap();
+            const map = anluxLeerAbonoEquiposMap();
             let aAplicar = 0;
             (items || []).forEach((it) => {
                 const num = Number(it.num) || 0;
                 const pedido = Math.max(0, parseFloat(it.saldoConIva) || 0);
-                const parte = exactoRound2(Math.min(pedido, restanteOrden - aAplicar));
+                const parte = anluxRound2(Math.min(pedido, restanteOrden - aAplicar));
                 if (num <= 0 || parte <= 0.009) return;
-                aAplicar = exactoRound2(aAplicar + parte);
+                aAplicar = anluxRound2(aAplicar + parte);
                 const key = String(num);
-                map[key] = exactoRound2((parseFloat(map[key]) || 0) + exactoMontoSinIvaDesdeTotal(parte));
+                map[key] = anluxRound2((parseFloat(map[key]) || 0) + anluxMontoSinIvaDesdeTotal(parte));
             });
 
             if (aAplicar <= 0.009) {
-                await exactoShowAlert('El equipo seleccionado no tiene saldo pendiente según sus cálculos.', {
+                await anluxShowAlert('El equipo seleccionado no tiene saldo pendiente según sus cálculos.', {
                     title: 'Sin saldo',
                 });
                 return false;
             }
 
-            exactoGuardarAbonoEquiposMap(map);
-            exactoSetAbonoSaldo(exactoTotalAbonoSaldo() + exactoMontoSinIvaDesdeTotal(aAplicar));
+            anluxGuardarAbonoEquiposMap(map);
+            anluxSetAbonoSaldo(anluxTotalAbonoSaldo() + anluxMontoSinIvaDesdeTotal(aAplicar));
             calcularSaldoPendiente();
-            const restante = exactoSaldoPendienteActual();
+            const restante = anluxSaldoPendienteActual();
             const confirmado = document.getElementById('saldoPagadoConfirmado');
             if (confirmado) confirmado.value = restante <= 0.009 ? '1' : '0';
-            exactoMarcarOrdenFormSucio();
-            await exactoShowAlert(
+            anluxMarcarOrdenFormSucio();
+            await anluxShowAlert(
                 `Se liquidó $${aAplicar.toFixed(2)} del equipo seleccionado.\nSaldo restante de la orden: $${restante.toFixed(2)}.`,
                 { title: 'Pago aplicado', icon: 'success' }
             );
             return true;
         };
 
-        async function exactoPagarSaldoPendiente() {
-            exactoAbrirModalLiquidarSaldo();
+        async function anluxPagarSaldoPendiente() {
+            anluxAbrirModalLiquidarSaldo();
         }
 
         /** Solo dígitos y un punto decimal (evita letras y notación científica en type="number"). */
@@ -4545,21 +4547,21 @@ function exactoAplicarConversionNetoASinIva(input) {
             return negativo ? `-${s}` : s;
         }
 
-        function exactoFilaTrabajoUsada(row) {
+        function anluxFilaTrabajoUsada(row) {
             return ['clave', 'descripcion', 'importe'].some((campo) => {
                 const input = row.querySelector(`[name*="[${campo}]"]`);
                 return input && String(input.value || '').trim() !== '';
             });
         }
 
-        function exactoFilaMaterialUsada(row) {
+        function anluxFilaMaterialUsada(row) {
             return ['vale', 'codigo', 'cant', 'descripcion', 'precio'].some((campo) => {
                 const input = row.querySelector(`[name*="[${campo}]"]`);
                 return input && String(input.value || '').trim() !== '';
             });
         }
 
-        function exactoHayNumerosNegativos() {
+        function anluxHayNumerosNegativos() {
             const inputs = document.querySelectorAll(
                 '#trabajosTableBody input[name*="[importe]"], #materialesTableBody input[name*="[cant]"], #materialesTableBody input[name*="[precio]"], #anticiposTableBody input[name*="[monto]"]'
             );
@@ -4572,13 +4574,13 @@ function exactoAplicarConversionNetoASinIva(input) {
             return false;
         }
 
-        function exactoSaldoPendienteActual() {
+        function anluxSaldoPendienteActual() {
             calcularTotalFactura();
             const saldoEl = document.getElementById('saldoPendiente');
             return parseFloat(saldoEl ? saldoEl.textContent : '0') || 0;
         }
 
-        function exactoHabilitarCamposTicketParaEnvio() {
+        function anluxHabilitarCamposTicketParaEnvio() {
             document.querySelectorAll('#ordenForm .ticket-factura-input, #ordenForm .ticket-factura-select').forEach((campo) => {
                 campo.disabled = false;
                 if (campo.tagName === 'INPUT') {
@@ -4588,15 +4590,15 @@ function exactoAplicarConversionNetoASinIva(input) {
             });
         }
 
-        async function exactoValidarCargosYAnticipos() {
-            exactoActualizarTotalesAnticipos();
+        async function anluxValidarCargosYAnticipos() {
+            anluxActualizarTotalesAnticipos();
             // Ticket/factura es opcional en trabajos, materiales y anticipos.
 
             const materialRows = document.querySelectorAll('#materialesTableBody .material-row');
             for (const row of materialRows) {
-                if (!exactoFilaMaterialUsada(row)) continue;
-                const campos = exactoCamposMaterial(row);
-                const filaNum = exactoNumeroFilaTabla(row);
+                if (!anluxFilaMaterialUsada(row)) continue;
+                const campos = anluxCamposMaterial(row);
+                const filaNum = anluxNumeroFilaTabla(row);
                 const requeridos = [
                     [campos.vale, `Material (fila ${filaNum}): falta el vale.`],
                     [campos.cantidad, `Material (fila ${filaNum}): falta la cantidad.`],
@@ -4605,23 +4607,23 @@ function exactoAplicarConversionNetoASinIva(input) {
                 ];
                 for (const [input, mensaje] of requeridos) {
                     if (!input || String(input.value || '').trim() === '') {
-                        await exactoShowAlert(mensaje, { title: 'Faltan datos en la orden' });
-                        exactoUiFocusField(input);
+                        await anluxShowAlert(mensaje, { title: 'Faltan datos en la orden' });
+                        anluxUiFocusField(input);
                         return false;
                     }
                 }
                 if ((parseFloat(campos.cantidad.value) || 0) < 0) {
-                    await exactoShowAlert(`Material (fila ${filaNum}): la cantidad no puede ser negativa.`, {
+                    await anluxShowAlert(`Material (fila ${filaNum}): la cantidad no puede ser negativa.`, {
                         title: 'Faltan datos en la orden',
                     });
-                    exactoUiFocusField(campos.cantidad);
+                    anluxUiFocusField(campos.cantidad);
                     return false;
                 }
                 if ((parseFloat(campos.precio.value) || 0) < 0) {
-                    await exactoShowAlert(`Material (fila ${filaNum}): el precio unitario no puede ser negativo.`, {
+                    await anluxShowAlert(`Material (fila ${filaNum}): el precio unitario no puede ser negativo.`, {
                         title: 'Faltan datos en la orden',
                     });
-                    exactoUiFocusField(campos.precio);
+                    anluxUiFocusField(campos.precio);
                     return false;
                 }
             }
@@ -4631,7 +4633,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 const folioInput = row.querySelector('[name*="[folio]"]');
                 const descInput = row.querySelector('[name*="[descripcion]"]');
                 const montoInput = row.querySelector('[name*="[monto]"]');
-                const ticketInput = exactoCampoTicket(row);
+                const ticketInput = anluxCampoTicket(row);
                 const folioTexto = String(folioInput ? folioInput.value : '').trim();
                 const descTexto = String(descInput ? descInput.value : '').trim();
                 const montoTexto = String(montoInput ? montoInput.value : '').trim();
@@ -4640,33 +4642,33 @@ function exactoAplicarConversionNetoASinIva(input) {
                 const filaUsada = folioTexto !== '' || descTexto !== '' || ticketTexto !== ''
                     || (montoTexto !== '' && (!Number.isFinite(montoNum) || Math.abs(montoNum) >= 0.009));
                 if (!filaUsada) continue;
-                const filaNum = exactoNumeroFilaTabla(row);
+                const filaNum = anluxNumeroFilaTabla(row);
                 if (folioTexto === '') {
-                    await exactoShowAlert(`Anticipo (fila ${filaNum}): captura el folio del pedido.`, {
+                    await anluxShowAlert(`Anticipo (fila ${filaNum}): captura el folio del pedido.`, {
                         title: 'Faltan datos en la orden',
                     });
-                    exactoUiFocusField(folioInput);
+                    anluxUiFocusField(folioInput);
                     return false;
                 }
                 if (descTexto === '') {
-                    await exactoShowAlert(`Anticipo (fila ${filaNum}): captura la descripción de refacción.`, {
+                    await anluxShowAlert(`Anticipo (fila ${filaNum}): captura la descripción de refacción.`, {
                         title: 'Faltan datos en la orden',
                     });
-                    exactoUiFocusField(descInput);
+                    anluxUiFocusField(descInput);
                     return false;
                 }
                 if (montoTexto === '') {
-                    await exactoShowAlert(`Anticipo (fila ${filaNum}): captura el monto pagado (puede ser 0).`, {
+                    await anluxShowAlert(`Anticipo (fila ${filaNum}): captura el monto pagado (puede ser 0).`, {
                         title: 'Faltan datos en la orden',
                     });
-                    exactoUiFocusField(montoInput);
+                    anluxUiFocusField(montoInput);
                     return false;
                 }
                 if (!Number.isFinite(parseFloat(montoTexto))) {
-                    await exactoShowAlert(`Anticipo (fila ${filaNum}): el monto pagado no es válido.`, {
+                    await anluxShowAlert(`Anticipo (fila ${filaNum}): el monto pagado no es válido.`, {
                         title: 'Faltan datos en la orden',
                     });
-                    exactoUiFocusField(montoInput);
+                    anluxUiFocusField(montoInput);
                     return false;
                 }
             }
@@ -4674,26 +4676,26 @@ function exactoAplicarConversionNetoASinIva(input) {
             return true;
         }
 
-        async function exactoValidarEntregadoLiquidado() {
+        async function anluxValidarEntregadoLiquidado() {
             const estatusEl = document.getElementById('inputEstatus');
-            if (!estatusEl || exactoNormalizarEstatusOrden(estatusEl.value) !== 'Entregado') {
+            if (!estatusEl || anluxNormalizarEstatusOrden(estatusEl.value) !== 'Entregado') {
                 return true;
             }
             calcularTotalFactura();
             const saldoEl = document.getElementById('saldoPendiente');
             const saldo = parseFloat(saldoEl ? saldoEl.textContent : '0') || 0;
             if (Math.abs(saldo) > 0.009) {
-                await exactoShowAlert('Para marcar como Entregado, el saldo pendiente debe quedar liquidado en $0.00.', {
+                await anluxShowAlert('Para marcar como Entregado, el saldo pendiente debe quedar liquidado en $0.00.', {
                     title: 'Saldo pendiente',
                 });
-                exactoUiFocusField(saldoEl);
+                anluxUiFocusField(saldoEl);
                 return false;
             }
 
             return true;
         }
 
-        async function exactoConfirmarSaldoLiquidadoAlGuardar() {
+        async function anluxConfirmarSaldoLiquidadoAlGuardar() {
             calcularTotalFactura();
             const totalEl = document.getElementById('total');
             const saldoEl = document.getElementById('saldoPendiente');
@@ -4702,7 +4704,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             const saldo = parseFloat(saldoEl ? saldoEl.textContent : '0') || 0;
             const yaConfirmado = confirmadoEl && confirmadoEl.value === '1';
             const anticipos = calcularTotalAnticipos();
-            const abono = exactoTotalAbonoSaldo();
+            const abono = anluxTotalAbonoSaldo();
             const huboPago = (anticipos + abono) > 0.009;
 
             if (total <= 0.009) {
@@ -4711,7 +4713,7 @@ function exactoAplicarConversionNetoASinIva(input) {
 
             // Hay saldo pendiente: preguntar si el cliente ya pagó.
             if (saldo > 0.009) {
-                const clientePago = await exactoShowConfirm(
+                const clientePago = await anluxShowConfirm(
                     `Hay saldo pendiente de $${saldo.toFixed(2)}. ¿El cliente ya pagó?`,
                     {
                         title: 'Confirmar pago',
@@ -4721,7 +4723,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 );
                 if (clientePago) {
                     if (confirmadoEl) confirmadoEl.value = '1';
-                    exactoSetAbonoSaldo(abono + exactoMontoSinIvaDesdeTotal(saldo));
+                    anluxSetAbonoSaldo(abono + anluxMontoSinIvaDesdeTotal(saldo));
                     calcularSaldoPendiente();
                 }
                 return true;
@@ -4729,7 +4731,7 @@ function exactoAplicarConversionNetoASinIva(input) {
 
             // Saldo liquidado (0) con anticipos/abono: exigir confirmación "cliente pagó".
             if (Math.abs(saldo) <= 0.009 && huboPago && !yaConfirmado) {
-                const clientePago = await exactoShowConfirm(
+                const clientePago = await anluxShowConfirm(
                     'El saldo pendiente quedó en $0.00. ¿Confirmas que el cliente pagó?',
                     {
                         title: 'Confirmar pago',
@@ -4738,10 +4740,10 @@ function exactoAplicarConversionNetoASinIva(input) {
                     }
                 );
                 if (!clientePago) {
-                    await exactoShowAlert('Guardado cancelado. Confirma el pago del cliente para continuar.', {
+                    await anluxShowAlert('Guardado cancelado. Confirma el pago del cliente para continuar.', {
                         title: 'Operación cancelada',
                     });
-                    exactoUiFocusField(saldoEl);
+                    anluxUiFocusField(saldoEl);
                     return false;
                 }
                 if (confirmadoEl) confirmadoEl.value = '1';
@@ -4763,16 +4765,16 @@ function exactoAplicarConversionNetoASinIva(input) {
 
         // Event listeners adicionales
         document.addEventListener('focusin', function (e) {
-            if (exactoCampoEsNetoConvertible(e.target)) {
-                exactoIniciarEdicionPrecioNeto(e.target);
+            if (anluxCampoEsNetoConvertible(e.target)) {
+                anluxIniciarEdicionPrecioNeto(e.target);
             }
         });
 
         document.addEventListener('keydown', function (e) {
-            if (!exactoCampoEsNetoConvertible(e.target)) return;
+            if (!anluxCampoEsNetoConvertible(e.target)) return;
             if (e.key !== 'Enter') return;
             e.preventDefault();
-            exactoAplicarConversionNetoASinIva(e.target);
+            anluxAplicarConversionNetoASinIva(e.target);
             e.target.blur();
         });
 
@@ -4783,8 +4785,8 @@ function exactoAplicarConversionNetoASinIva(input) {
                     e.target.value = cleaned;
                 }
             }
-            if (exactoCampoEsNetoConvertible(e.target)) {
-                exactoActualizarHintNetoSinIva(e.target);
+            if (anluxCampoEsNetoConvertible(e.target)) {
+                anluxActualizarHintNetoSinIva(e.target);
             }
             const cls = e.target && e.target.classList;
             if (cls && (cls.contains('cant-input') || cls.contains('precio-input'))) {
@@ -4792,10 +4794,10 @@ function exactoAplicarConversionNetoASinIva(input) {
                 calcularSubtotalMateriales();
             }
             if (e.target && e.target.closest && e.target.closest('#materialesTableBody')) {
-                exactoActualizarTicketsMateriales();
+                anluxActualizarTicketsMateriales();
             }
             if (e.target && e.target.closest && e.target.closest('#materialesTableBody') && e.target.name && e.target.name.includes('[ticket]')) {
-                exactoSincronizarTicketsAnticipos();
+                anluxSincronizarTicketsAnticipos();
             }
             if (cls && cls.contains('importe-input')) {
                 calcularSubtotalTrabajos();
@@ -4803,11 +4805,11 @@ function exactoAplicarConversionNetoASinIva(input) {
         });
 
         document.addEventListener('blur', function (e) {
-            if (exactoCampoEsNetoConvertible(e.target)) {
-                exactoAplicarConversionNetoASinIva(e.target);
+            if (anluxCampoEsNetoConvertible(e.target)) {
+                anluxAplicarConversionNetoASinIva(e.target);
             }
             if (e.target && e.target.classList && e.target.classList.contains('anticipo-input')) {
-                exactoActualizarTotalesAnticipos();
+                anluxActualizarTotalesAnticipos();
             }
         }, true);
 
@@ -4817,7 +4819,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
             const name = String(e.target.name || '');
             if (name.includes('[folio]') || name.includes('[descripcion]') || name.includes('[monto]') || name.includes('[ticket]')) {
-                exactoActualizarTotalesAnticipos();
+                anluxActualizarTotalesAnticipos();
             }
         });
 
@@ -4829,11 +4831,11 @@ function exactoAplicarConversionNetoASinIva(input) {
                 && e.target.classList
                 && e.target.classList.contains('anticipo-ticket-input')
             ) {
-                exactoActualizarTotalesAnticipos();
+                anluxActualizarTotalesAnticipos();
             }
             if (e.target.matches('select[name*="[clave]"]') && e.target.closest('#trabajosTableBody')) {
                 const fila = e.target.closest('.trabajo-row');
-                exactoAplicarServicioTrabajo(fila, true);
+                anluxAplicarServicioTrabajo(fila, true);
             }
         });
 
@@ -4845,10 +4847,10 @@ function exactoAplicarConversionNetoASinIva(input) {
             if (!fila) return;
             const name = String(input.name || '');
             if (!name.includes('[descripcion]') && !name.includes('[importe]')) return;
-            const campos = exactoCamposTrabajo(fila);
-            const servicio = exactoServicioParaSelect(campos.clave);
-            const editable = exactoServicioTrabajoEsEditable(servicio, campos.clave);
-            exactoAplicarBloqueoCamposTrabajo(campos, editable);
+            const campos = anluxCamposTrabajo(fila);
+            const servicio = anluxServicioParaSelect(campos.clave);
+            const editable = anluxServicioTrabajoEsEditable(servicio, campos.clave);
+            anluxAplicarBloqueoCamposTrabajo(campos, editable);
             if (!editable) {
                 input.blur();
             }
@@ -4856,34 +4858,34 @@ function exactoAplicarConversionNetoASinIva(input) {
 
         document.addEventListener('input', function(e) {
             if (e.target.matches('select[name*="[clave]"]') && e.target.closest('#trabajosTableBody')) {
-                exactoPrevisualizarServicioTrabajo(e.target.closest('.trabajo-row'));
+                anluxPrevisualizarServicioTrabajo(e.target.closest('.trabajo-row'));
             }
         });
 
         document.addEventListener('mouseover', function(e) {
             const sel = e.target && e.target.closest && e.target.closest('select[name*="[clave]"]');
             if (!sel || !sel.closest('#trabajosTableBody')) return;
-            exactoPrevisualizarServicioTrabajo(sel.closest('.trabajo-row'));
+            anluxPrevisualizarServicioTrabajo(sel.closest('.trabajo-row'));
         }, true);
 
         document.addEventListener('focusin', function(e) {
             if (e.target.matches('select[name*="[clave]"]') && e.target.closest('#trabajosTableBody')) {
-                exactoPrevisualizarServicioTrabajo(e.target.closest('.trabajo-row'));
+                anluxPrevisualizarServicioTrabajo(e.target.closest('.trabajo-row'));
             }
             if (e.target.tagName === 'OPTION') {
-                exactoPrevisualizarDesdeOption(e.target);
+                anluxPrevisualizarDesdeOption(e.target);
             }
         });
 
         document.addEventListener('mouseover', function(e) {
             if (e.target.tagName === 'OPTION') {
-                exactoPrevisualizarDesdeOption(e.target);
+                anluxPrevisualizarDesdeOption(e.target);
             }
         });
 
-        function exactoMostrarBannerFirmasDeshabilitadasSiAplica() {
+        function anluxMostrarBannerFirmasDeshabilitadasSiAplica() {
             const wrap = document.getElementById('wrapBannerFirmasDeshabilitadas');
-            if (!wrap || !window.EXACTO_ORDEN_FIRMAS_DESHABILITADAS) {
+            if (!wrap || !window.ANLUX_ORDEN_FIRMAS_DESHABILITADAS) {
                 return;
             }
             wrap.classList.remove('hidden');
@@ -4897,7 +4899,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
         }
 
-        function exactoLeerTextosObservaciones() {
+        function anluxLeerTextosObservaciones() {
             const form = document.getElementById('ordenForm');
             if (!form) {
                 return [];
@@ -4917,27 +4919,27 @@ function exactoAplicarConversionNetoASinIva(input) {
             return textos;
         }
 
-        const EXACTO_MSG_OBS = 'Atención: el campo observaciones está vacío. Escriba al menos una observación.';
+        const ANLUX_MSG_OBS = 'Atención: el campo observaciones está vacío. Escriba al menos una observación.';
 
-        async function exactoValidarObservaciones() {
+        async function anluxValidarObservaciones() {
             const idOrden = Number(document.getElementById('id_orden_c')?.value || 0);
-            if (idOrden > 0 || window.EXACTO_ORDEN_MODO_COMPLETAR) {
+            if (idOrden > 0 || window.ANLUX_ORDEN_MODO_COMPLETAR) {
                 return true;
             }
-            if (exactoLeerTextosObservaciones().length > 0) {
+            if (anluxLeerTextosObservaciones().length > 0) {
                 return true;
             }
-            await exactoShowAlert(EXACTO_MSG_OBS, { title: 'Observaciones' });
+            await anluxShowAlert(ANLUX_MSG_OBS, { title: 'Observaciones' });
             const form = document.getElementById('ordenForm');
             const first = form?.querySelector('input[name="observaciones[]"], input.observacion-input');
             if (first) {
-                exactoUiFocusField(first);
+                anluxUiFocusField(first);
             }
             return false;
         }
 
-        function exactoBuildTipoServicioOptionsHtml() {
-            const tipos = Array.isArray(window.EXACTO_TIPOS_SERVICIO) ? window.EXACTO_TIPOS_SERVICIO : [
+        function anluxBuildTipoServicioOptionsHtml() {
+            const tipos = Array.isArray(window.ANLUX_TIPOS_SERVICIO) ? window.ANLUX_TIPOS_SERVICIO : [
                 '1. Mantenimiento', '2. Reparacion', '3. Instalacion', '4. Garantia', '5. Revision',
             ];
             return tipos.map((v) => {
@@ -4946,12 +4948,12 @@ function exactoAplicarConversionNetoASinIva(input) {
             }).join('');
         }
 
-        /** Reconstruye selects de tipo de servicio desde EXACTO_TIPOS_SERVICIO (corrige mojibake del HTML en servidor). */
-        function exactoRepararSelectsTipoServicio() {
+        /** Reconstruye selects de tipo de servicio desde ANLUX_TIPOS_SERVICIO (corrige mojibake del HTML en servidor). */
+        function anluxRepararSelectsTipoServicio() {
             document.querySelectorAll('select[name*="[tipoServicio]"]').forEach((select) => {
                 const valorGuardado = select.value;
-                select.innerHTML = `<option value="">Seleccionar...</option>${exactoBuildTipoServicioOptionsHtml()}`;
-                exactoSeleccionarTipoServicio(select, valorGuardado);
+                select.innerHTML = `<option value="">Seleccionar...</option>${anluxBuildTipoServicioOptionsHtml()}`;
+                anluxSeleccionarTipoServicio(select, valorGuardado);
             });
         }
 
@@ -4962,77 +4964,77 @@ function exactoAplicarConversionNetoASinIva(input) {
 
             // Si el usuario guarda con el cursor aún en precio/monto neto, convertir antes de validar/enviar.
             form.querySelectorAll('.precio-input, .anticipo-input').forEach((input) => {
-                exactoAplicarConversionNetoASinIva(input);
+                anluxAplicarConversionNetoASinIva(input);
             });
 
-            if (exactoOrdenSubmitInFlight) {
-                exactoMostrarEstadoGuardado('info', 'La orden ya se está guardando. Espera a que termine el envío del correo.');
+            if (anluxOrdenSubmitInFlight) {
+                anluxMostrarEstadoGuardado('info', 'La orden ya se está guardando. Espera a que termine el envío del correo.');
                 return;
             }
 
-            exactoOcultarEstadoGuardado();
+            anluxOcultarEstadoGuardado();
 
-            if (!await exactoValidarEquipos()) {
-                exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+            if (!await anluxValidarEquipos()) {
+                anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                 return;
             }
 
-            if (!await exactoConfirmarCobroSersop01RevisionNueva()) {
-                exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+            if (!await anluxConfirmarCobroSersop01RevisionNueva()) {
+                anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                 return;
             }
 
-            if (!await exactoValidarServiciosSersop(form)) {
-                exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+            if (!await anluxValidarServiciosSersop(form)) {
+                anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                 return;
             }
 
-            if (!await exactoValidarCargosYAnticipos()) {
-                exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+            if (!await anluxValidarCargosYAnticipos()) {
+                anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                 return;
             }
 
-            if (!await exactoValidarEntregadoLiquidado()) {
-                exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+            if (!await anluxValidarEntregadoLiquidado()) {
+                anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                 return;
             }
 
-            if (!await exactoConfirmarSaldoLiquidadoAlGuardar()) {
-                exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+            if (!await anluxConfirmarSaldoLiquidadoAlGuardar()) {
+                anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                 return;
             }
 
-            if (!await exactoValidarObservaciones()) {
-                exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+            if (!await anluxValidarObservaciones()) {
+                anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                 return;
             }
 
-            const permitirNegativos = exactoHayNumerosNegativos()
-                ? await exactoShowConfirm('La orden contiene números negativos. ¿Deseas aceptar y guardar la orden así?', {
+            const permitirNegativos = anluxHayNumerosNegativos()
+                ? await anluxShowConfirm('La orden contiene números negativos. ¿Deseas aceptar y guardar la orden así?', {
                     title: 'Confirmar importes',
                     confirmText: 'Sí, guardar',
                     cancelText: 'Revisar',
                 })
                 : false;
-            if (exactoHayNumerosNegativos() && !permitirNegativos) {
-                exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+            if (anluxHayNumerosNegativos() && !permitirNegativos) {
+                anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                 return;
             }
-            const saldoPendiente = exactoSaldoPendienteActual();
+            const saldoPendiente = anluxSaldoPendienteActual();
             const permitirSaldoNegativo = saldoPendiente < -0.009
-                ? await exactoShowConfirm('El saldo pendiente queda en número negativo. ¿Deseas aceptar y guardar la orden así?', {
+                ? await anluxShowConfirm('El saldo pendiente queda en número negativo. ¿Deseas aceptar y guardar la orden así?', {
                     title: 'Confirmar saldo negativo',
                     confirmText: 'Sí, guardar',
                     cancelText: 'Revisar',
                 })
                 : false;
             if (saldoPendiente < -0.009 && !permitirSaldoNegativo) {
-                exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+                anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                 return;
             }
 
-            if (!await exactoValidarFormularioHtml(form)) {
-                exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+            if (!await anluxValidarFormularioHtml(form)) {
+                anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                 return;
             }
 
@@ -5059,20 +5061,20 @@ function exactoAplicarConversionNetoASinIva(input) {
                     /\d{4,}/.test(poblacion) ||
                     !/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]+$/.test(poblacion)
                 ) {
-                    await exactoShowAlert(
+                    await anluxShowAlert(
                         'Población/Ciudad: usa solo letras, espacios, puntos, apóstrofes o guiones (sin números largos).',
                         { title: 'Faltan datos en la orden' }
                     );
-                    exactoUiFocusField(poblacionInput);
-                    exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+                    anluxUiFocusField(poblacionInput);
+                    anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                     return;
                 }
             }
 
-            exactoHabilitarCamposTicketParaEnvio();
+            anluxHabilitarCamposTicketParaEnvio();
             const formData = new FormData(this);
             formData.delete('observaciones[]');
-            exactoLeerTextosObservaciones().forEach((texto) => {
+            anluxLeerTextosObservaciones().forEach((texto) => {
                 formData.append('observaciones[]', texto);
             });
             if (permitirNegativos) {
@@ -5083,7 +5085,7 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
             const firmaPngVacia = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
-            if (window.EXACTO_ORDEN_FIRMAS_DESHABILITADAS) {
+            if (window.ANLUX_ORDEN_FIRMAS_DESHABILITADAS) {
                 formData.append('firmaClienteInicial', firmaPngVacia);
                 formData.append('firmaTecnicoInicial', firmaPngVacia);
                 formData.append('firmaCliente', firmaPngVacia);
@@ -5096,33 +5098,33 @@ function exactoAplicarConversionNetoASinIva(input) {
                     if (!bloque) return true;
                     return !bloque.classList.contains('hidden') && !bloque.classList.contains('orden-firmas-skip');
                 };
-                const idsBase = window.EXACTO_ORDEN_MODO_COMPLETAR
+                const idsBase = window.ANLUX_ORDEN_MODO_COMPLETAR
                     ? ['firmaCliente', 'firmaTecnico']
                     : ['firmaClienteInicial', 'firmaTecnicoInicial', 'firmaCliente', 'firmaTecnico'];
                 const idsFirma = idsBase.filter(firmaVisible);
                 const firmasFaltantes = idsFirma.filter((id) => !canvasPareceFirmado(id));
                 if (!idsFirma.every((id) => document.getElementById(id) && canvasContexts[id])) {
                     const lista = idsFirma
-                        .map((id) => EXACTO_ETIQUETAS_FIRMA[id] || id)
+                        .map((id) => ANLUX_ETIQUETAS_FIRMA[id] || id)
                         .join('\n• ');
-                    await exactoShowAlert(`Faltan estas firmas:\n\n• ${lista}`, {
+                    await anluxShowAlert(`Faltan estas firmas:\n\n• ${lista}`, {
                         title: 'Firmas requeridas',
                     });
-                    exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+                    anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                     return;
                 }
                 if (firmasFaltantes.length > 0) {
                     const lista = firmasFaltantes
-                        .map((id) => EXACTO_ETIQUETAS_FIRMA[id] || id)
+                        .map((id) => ANLUX_ETIQUETAS_FIRMA[id] || id)
                         .join('\n• ');
-                    await exactoShowAlert(`Debes firmar en:\n\n• ${lista}`, {
+                    await anluxShowAlert(`Debes firmar en:\n\n• ${lista}`, {
                         title: 'Firmas requeridas',
                     });
                     const primera = document.getElementById(firmasFaltantes[0]);
                     if (primera) {
-                        exactoUiFocusField(primera);
+                        anluxUiFocusField(primera);
                     }
-                    exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+                    anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                     return;
                 }
                 idsFirma.forEach((id) => {
@@ -5138,17 +5140,17 @@ function exactoAplicarConversionNetoASinIva(input) {
             }
 
             // Salida temporal: aviso + modal ANTES de enviar el guardado.
-            const salidaTemporalCapturada = await exactoPreguntarSalidaTemporalAntesDeGuardar();
+            const salidaTemporalCapturada = await anluxPreguntarSalidaTemporalAntesDeGuardar();
             if (salidaTemporalCapturada === false) {
-                exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+                anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                 return;
             }
 
-            exactoMarcarGuardadoEnCurso('Guardando orden y enviando correo, espere...');
+            anluxMarcarGuardadoEnCurso('Guardando orden y enviando correo, espere...');
             let requiereLiberarGuardado = true;
 
             try {
-                const registrarUrl = exactoUrlApiRegistrar();
+                const registrarUrl = anluxUrlApiRegistrar();
                 const response = await fetch(registrarUrl, {
                     method: 'POST',
                     body: formData,
@@ -5164,13 +5166,13 @@ function exactoAplicarConversionNetoASinIva(input) {
                     data = raw.trim() === '' ? {} : JSON.parse(raw);
                 } catch (parseErr) {
                     const snippet = raw.replace(/\s+/g, ' ').trim().slice(0, 280);
-                    exactoLiberarGuardado({
+                    anluxLiberarGuardado({
                         keepNotice: true,
                         type: 'error',
                         message: 'No se pudo guardar la orden. El servidor devolvió una respuesta inválida.',
                     });
                     requiereLiberarGuardado = false;
-                    await exactoShowAlert(
+                    await anluxShowAlert(
                         '❌ Error al guardar: el servidor no devolvió JSON válido (HTTP ' +
                             response.status +
                             '). Suele ser un aviso o error de PHP en la respuesta. Revisa la consola (F12) o el log de PHP. ' +
@@ -5178,7 +5180,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                         { title: 'Error al guardar', icon: 'error' }
                     );
                     console.error('registrar_orden respuesta cruda:', raw);
-                    exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+                    anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                     return;
                 }
 
@@ -5194,17 +5196,17 @@ function exactoAplicarConversionNetoASinIva(input) {
                         String(document.querySelector('[name="telefono"]')?.value || '').trim()
                     );
                     if ((hayAvisoCorreo && estadoCorreo !== 'info') || hayCorreoCliente) {
-                        exactoMostrarEstadoGuardado('loading', 'Enviando correo, espere...');
-                        await exactoEsperar(1500);
+                        anluxMostrarEstadoGuardado('loading', 'Enviando correo, espere...');
+                        await anluxEsperar(1500);
                     }
                     if (whatsappAplica && (hayAvisoWhatsapp || hayTelefonoCliente)) {
-                        exactoMostrarEstadoGuardado('loading', 'Enviando plantilla de WhatsApp, espere...');
-                        await exactoEsperar(800);
+                        anluxMostrarEstadoGuardado('loading', 'Enviando plantilla de WhatsApp, espere...');
+                        await anluxEsperar(800);
                     }
                     if (data.whatsapp_notification_id && hayAvisoWhatsapp && String(data.whatsapp_notice_level || '').toLowerCase() !== 'error') {
-                        exactoMostrarEstadoGuardado('loading', 'Confirmando entrega de WhatsApp...');
+                        anluxMostrarEstadoGuardado('loading', 'Confirmando entrega de WhatsApp...');
                         try {
-                            await exactoConfirmarEntregaWhatsapp(data);
+                            await anluxConfirmarEntregaWhatsapp(data);
                         } catch (waErr) {
                             console.warn('No se pudo confirmar entrega WhatsApp:', waErr);
                         }
@@ -5223,30 +5225,30 @@ function exactoAplicarConversionNetoASinIva(input) {
                     }
                     const avisoGuardado = avisoPartes.filter(Boolean).join('\n\n');
                     if (correoNoEnviado || whatsappNoEnviado) {
-                        exactoLiberarGuardado({
+                        anluxLiberarGuardado({
                             keepNotice: true,
                             type: 'error',
                             message: avisoGuardado || data.message,
                         });
                         requiereLiberarGuardado = false;
                     } else if (correoAceptado || whatsappAceptado || correoConfirmado || correoOpcionalSinEnviar) {
-                        exactoLiberarGuardado({
+                        anluxLiberarGuardado({
                             keepNotice: true,
                             type: 'success',
                             message: avisoGuardado || data.message,
                         });
                         requiereLiberarGuardado = false;
                     } else if (correoNoConfirmado) {
-                        exactoLiberarGuardado({
+                        anluxLiberarGuardado({
                             keepNotice: true,
                             type: 'info',
                             message: avisoGuardado || data.message,
                         });
                         requiereLiberarGuardado = false;
                     }
-                    await exactoShowAlert(exactoResumenGuardado(data), {
-                        title: exactoTituloGuardadoOrden(data),
-                        icon: exactoIconoGuardadoOrden(data),
+                    await anluxShowAlert(anluxResumenGuardado(data), {
+                        title: anluxTituloGuardadoOrden(data),
+                        icon: anluxIconoGuardadoOrden(data),
                     });
                     const idOrdenGuardada = Number(data.idOrden || data.id_orden_c || 0);
                     if (
@@ -5254,25 +5256,25 @@ function exactoAplicarConversionNetoASinIva(input) {
                         && typeof salidaTemporalCapturada === 'object'
                         && idOrdenGuardada > 0
                     ) {
-                        exactoMostrarEstadoGuardado('loading', 'Registrando salida temporal...');
-                        await exactoEnviarSalidaTemporalCapturada(idOrdenGuardada, salidaTemporalCapturada);
+                        anluxMostrarEstadoGuardado('loading', 'Registrando salida temporal...');
+                        await anluxEnviarSalidaTemporalCapturada(idOrdenGuardada, salidaTemporalCapturada);
                     }
                     // Limpiar formulario
                     document.getElementById('ordenForm').reset();
-                    if (!window.EXACTO_ORDEN_FIRMAS_DESHABILITADAS) {
+                    if (!window.ANLUX_ORDEN_FIRMAS_DESHABILITADAS) {
                         limpiarFirmaClienteInicial();
                         limpiarFirmaTecnicoInicial();
                         limpiarFirmaCliente();
                         limpiarFirmaTecnico();
                     }
-                    exactoPermitirSalidaOrdenForm();
-                    exactoBorrarBorradorOrdenLocal();
+                    anluxPermitirSalidaOrdenForm();
+                    anluxBorrarBorradorOrdenLocal();
                     if (idOrdenGuardada > 0) {
-                        exactoAbrirReportePdfOrden(idOrdenGuardada);
+                        anluxAbrirReportePdfOrden(idOrdenGuardada);
                     }
-                    window.location.href = exactoUrlOrdenesIndex();
+                    window.location.href = anluxUrlOrdenesIndex();
                 } else if (data.processing || data.duplicate_submit) {
-                    exactoLiberarGuardado({
+                    anluxLiberarGuardado({
                         keepNotice: true,
                         type: 'info',
                         message: data.message || 'La orden ya se está guardando. Espera a que termine el proceso actual.',
@@ -5282,7 +5284,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                     const mensajeError = String(data.message || '').trim()
                         || (data.email_notice_level === 'error' && data.email_notice ? data.email_notice : '')
                         || 'No se pudo guardar la orden. Revisa el aviso e intenta nuevamente.';
-                    exactoLiberarGuardado({
+                    anluxLiberarGuardado({
                         keepNotice: true,
                         type: 'error',
                         message: mensajeError,
@@ -5295,28 +5297,28 @@ function exactoAplicarConversionNetoASinIva(input) {
                     if (data.whatsapp_notice) {
                         avisosError.push(data.whatsapp_notice);
                     }
-                    await exactoShowAlert(avisosError.filter(Boolean).join('\n\n'), {
+                    await anluxShowAlert(avisosError.filter(Boolean).join('\n\n'), {
                         title: 'No se pudo guardar',
                         icon: 'error',
                     });
-                    exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+                    anluxMostrarBannerFirmasDeshabilitadasSiAplica();
                 }
             } catch (error) {
-                exactoLiberarGuardado({
+                anluxLiberarGuardado({
                     keepNotice: true,
                     type: 'error',
                     message: 'No se pudo completar el guardado. Verifica la conexión e intenta de nuevo.',
                 });
                 requiereLiberarGuardado = false;
-                await exactoShowAlert('❌ Error al guardar: ' + error.message, {
+                await anluxShowAlert('❌ Error al guardar: ' + error.message, {
                     title: 'Error al guardar',
                     icon: 'error',
                 });
                 console.error('Error:', error);
-                exactoMostrarBannerFirmasDeshabilitadasSiAplica();
+                anluxMostrarBannerFirmasDeshabilitadasSiAplica();
             } finally {
-                if (requiereLiberarGuardado && exactoOrdenSubmitInFlight) {
-                    exactoLiberarGuardado();
+                if (requiereLiberarGuardado && anluxOrdenSubmitInFlight) {
+                    anluxLiberarGuardado();
                 }
             }
         });
@@ -5340,9 +5342,9 @@ function exactoAplicarConversionNetoASinIva(input) {
             if (!btnReenviar) return;
 
             btnReenviar.addEventListener('click', async function () {
-                const url = typeof window.EXACTO_REENVIAR_URL === 'string' ? window.EXACTO_REENVIAR_URL.trim() : '';
+                const url = typeof window.ANLUX_REENVIAR_URL === 'string' ? window.ANLUX_REENVIAR_URL.trim() : '';
                 if (!url) {
-                    await exactoShowAlert('No se pudo determinar la orden a reenviar.', { title: 'Reenviar', icon: 'error' });
+                    await anluxShowAlert('No se pudo determinar la orden a reenviar.', { title: 'Reenviar', icon: 'error' });
                     return;
                 }
 
@@ -5361,7 +5363,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 };
 
                 const formData = new FormData();
-                formData.append('_token', String(window.EXACTO_CSRF_TOKEN || ''));
+                formData.append('_token', String(window.ANLUX_CSRF_TOKEN || ''));
                 formData.append('nombreCliente', valorCampo('[name="nombreCliente"]'));
                 formData.append('telefono', valorCampo('[name="telefono"]'));
                 formData.append('correo', valorCampo('[name="correo"]'));
@@ -5371,7 +5373,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 const textoOriginal = btnReenviar.innerHTML;
                 btnReenviar.disabled = true;
                 btnReenviar.innerHTML = '<i class="mr-2 fas fa-spinner fa-spin"></i>Reenviando...';
-                exactoMostrarEstadoGuardado('loading', 'Reenviando WhatsApp y correo, espere...');
+                anluxMostrarEstadoGuardado('loading', 'Reenviando WhatsApp y correo, espere...');
 
                 try {
                     const response = await fetch(url, {
@@ -5381,7 +5383,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                         headers: {
                             Accept: 'application/json',
                             'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': String(window.EXACTO_CSRF_TOKEN || ''),
+                            'X-CSRF-TOKEN': String(window.ANLUX_CSRF_TOKEN || ''),
                         },
                     });
                     const raw = await response.text();
@@ -5389,7 +5391,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                     try {
                         data = raw.trim() === '' ? {} : JSON.parse(raw);
                     } catch (parseErr) {
-                        await exactoShowAlert('El servidor devolvió una respuesta inválida al reenviar (HTTP ' + response.status + ').', {
+                        await anluxShowAlert('El servidor devolvió una respuesta inválida al reenviar (HTTP ' + response.status + ').', {
                             title: 'No se pudo reenviar',
                             icon: 'error',
                         });
@@ -5398,16 +5400,16 @@ function exactoAplicarConversionNetoASinIva(input) {
 
                     if (!response.ok || data.success === false) {
                         const msgErr = String(data.message || '').trim() || 'No se pudo reenviar la orden.';
-                        exactoMostrarEstadoGuardado('error', msgErr);
-                        await exactoShowAlert(msgErr, { title: 'No se pudo reenviar', icon: 'error' });
+                        anluxMostrarEstadoGuardado('error', msgErr);
+                        await anluxShowAlert(msgErr, { title: 'No se pudo reenviar', icon: 'error' });
                         return;
                     }
 
                     const avisos = [data.email_notice, data.whatsapp_notice].filter(Boolean).join('\n\n');
-                    const icono = exactoIconoGuardadoOrden(data);
+                    const icono = anluxIconoGuardadoOrden(data);
                     const titulo = icono === 'error' ? 'Reenvío con avisos' : 'Reenviado';
-                    exactoMostrarEstadoGuardado(icono === 'error' ? 'error' : 'success', avisos || 'Reenvío realizado.');
-                    await exactoShowAlert(avisos || 'Se reenvió la orden de servicio como Recepción.', {
+                    anluxMostrarEstadoGuardado(icono === 'error' ? 'error' : 'success', avisos || 'Reenvío realizado.');
+                    await anluxShowAlert(avisos || 'Se reenvió la orden de servicio como Recepción.', {
                         title: titulo,
                         icon: icono,
                     });
@@ -5416,9 +5418,9 @@ function exactoAplicarConversionNetoASinIva(input) {
                     if (seccion) {
                         seccion.classList.add('hidden');
                     }
-                    exactoOcultarEstadoGuardado();
+                    anluxOcultarEstadoGuardado();
                 } catch (error) {
-                    await exactoShowAlert('No se pudo reenviar. Verifica la conexión e intenta de nuevo.', {
+                    await anluxShowAlert('No se pudo reenviar. Verifica la conexión e intenta de nuevo.', {
                         title: 'Error al reenviar',
                         icon: 'error',
                     });
@@ -5446,7 +5448,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 const estInp = document.getElementById('inputEstatus');
                 const estVal = estInp ? String(estInp.value || '') : '';
 
-                window.EXACTO_ORDEN_FIRMAS_DESHABILITADAS = false;
+                window.ANLUX_ORDEN_FIRMAS_DESHABILITADAS = false;
                 const wrap = document.getElementById('wrapBannerFirmasDeshabilitadas');
                 if (wrap) {
                     wrap.classList.add('hidden');
@@ -5457,7 +5459,7 @@ function exactoAplicarConversionNetoASinIva(input) {
 
                 const elIni = document.getElementById('ordenSeccionFirmasIniciales');
                 const elFin = document.getElementById('ordenSeccionFirmasEntrega');
-                if (window.EXACTO_ORDEN_MODO_COMPLETAR) {
+                if (window.ANLUX_ORDEN_MODO_COMPLETAR) {
                     if (elIni) {
                         elIni.classList.add('hidden');
                         elIni.classList.add('orden-firmas-skip');
@@ -5477,7 +5479,7 @@ function exactoAplicarConversionNetoASinIva(input) {
                 if (folioInp && folioVal !== '') folioInp.value = folioVal;
                 if (feInp && feVal !== '') feInp.value = feVal;
                 if (estInp && estVal !== '') estInp.value = estVal;
-                exactoSincronizarFirmasEntregaPorEstatus();
+                anluxSincronizarFirmasEntregaPorEstatus();
 
                 if (feInp && idVal === '' && !feInp.readOnly) {
                     const ahora = new Date();
@@ -5490,7 +5492,7 @@ function exactoAplicarConversionNetoASinIva(input) {
 
                 requestAnimationFrame(function () {
                     requestAnimationFrame(function () {
-                        const ids = window.EXACTO_ORDEN_MODO_COMPLETAR
+                        const ids = window.ANLUX_ORDEN_MODO_COMPLETAR
                             ? ['firmaCliente', 'firmaTecnico']
                             : ['firmaClienteInicial', 'firmaTecnicoInicial', 'firmaCliente', 'firmaTecnico'];
                         ids.forEach(function (cid) {

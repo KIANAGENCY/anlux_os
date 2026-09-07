@@ -20,6 +20,6 @@ final class MaintenanceController extends Controller
             return redirect()->route('dashboard');
         }
 
-        return view('maintenance', ['pageTitle' => 'Sistema en mantenimiento - Exacto', 'maintenance' => $this->maintenance->status()]);
+        return view('maintenance', ['pageTitle' => 'Sistema en mantenimiento - Anlux', 'maintenance' => $this->maintenance->status()]);
     }
 }

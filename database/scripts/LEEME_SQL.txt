@@ -1,9 +1,9 @@
-EXACTO - SQL para phpMyAdmin (cPanel)
+ANLUX - SQL para phpMyAdmin (cPanel)
 =====================================
 
 ANTES DE EMPEZAR
 ----------------
-1. En phpMyAdmin, clic en la base: joses16_exacto (lado izquierdo).
+1. En phpMyAdmin, clic en la base: anlux_os (lado izquierdo).
 2. Debe quedar seleccionada (nombre en negrita).
 3. Pestaña SQL.
 
@@ -29,11 +29,11 @@ SI NADA FUNCIONA
 ----------------
 1. Confirma que la tabla se llama "login" (Estructura -> busca login).
 2. Si la tabla tiene otro nombre, avisa.
-3. Copia el mensaje de error EXACTO (texto rojo) de phpMyAdmin.
+3. Copia el mensaje de error ANLUX (texto rojo) de phpMyAdmin.
 
 VERIFICAR
 ---------
-En Estructura de joses16_exacto debes ver:
+En Estructura de anlux_os debes ver:
   - login -> columnas: activo, last_seen_at
   - impersonation_requests
   - orden_servicio_edit_locks

@@ -15,6 +15,8 @@ final class SalidaTemporalRegresoTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const FIRMA_NEGRA = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAADUlEQVQYlWNgGAWkAwABNgABxYufBwAAAABJRU5ErkJggg==';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -134,5 +136,52 @@ final class SalidaTemporalRegresoTest extends TestCase
         $this->assertTrue($ask->invoke($svc, 504, 'Enproceso'));
         $this->assertTrue($ask->invoke($svc, 504, 'En proceso'));
         $this->assertFalse($svc->isSalidaTemporalActiva(504));
+    }
+
+    public function test_salida_temporal_exige_un_equipo_de_la_misma_orden_y_lo_persiste(): void
+    {
+        $user = User::factory()->administrador()->create(['nombre_tecnico' => 'Administrador']);
+
+        DB::table('orden_servicio_c')->insert([
+            'id_orden_c' => 505,
+            'folio' => 'OS-2026-505',
+            'nombre_cliente' => 'Cliente con dos equipos',
+            'tecnico_recibido' => 'Administrador',
+            'estatus' => 'En proceso',
+            'fecha_entrada' => now(),
+            'salida_temporal_activa' => 0,
+        ]);
+        DB::table('equipos_orden')->insert([
+            ['id_equipo' => 5051, 'id_orden_c' => 505, 'marca' => 'Marca A', 'modelo' => 'Modelo A', 'serie' => 'SERIE-A'],
+            ['id_equipo' => 5052, 'id_orden_c' => 505, 'marca' => 'Marca B', 'modelo' => 'Modelo B', 'serie' => 'SERIE-B'],
+            ['id_equipo' => 9999, 'id_orden_c' => 999, 'marca' => 'Ajeno', 'modelo' => 'Ajeno', 'serie' => 'AJENO'],
+        ]);
+
+        $payload = [
+            'motivo' => 'Prueba de salida individual',
+            'firma_cliente' => self::FIRMA_NEGRA,
+            'firma_tecnico' => self::FIRMA_NEGRA,
+        ];
+
+        $this->actingAs($user)
+            ->postJson('/api/ordenes/505/salida-temporal', $payload)
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+
+        $this->actingAs($user)
+            ->postJson('/api/ordenes/505/salida-temporal', [...$payload, 'id_equipo' => 9999])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+
+        $this->actingAs($user)
+            ->postJson('/api/ordenes/505/salida-temporal', [...$payload, 'id_equipo' => 5052])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('id_equipo', 5052);
+
+        $row = DB::table('orden_servicio_c')->where('id_orden_c', 505)->first();
+        $this->assertNotNull($row);
+        $this->assertSame(1, (int) $row->salida_temporal_activa);
+        $this->assertSame(5052, (int) $row->salida_temporal_id_equipo);
     }
 }

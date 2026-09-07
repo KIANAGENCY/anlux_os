@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * Ver el error real del 500 (solo diagnóstico).
  * Copiar a: public/show-error-once.php
- * Abrir: https://soporte.exactolp.mx/show-error-once.php?key=TU_SECRETO
+ * Abrir: https://soporte.anlux.mx/show-error-once.php?key=TU_SECRETO
  * BORRAR después.
  */
 

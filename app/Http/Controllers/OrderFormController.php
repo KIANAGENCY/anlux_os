@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Services\ExactoVaultService;
+use App\Services\AnluxVaultService;
 use App\Services\EquipoEntregaResolver;
 use App\Services\FolioSequenceService;
 use App\Services\OrdenEditLockService;
@@ -12,7 +12,7 @@ use App\Services\OrdenPolicyService;
 use App\Services\PdfCondicionesService;
 use App\Services\RegistrarOrdenService;
 use App\Services\SersopCatalogService;
-use App\Support\ExactoAuthContext;
+use App\Support\AnluxAuthContext;
 use App\Support\MaterialesOrdenClassifier;
 use App\Support\OrderStatus;
 use App\Support\TipoServicioCatalog;
@@ -20,12 +20,13 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class OrderFormController extends Controller
 {
     public function __construct(
-        private readonly ExactoVaultService $vault,
+        private readonly AnluxVaultService $vault,
         private readonly OrdenPolicyService $policy,
         private readonly SersopCatalogService $sersopCatalog,
         private readonly PdfCondicionesService $pdfCondiciones,
@@ -71,7 +72,7 @@ class OrderFormController extends Controller
 
     private function renderForm(Request $request, int $idEditar): View|RedirectResponse
     {
-        $user = ExactoAuthContext::currentUser();
+        $user = AnluxAuthContext::currentUser();
         abort_unless($user !== null, 403);
 
         if ($request->routeIs('orden_servicio.create') && $request->filled('id')) {
@@ -109,7 +110,7 @@ class OrderFormController extends Controller
                 }
                 // Quien abre la orden queda en Involucrados (si no es el mismo del último registro).
                 try {
-                    $nombreApertura = ExactoAuthContext::nombreTecnicoSesionActual($user);
+                    $nombreApertura = AnluxAuthContext::nombreTecnicoSesionActual($user);
                     if ($nombreApertura !== '') {
                         $this->registrarOrden->registrarInvolucradoSiCambio(
                             $idEditar,
@@ -325,6 +326,9 @@ class OrderFormController extends Controller
         $salidaTemporalActiva = $idEditar > 0 && (int) ($cab['salida_temporal_activa'] ?? 0) === 1;
         $motivoSalidaTemporal = $idEditar > 0 ? trim((string) ($cab['motivo_salida_temporal'] ?? '')) : '';
         $fechaSalidaTemporal = $idEditar > 0 ? (string) ($cab['fecha_salida_temporal'] ?? '') : '';
+        $salidaTemporalIdEquipo = $idEditar > 0 && Schema::hasColumn('orden_servicio_c', 'salida_temporal_id_equipo')
+            ? (int) ($cab['salida_temporal_id_equipo'] ?? 0)
+            : 0;
 
         $registrarOrdenUrl = rtrim($request->root(), '/').'/api/ordenes/registrar';
         $reenviarOrdenUrl = $idEditar > 0
@@ -340,26 +344,76 @@ class OrderFormController extends Controller
         $nombreTecnico = htmlspecialchars((string) (session('nombre_tecnico') ?? $user->nombre_tecnico ?? ''), ENT_QUOTES, 'UTF-8');
 
         $pageTitle = $soloLecturaEntregado
-            ? 'Orden entregada (solo lectura) - Exacto'
-            : ($modoSoloCompletar ? 'Completar orden - Exacto' : 'Orden de Servicio Técnico - Exacto');
+            ? 'Orden entregada (solo lectura) - Anlux'
+            : ($modoSoloCompletar ? 'Completar orden - Anlux' : 'Orden de Servicio Técnico - Anlux');
         $pageHeadExtra = '
     <script>
-        window.EXACTO_ORDEN_FIRMAS_DESHABILITADAS = '.(! empty($firmasDeshabilitadas) ? 'true' : 'false').';
-        window.EXACTO_ORDEN_SOLO_LECTURA = '.($soloLecturaEntregado ? 'true' : 'false').';
-        window.EXACTO_ORDEN_MODO_COMPLETAR = '.($modoSoloCompletar ? 'true' : 'false').';
-        window.EXACTO_REGISTRAR_ORDEN_URL = '.json_encode($registrarOrdenUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
-        window.EXACTO_REENVIAR_URL = '.json_encode($reenviarOrdenUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
-        window.EXACTO_SALIDA_TEMPORAL_URL = '.json_encode($salidaTemporalUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
-        window.EXACTO_REGRESO_TEMPORAL_URL = '.json_encode($regresoTemporalUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
-        window.EXACTO_SALIDA_TEMPORAL_ACTIVA = '.($salidaTemporalActiva ? 'true' : 'false').';
-        window.EXACTO_SERVICIOS_SERSOP = '.json_encode($serviciosSersopActivos, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
-        window.EXACTO_TIPOS_SERVICIO = '.json_encode(TipoServicioCatalog::values(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
+        window.ANLUX_ORDEN_FIRMAS_DESHABILITADAS = '.(! empty($firmasDeshabilitadas) ? 'true' : 'false').';
+        window.ANLUX_ORDEN_SOLO_LECTURA = '.($soloLecturaEntregado ? 'true' : 'false').';
+        window.ANLUX_ORDEN_MODO_COMPLETAR = '.($modoSoloCompletar ? 'true' : 'false').';
+        window.ANLUX_REGISTRAR_ORDEN_URL = '.json_encode($registrarOrdenUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
+        window.ANLUX_REENVIAR_URL = '.json_encode($reenviarOrdenUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
+        window.ANLUX_SALIDA_TEMPORAL_URL = '.json_encode($salidaTemporalUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
+        window.ANLUX_REGRESO_TEMPORAL_URL = '.json_encode($regresoTemporalUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
+        window.ANLUX_SALIDA_TEMPORAL_ACTIVA = '.($salidaTemporalActiva ? 'true' : 'false').';
+        window.ANLUX_SERVICIOS_SERSOP = '.json_encode($serviciosSersopActivos, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
+        window.ANLUX_TIPOS_SERVICIO = '.json_encode(TipoServicioCatalog::values(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
     </script>
 ';
 
         $tiposServicio = TipoServicioCatalog::values();
 
         $condicionesEntregaLineas = $this->pdfCondiciones->linesForDisplay();
+
+        $modoReact = 'nueva';
+        if ($soloLecturaEntregado) {
+            $modoReact = 'solo_lectura';
+        } elseif ($modoSoloCompletar) {
+            $modoReact = 'completar';
+        } elseif ($idEditar > 0) {
+            $modoReact = 'editar';
+        }
+
+        $root = rtrim($request->root(), '/');
+        $ordenPayload = null;
+        if ($ordenExistenteJson !== null) {
+            $decoded = json_decode($ordenExistenteJson, true);
+            $ordenPayload = is_array($decoded) ? $decoded : null;
+        }
+
+        $reactPageProps = [
+            'meta' => [
+                'id_orden_c' => $idEditar > 0 ? $idEditar : 0,
+                'modo' => $modoReact,
+                'folio_preview' => (string) $folioActual,
+                'nombre_tecnico' => html_entity_decode((string) $nombreTecnico, ENT_QUOTES, 'UTF-8'),
+                'firmas_deshabilitadas' => (bool) $firmasDeshabilitadas,
+                'csrf' => (string) csrf_token(),
+            ],
+            'urls' => [
+                'registrar' => $registrarOrdenUrl,
+                'reenviar' => $reenviarOrdenUrl,
+                'salida_temporal' => $salidaTemporalUrl,
+                'regreso_temporal' => $regresoTemporalUrl,
+                'lock_heartbeat' => $idEditar > 0 ? $root.'/api/ordenes/'.$idEditar.'/lock/heartbeat' : '',
+                'lock_release' => $idEditar > 0 ? $root.'/api/ordenes/'.$idEditar.'/lock/release' : '',
+                'ordenes_index' => $root.'/ordenes',
+                'pdf' => $idEditar > 0 ? $root.'/pdf/orden/'.$idEditar : $root.'/pdf/orden/{id}',
+            ],
+            'catalogs' => [
+                'tipos_servicio' => array_values($tiposServicio),
+                'servicios_sersop' => array_values($serviciosSersopActivos),
+                'condiciones_entrega' => array_values($condicionesEntregaLineas),
+                'estatus_flujo' => array_values($estatusOrdenFlujo),
+            ],
+            'flags' => [
+                'salida_temporal_activa' => (bool) $salidaTemporalActiva,
+                'motivo_salida_temporal' => (string) $motivoSalidaTemporal,
+                'fecha_salida_temporal' => (string) $fechaSalidaTemporal,
+                'salida_temporal_id_equipo' => $salidaTemporalIdEquipo,
+            ],
+            'orden' => $ordenPayload,
+        ];
 
         return view('orders.orden_page', compact(
             'nombreTecnico',
@@ -386,7 +440,8 @@ class OrderFormController extends Controller
             'pageTitle',
             'pageHeadExtra',
             'condicionesEntregaLineas',
-            'tiposServicio'
+            'tiposServicio',
+            'reactPageProps'
         ));
     }
 }

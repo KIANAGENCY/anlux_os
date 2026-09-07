@@ -14,10 +14,10 @@ final class MaintenanceModeService
     public function status(): array
     {
         try {
-            if (! Schema::hasTable('exacto_settings')) {
+            if (! Schema::hasTable('anlux_settings')) {
                 return $this->disabledStatus();
             }
-            $row = DB::table('exacto_settings')->where('setting_key', self::SETTING_KEY)->first();
+            $row = DB::table('anlux_settings')->where('setting_key', self::SETTING_KEY)->first();
             $content = $row ? json_decode((string) ($row->content ?? ''), true) : null;
             if (! is_array($content)) {
                 return $this->disabledStatus();
@@ -40,11 +40,11 @@ final class MaintenanceModeService
 
     public function update(bool $enabled, string $message): void
     {
-        if (! Schema::hasTable('exacto_settings')) {
-            throw new \RuntimeException('Falta la tabla exacto_settings. Ejecuta las migraciones pendientes.');
+        if (! Schema::hasTable('anlux_settings')) {
+            throw new \RuntimeException('Falta la tabla anlux_settings. Ejecuta las migraciones pendientes.');
         }
         $now = now();
-        DB::table('exacto_settings')->updateOrInsert(
+        DB::table('anlux_settings')->updateOrInsert(
             ['setting_key' => self::SETTING_KEY],
             [
                 'content' => json_encode(['enabled' => $enabled, 'message' => $this->normalizeMessage($message)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),

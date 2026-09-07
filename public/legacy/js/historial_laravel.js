@@ -2,11 +2,11 @@
 (function () {
     'use strict';
 
-    window.EXACTO_HISTORIAL_READY = false;
+    window.ANLUX_HISTORIAL_READY = false;
 
     const normalizeStatus = (estatus) => String(estatus || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    const baseUrl = String(window.EXACTO_BASE_URL || '').replace(/\/$/, '');
-    const exactoUrl = (path) => {
+    const baseUrl = String(window.ANLUX_BASE_URL || '').replace(/\/$/, '');
+    const anluxUrl = (path) => {
         const p = path.startsWith('/') ? path : `/${path}`;
         return baseUrl ? `${baseUrl}${p}` : p;
     };
@@ -38,7 +38,7 @@
     const urlPdfInline = (id, equipoIndice = 0) => {
         const bust = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const eq = Number(equipoIndice) > 0 ? `&eq=${encodeURIComponent(equipoIndice)}` : '';
-        return exactoUrl(`/pdf/orden/${encodeURIComponent(id)}?inline=1&refresh_pdf=1&nocache=1${eq}&_=${bust}`);
+        return anluxUrl(`/pdf/orden/${encodeURIComponent(id)}?inline=1&refresh_pdf=1&nocache=1${eq}&_=${bust}`);
     };
 
     async function abrirPdfHistorialSinCache(id, equipoIndice = 0) {
@@ -207,7 +207,7 @@
 
         contenedor.innerHTML = '<p class="text-sm text-slate-600">Cargando equipos entregados…</p>';
         try {
-            const response = await fetch(exactoUrl(`/api/ordenes/${encodeURIComponent(id)}/equipos-entregados`), {
+            const response = await fetch(anluxUrl(`/api/ordenes/${encodeURIComponent(id)}/equipos-entregados`), {
                 credentials: 'same-origin',
                 cache: 'no-store',
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -244,7 +244,7 @@
         params.set('sort', sortHistorial === 'estatus' ? 'estatus' : 'fecha');
 
         try {
-            const response = await fetch(exactoUrl(`/api/ordenes?${params.toString()}`), {
+            const response = await fetch(anluxUrl(`/api/ordenes?${params.toString()}`), {
                 credentials: 'same-origin',
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             });
@@ -261,7 +261,7 @@
 
             if (!response.ok || !data || data.success !== true) {
                 if (response.status === 401 || response.status === 419 || response.redirected) {
-                    window.location.href = exactoUrl('/login');
+                    window.location.href = anluxUrl('/login');
                     return;
                 }
                 showTableMessage(tabla, (data && data.message) ? data.message : 'No se pudo cargar el historial.');
@@ -337,7 +337,7 @@
             }
         });
 
-        window.EXACTO_HISTORIAL_READY = true;
+        window.ANLUX_HISTORIAL_READY = true;
         updateSortEstatusUi();
         cargarOrdenes(tabla, searchInput);
     };

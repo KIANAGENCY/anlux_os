@@ -25,7 +25,7 @@ form.addEventListener("submit", async (e) => {
     data.append("email", document.getElementById("email").value);
     data.append("password", document.getElementById("password").value);
     data.append("remember", document.getElementById("remember").checked ? "on" : "off");
-    data.append("csrf_token", window.EXACTO_CSRF_TOKEN || "");
+    data.append("csrf_token", window.ANLUX_CSRF_TOKEN || "");
 
     try {
         const res = await fetch("actions/login_api.php", {

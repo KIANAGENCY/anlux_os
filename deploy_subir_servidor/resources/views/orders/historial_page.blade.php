@@ -1,4 +1,4 @@
-@extends('layouts.exacto_app')
+@extends('layouts.anlux_app')
 
 @section('content')
 <body class="bg-blue-50 px-3 py-4 sm:p-6 lg:p-8">
@@ -101,7 +101,7 @@
     <script src="{{ asset($historialJsAsset) }}?v={{ $historialJs ? filemtime($historialJs) : 1 }}"></script>
     <script>
         window.setTimeout(function () {
-            if (!window.EXACTO_HISTORIAL_READY) {
+            if (!window.ANLUX_HISTORIAL_READY) {
                 var tb = document.getElementById('tabla');
                 if (tb) {
                     tb.innerHTML = '<tr><td class="p-3 border text-center text-red-700" colspan="5">No se cargó historial_laravel.js. Sube public/legacy/assets/js/historial_laravel.js y recarga con Ctrl+F5.</td></tr>';

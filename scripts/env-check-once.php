@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * Diagnóstico .env en el servidor (sin SSH).
  * Copiar a: public/env-check-once.php
- * Abrir: https://soporte.exactolp.mx/env-check-once.php?key=TU_SECRETO
+ * Abrir: https://soporte.anlux.mx/env-check-once.php?key=TU_SECRETO
  * BORRAR el archivo después.
  */
 

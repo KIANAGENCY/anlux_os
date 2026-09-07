@@ -1,4 +1,4 @@
-EXACTO — Archivos para subir al servidor (error 500 en /ordenes)
+ANLUX — Archivos para subir al servidor (error 500 en /ordenes)
 ================================================================
 Sube a la carpeta del proyecto Laravel (donde está artisan), manteniendo la misma ruta.
 
@@ -11,27 +11,27 @@ IMPORTANTE
 
 === URGENTE (vistas / barra de usuario — causan 500 si faltan) ===
 
-resources/views/partials/exacto-cutover-notice.blade.php
-resources/views/partials/nav-exacto-user-bar.blade.php
-resources/views/partials/exacto-ui-modal.blade.php
-app/View/Composers/NavExactoUserBarComposer.php
+resources/views/partials/anlux-cutover-notice.blade.php
+resources/views/partials/nav-anlux-user-bar.blade.php
+resources/views/partials/anlux-ui-modal.blade.php
+app/View/Composers/NavAnluxUserBarComposer.php
 
 === ARCHIVOS NUEVOS (obligatorio crear en servidor) ===
 
-app/Support/ExactoAuthContext.php
-app/View/Composers/NavExactoUserBarComposer.php
+app/Support/AnluxAuthContext.php
+app/View/Composers/NavAnluxUserBarComposer.php
 app/Services/UserPresenceService.php
 app/Services/SecurityActivityLogger.php
 app/Services/ImpersonationService.php
 app/Services/OrdenEditLockService.php
-app/Http/Middleware/ExactoUpdatePresence.php
+app/Http/Middleware/AnluxUpdatePresence.php
 app/Http/Controllers/ImpersonationController.php
 app/Http/Controllers/OrderEditLockController.php
-resources/views/partials/nav-exacto-user-bar.blade.php
-resources/views/partials/exacto-ui-modal.blade.php
-public/legacy/assets/js/exacto_ui.js
+resources/views/partials/nav-anlux-user-bar.blade.php
+resources/views/partials/anlux-ui-modal.blade.php
+public/legacy/assets/js/anlux_ui.js
 public/legacy/assets/js/nav_impersonacion.js
-database/migrations/2026_05_18_120000_exacto_login_impersonation_and_order_locks.php
+database/migrations/2026_05_18_120000_anlux_login_impersonation_and_order_locks.php
 
 === ARCHIVOS MODIFICADOS (reemplazar en servidor) ===
 
@@ -58,6 +58,6 @@ database/scripts/impersonation_and_locks_manual.sql
 === SI SIGUE 500 ===
 
 1. Revisa storage/logs/laravel.log (últimas líneas al abrir /ordenes)
-2. Confirma que existe: app/View/Composers/NavExactoUserBarComposer.php
+2. Confirma que existe: app/View/Composers/NavAnluxUserBarComposer.php
 3. PHP 8.2+ en cPanel para el dominio
 4. Permisos storage/ y bootstrap/cache/ escribibles (775)

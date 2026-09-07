@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Services\BrandingService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
@@ -18,7 +19,7 @@ final class OrderStatusMail extends Mailable
     use Queueable;
     use SerializesModels;
 
-    private const LOGO_CID = 'exacto-logo@exacto.local';
+    private const LOGO_CID = 'anlux-logo@anlux.local';
 
     /**
      * @param  array<string, mixed>  $orden
@@ -42,7 +43,7 @@ final class OrderStatusMail extends Mailable
                     }
 
                     $message->addPart(
-                        DataPart::fromPath($logoPath, 'logo.jpeg', 'image/jpeg')
+                        DataPart::fromPath($logoPath, 'logo', app(BrandingService::class)->logoMime())
                             ->asInline()
                             ->setContentId(self::LOGO_CID)
                     );
@@ -59,6 +60,8 @@ final class OrderStatusMail extends Mailable
                 'orden' => $this->orden,
                 'estatus' => $this->estatus,
                 'logoSrc' => $this->hasLogo() ? 'cid:'.self::LOGO_CID : null,
+                'brandColors' => app(BrandingService::class)->colors(),
+                'brandFont' => app(BrandingService::class)->fontCss(),
             ]
         );
     }
@@ -88,7 +91,7 @@ final class OrderStatusMail extends Mailable
         return match ($this->estatus) {
             'Terminado' => 'Su equipo está listo'.$suffix,
             'Entregado' => 'Equipo entregado'.$suffix,
-            default => 'Orden recibida en Exacto'.$suffix,
+            default => 'Orden recibida en Anlux'.$suffix,
         };
     }
 
@@ -99,6 +102,6 @@ final class OrderStatusMail extends Mailable
 
     private function logoPath(): string
     {
-        return public_path('legacy/public/img/logo.jpeg');
+        return app(BrandingService::class)->logoAbsolutePath();
     }
 }

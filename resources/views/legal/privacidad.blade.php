@@ -1,13 +1,19 @@
 @extends('layouts.legal')
 
 @section('content')
+    @php
+        $empresa = config('anlux.company_legal_name', 'La empresa titular del sistema');
+        $producto = config('app.name', 'Anlux');
+        $jurisdiccion = config('anlux.company_jurisdiction', 'México');
+        $privacyEmail = config('anlux.privacy_email', 'privacidad@ejemplo.com');
+    @endphp
     <h1>Aviso de privacidad</h1>
     <p class="legal-updated">Ultima actualizacion: {{ now()->format('d/m/Y') }}</p>
 
     <p>
-        <strong>Expertos en Administracion y en Computo, S.A. de C.V.</strong> (en adelante, &laquo;la Empresa&raquo;),
-        con domicilio en Los Cabos, Baja California Sur, Mexico, es responsable del tratamiento de los
-        datos personales recabados a traves del sistema <strong>Exacto</strong> y de los servicios relacionados,
+        <strong>{{ $empresa }}</strong> (en adelante, &laquo;la Empresa&raquo;),
+        con operaciones en <strong>{{ $jurisdiccion }}</strong>, es responsable del tratamiento de los
+        datos personales recabados a traves del sistema <strong>{{ $producto }}</strong> y de los servicios relacionados,
         incluida la comunicacion por WhatsApp, conforme a la Ley Federal de Proteccion de Datos Personales
         en Posesion de los Particulares (LFPDPPP) y demas normativa aplicable.
     </p>
@@ -46,7 +52,7 @@
     <h2>4. Transferencia de datos</h2>
     <p>
         Los datos pueden ser tratados por proveedores de hosting, correo electronico, WhatsApp/Meta y servicios
-        tecnologicos necesarios para operar Exacto, siempre bajo obligaciones de confidencialidad y seguridad
+        tecnologicos necesarios para operar {{ $producto }}, siempre bajo obligaciones de confidencialidad y seguridad
         razonables. No vendemos datos personales a terceros.
     </p>
 
@@ -60,7 +66,8 @@
     <h2>6. Derechos ARCO</h2>
     <p>
         Usted puede solicitar acceso, rectificacion, cancelacion u oposicion al tratamiento de sus datos personales,
-        asi como revocar su consentimiento cuando proceda, enviando solicitud a los canales de contacto de la Empresa.
+        asi como revocar su consentimiento cuando proceda, enviando solicitud a
+        <strong>{{ $privacyEmail }}</strong> o a los canales de contacto de la Empresa.
         Responderemos en los plazos establecidos por la ley.
     </p>
 
@@ -85,7 +92,7 @@
 
     <h2>10. Contacto</h2>
     <p>
-        Para ejercer sus derechos o aclaraciones sobre privacidad, contacte al administrador del sistema Exacto
-        o a la Empresa a traves de sus canales oficiales en Los Cabos, B.C.S., Mexico.
+        Para ejercer sus derechos o aclaraciones sobre privacidad, contacte al administrador del sistema {{ $producto }}
+        o a la Empresa a traves de sus canales oficiales ({{ $jurisdiccion }}).
     </p>
 @endsection

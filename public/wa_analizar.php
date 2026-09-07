@@ -7,14 +7,14 @@ declare(strict_types=1);
  * aunque Meta la haya aceptado (status=accepted).
  *
  * Uso:
- *   /wa_analizar.php?key=exacto99&id=52
- *   /wa_analizar.php?key=exacto99&folio=OS-2026-005
- *   /wa_analizar.php?key=exacto99&phone=6121684390
+ *   /wa_analizar.php?key=anlux99&id=52
+ *   /wa_analizar.php?key=anlux99&folio=OS-2026-005
+ *   /wa_analizar.php?key=anlux99&phone=6121684390
  *
  * BORRAR del servidor cuando termines el diagnóstico.
  */
 
-const WA_ANALIZAR_KEY = 'exacto99';
+const WA_ANALIZAR_KEY = 'anlux99';
 
 if (($_GET['key'] ?? '') !== WA_ANALIZAR_KEY) {
     http_response_code(403);
@@ -40,7 +40,7 @@ $id = (int) ($_GET['id'] ?? 0);
 $folio = trim((string) ($_GET['folio'] ?? ''));
 $phoneSearch = preg_replace('/\D+/', '', trim((string) ($_GET['phone'] ?? ''))) ?? '';
 
-echo "=== EXACTO — Análisis entrega WhatsApp ===\n";
+echo "=== ANLUX — Análisis entrega WhatsApp ===\n";
 echo 'Fecha: '.date('Y-m-d H:i:s')."\n\n";
 
 if (! Schema::hasTable('order_whatsapp_notifications')) {
@@ -78,11 +78,11 @@ $tplRecepcion = trim((string) config('services.whatsapp.templates.recepcion', ''
 $includeDoc = filter_var(config('services.whatsapp.template_include_document', true), FILTER_VALIDATE_BOOL);
 $docDelivery = strtolower((string) config('services.whatsapp.document_delivery', 'link'));
 $cloudOn = filter_var(config('services.whatsapp.enabled', false), FILTER_VALIDATE_BOOL);
-$exactoOn = (bool) config('exacto.whatsapp_notifications_enabled', false);
+$anluxOn = (bool) config('anlux.whatsapp_notifications_enabled', false);
 
 echo "--- Config servidor ---\n";
 echo 'WHATSAPP_CLOUD_ENABLED: '.($cloudOn ? 'true' : 'false')."\n";
-echo 'EXACTO_WHATSAPP_NOTIFICATIONS: '.($exactoOn ? 'true' : 'false')."\n";
+echo 'ANLUX_WHATSAPP_NOTIFICATIONS: '.($anluxOn ? 'true' : 'false')."\n";
 echo 'PHONE_NUMBER_ID: '.($phoneId !== '' ? $phoneId : '(vacío)')."\n";
 echo 'TOKEN: '.($token !== '' ? substr($token, 0, 6).'...('.strlen($token).' chars)' : '(vacío)')."\n";
 echo 'LANGUAGE: '.$lang."\n";
@@ -232,7 +232,7 @@ foreach ($rows as $row) {
         $hallazgos[] = 'Meta confirma ENTREGADO al dispositivo. Si no lo ves, revisa carpeta de spam/negocios o número equivocado.';
     }
     if ($status === 'failed') {
-        $hallazgos[] = 'Meta/Exacto marcaron FALLO. Lee message y webhook_json.';
+        $hallazgos[] = 'Meta/Anlux marcaron FALLO. Lee message y webhook_json.';
     }
     if ($status === 'queued') {
         $hallazgos[] = 'Sigue en cola local: no salió a Meta todavía.';
@@ -296,4 +296,4 @@ foreach ($rows as $row) {
 }
 
 echo "=== Fin análisis ===\n";
-echo "Si status=accepted y webhook_json vacío: Exacto SÍ envió; falta confirmar entrega vía webhook o en el celular.\n";
+echo "Si status=accepted y webhook_json vacío: Anlux SÍ envió; falta confirmar entrega vía webhook o en el celular.\n";

@@ -36,7 +36,7 @@ final class AdminFoliosController extends Controller
         );
 
         return view('admin.folios', [
-            'pageTitle' => 'Folios de órdenes - Exacto',
+            'pageTitle' => 'Folios de órdenes - Anlux',
             'nombreTecnico' => $nombreTecnico,
             'nav_admin_activo' => 'folios',
             'status' => $status,

@@ -73,11 +73,11 @@ return [
             'replace_placeholders' => true,
         ],
 
-        'exacto_ops' => [
+        'anlux_ops' => [
             'driver' => 'daily',
-            'path' => storage_path('logs/exacto-ops.log'),
+            'path' => storage_path('logs/anlux-ops.log'),
             'level' => env('LOG_LEVEL', 'info'),
-            'days' => env('EXACTO_LOG_DAYS', 30),
+            'days' => env('ANLUX_LOG_DAYS', 30),
             'replace_placeholders' => true,
         ],
 

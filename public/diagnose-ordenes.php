@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 /**
  * Diagnóstico del 500 en /ordenes (ejecutar EN EL SERVIDOR).
- * URL: https://soporte.exactolp.mx/diagnose-ordenes.php?key=exacto2026ordenes
+ * URL: https://soporte.anlux.mx/diagnose-ordenes.php?key=anlux2026ordenes
  * BORRAR cuando termines.
  */
 
-const DIAG_KEY = 'exacto2026ordenes';
+const DIAG_KEY = 'anlux2026ordenes';
 
 if (($_GET['key'] ?? '') !== DIAG_KEY) {
     http_response_code(403);
@@ -24,18 +24,18 @@ echo 'PHP: '.PHP_VERSION."\n";
 echo 'Raíz: '.$root."\n\n";
 
 $mustExist = [
-    'app/Support/ExactoAuthContext.php',
-    'app/View/Composers/NavExactoUserBarComposer.php',
+    'app/Support/AnluxAuthContext.php',
+    'app/View/Composers/NavAnluxUserBarComposer.php',
     'app/Providers/AppServiceProvider.php',
-    'app/Http/Middleware/ExactoUpdatePresence.php',
+    'app/Http/Middleware/AnluxUpdatePresence.php',
     'app/Services/UserPresenceService.php',
     'app/Services/ImpersonationService.php',
     'app/Services/OrdenEditLockService.php',
     'app/Http/Controllers/OrderController.php',
     'app/Services/RegistrarOrdenService.php',
     'app/Services/OrdenListService.php',
-    'resources/views/partials/nav-exacto-user-bar.blade.php',
-    'resources/views/partials/exacto-ui-modal.blade.php',
+    'resources/views/partials/nav-anlux-user-bar.blade.php',
+    'resources/views/partials/anlux-ui-modal.blade.php',
     'resources/views/orders/index.blade.php',
     'resources/views/partials/nav-app.blade.php',
     'bootstrap/app.php',
@@ -75,7 +75,7 @@ if (is_file($registrarPath)) {
         foreach ($tail as $line) {
             echo htmlspecialchars($line, ENT_QUOTES, 'UTF-8')."\n";
         }
-        echo "\n→ Repara con: repair-registrar-orden.php?key=exacto2026repair\n";
+        echo "\n→ Repara con: repair-registrar-orden.php?key=anlux2026repair\n";
         echo "  O sube de nuevo el archivo por Upload (~81 492 bytes, termina en línea 1993 con })\n";
     }
 }
@@ -154,27 +154,27 @@ try {
         echo $e->getFile().':'.$e->getLine()."\n";
     }
 
-    echo "\n=== Clase NavExactoUserBarComposer ===\n";
-    if (class_exists(App\View\Composers\NavExactoUserBarComposer::class)) {
-        echo "[OK] class_exists NavExactoUserBarComposer\n";
+    echo "\n=== Clase NavAnluxUserBarComposer ===\n";
+    if (class_exists(App\View\Composers\NavAnluxUserBarComposer::class)) {
+        echo "[OK] class_exists NavAnluxUserBarComposer\n";
     } else {
-        echo "[FALTA] No se carga App\\View\\Composers\\NavExactoUserBarComposer\n";
-        echo "  Ruta esperada: app/View/Composers/NavExactoUserBarComposer.php\n";
+        echo "[FALTA] No se carga App\\View\\Composers\\NavAnluxUserBarComposer\n";
+        echo "  Ruta esperada: app/View/Composers/NavAnluxUserBarComposer.php\n";
     }
 
     echo "\n=== Compilar vista nav (como /ordenes) ===\n";
     try {
-        $html = view('partials.nav-exacto-user-bar', [
+        $html = view('partials.nav-anlux-user-bar', [
             'nombreTecnico' => 'Prueba',
-            'exactoIsImpersonating' => false,
-            'exactoIsAdmin' => false,
-            'exactoIsTechnician' => true,
-            'exactoUserId' => 1,
+            'anluxIsImpersonating' => false,
+            'anluxIsAdmin' => false,
+            'anluxIsTechnician' => true,
+            'anluxUserId' => 1,
             'nombreTecnicoMostrado' => 'Prueba',
-            'exactoUiJsV' => 1,
-            'exactoNavImpV' => 1,
+            'anluxUiJsV' => 1,
+            'anluxNavImpV' => 1,
         ])->render();
-        echo '[OK] Vista nav-exacto-user-bar compilada ('.strlen($html).' bytes)'."\n";
+        echo '[OK] Vista nav-anlux-user-bar compilada ('.strlen($html).' bytes)'."\n";
     } catch (Throwable $e) {
         echo "[ERROR VISTA] ".$e::class.': '.$e->getMessage()."\n";
         echo $e->getFile().':'.$e->getLine()."\n";

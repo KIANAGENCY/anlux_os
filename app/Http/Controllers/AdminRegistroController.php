@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Services\ExactoVaultService;
+use App\Services\AnluxVaultService;
 use App\Services\LoginIdSequenceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +18,7 @@ use Illuminate\View\View;
 class AdminRegistroController extends Controller
 {
     public function __construct(
-        private readonly ExactoVaultService $vault,
+        private readonly AnluxVaultService $vault,
         private readonly LoginIdSequenceService $loginIdSequence
     ) {}
 
@@ -50,7 +50,7 @@ class AdminRegistroController extends Controller
         abort_unless($user, 403);
 
         return view('admin.registro', [
-            'pageTitle' => 'Registro - Exacto',
+            'pageTitle' => 'Registro - Anlux',
             'nombreTecnico' => htmlspecialchars((string) (session('nombre_tecnico') ?? $user->nombre_tecnico ?? ''), ENT_QUOTES, 'UTF-8'),
             'nav_admin_activo' => 'registro',
         ]);

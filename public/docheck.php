@@ -10,21 +10,21 @@ use Illuminate\Support\Facades\Schema;
  * Diagnóstico WhatsApp Cloud API (red, token, Phone Number ID, cola, búsqueda por teléfono).
  *
  * Uso:
- *   docheck.php?key=exacto99
- *   docheck.php?key=exacto99&wa_test_meta=1
- *   docheck.php?key=exacto99&wa_cola=1
- *   docheck.php?key=exacto99&wa_status=7
- *   docheck.php?key=exacto99&wa_phone=6122885758
- *   docheck.php?key=exacto99&wa_compare=1138876072642282,1537852524373963
- *   docheck.php?key=exacto99&wa_discover=1
- *   docheck.php?key=exacto99&wa_run_queue=1
- *   docheck.php?key=exacto99&wa_inbound=1
- *   docheck.php?key=exacto99&wa_inbound=1&wa_phone=6121684390
+ *   docheck.php?key=anlux99
+ *   docheck.php?key=anlux99&wa_test_meta=1
+ *   docheck.php?key=anlux99&wa_cola=1
+ *   docheck.php?key=anlux99&wa_status=7
+ *   docheck.php?key=anlux99&wa_phone=6122885758
+ *   docheck.php?key=anlux99&wa_compare=1138876072642282,1537852524373963
+ *   docheck.php?key=anlux99&wa_discover=1
+ *   docheck.php?key=anlux99&wa_run_queue=1
+ *   docheck.php?key=anlux99&wa_inbound=1
+ *   docheck.php?key=anlux99&wa_inbound=1&wa_phone=6121684390
  *
  * BORRAR en producción cuando termines.
  */
 
-const DOCHECK_KEY = 'exacto99';
+const DOCHECK_KEY = 'anlux99';
 
 /** IDs que NO son Phone Number ID (confusión frecuente en Meta). */
 const WA_KNOWN_WRONG_IDS = [
@@ -57,7 +57,7 @@ $r2 = null;
 $phoneMeta = null;
 $f = ['ok' => false, 'ms' => 0.0, 'error' => 'no ejecutado', 'ip' => ''];
 
-echo "=== EXACTO - Diagnostico WhatsApp (red + API + cola) ===\n\n";
+echo "=== ANLUX - Diagnostico WhatsApp (red + API + cola) ===\n\n";
 echo 'Fecha: '.date('Y-m-d H:i:s')."\n";
 echo 'PHP: '.PHP_VERSION."\n";
 echo 'SAPI: '.PHP_SAPI."\n";
@@ -187,7 +187,7 @@ $curlGet = static function (string $url, array $headers = [], int $connectTimeou
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_SSL_VERIFYHOST => 2,
         CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_USERAGENT => 'ExactoDocheck/2.0',
+        CURLOPT_USERAGENT => 'AnluxDocheck/2.0',
     ]);
 
     $body = curl_exec($ch);

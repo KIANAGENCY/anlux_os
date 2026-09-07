@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Services\EquipoEntregaResolver;
-use App\Services\ExactoVaultService;
+use App\Services\AnluxVaultService;
 use App\Services\OrdenPolicyService;
 use App\Services\PdfCondicionesService;
 use App\Support\MaterialesOrdenClassifier;
@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Gate;
 class OrderPdfController extends Controller
 {
     public function __construct(
-        private readonly ExactoVaultService $vault,
+        private readonly AnluxVaultService $vault,
         private readonly OrdenPolicyService $policy,
         private readonly PdfCondicionesService $pdfCondiciones,
         private readonly EquipoEntregaResolver $entregaResolver
@@ -722,7 +722,7 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;tex
             'X-Accel-Expires' => '0',
             'Vary' => '*',
             // Para verificar en DevTools → Network que el servidor ya tiene este PHP.
-            'X-Exacto-Pdf-Ver' => 'v35-entrega-resuelta',
+            'X-Anlux-Pdf-Ver' => 'v35-entrega-resuelta',
         ]);
         $response->headers->remove('ETag');
         $response->setPrivate();

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Models\User;
-use App\Services\ExactoVaultService;
+use App\Services\AnluxVaultService;
 use App\Services\OrdenPolicyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +40,7 @@ final class OrdenPolicyServiceTest extends TestCase
             'fecha_entrada' => now(),
         ]);
 
-        $vault = app(ExactoVaultService::class);
+        $vault = app(AnluxVaultService::class);
         session()->put('nombre_tecnico', $vault->tecnicoNombreSeal('Tecnico Dos'));
 
         $policy = app(OrdenPolicyService::class);

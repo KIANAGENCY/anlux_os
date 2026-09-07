@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Mail;
 final class OrderEmailService
 {
     public function __construct(
-        private readonly ExactoVaultService $vault,
+        private readonly AnluxVaultService $vault,
         private readonly EmailSmtpProbeService $smtpProbe
     ) {}
 
@@ -86,7 +86,7 @@ final class OrderEmailService
             SendOrderStatusEmailJob::dispatch($idOrdenC, $estatusCanon, $probeResult, $orden)
                 ->onConnection('database');
         } catch (\Throwable $e) {
-            Log::channel('exacto_ops')->warning('order_email_dispatch_failed', [
+            Log::channel('anlux_ops')->warning('order_email_dispatch_failed', [
                 'id_orden_c' => $idOrdenC,
                 'estatus' => $estatusCanon,
                 'error' => $e->getMessage(),
@@ -215,7 +215,7 @@ final class OrderEmailService
                 'probe' => $probeResult,
             ];
         } catch (\Throwable $e) {
-            Log::channel('exacto_ops')->warning('order_email_failed', [
+            Log::channel('anlux_ops')->warning('order_email_failed', [
                 'id_orden_c' => $idOrdenC,
                 'estatus' => $estatusCanon,
                 'error' => $e->getMessage(),
@@ -255,7 +255,7 @@ final class OrderEmailService
 
             return [$content, $filename];
         } catch (\Throwable $e) {
-            Log::channel('exacto_ops')->warning('order_email_pdf_failed', [
+            Log::channel('anlux_ops')->warning('order_email_pdf_failed', [
                 'id_orden_c' => $idOrdenC,
                 'equipo_indice' => $equipoIndice,
                 'error' => $e->getMessage(),

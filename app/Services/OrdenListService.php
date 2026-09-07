@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
-use App\Support\ExactoAuthContext;
+use App\Support\AnluxAuthContext;
 use App\Support\OrderStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -14,7 +14,7 @@ use RuntimeException;
 final class OrdenListService
 {
     public function __construct(
-        private readonly ExactoVaultService $vault,
+        private readonly AnluxVaultService $vault,
         private readonly OrdenPolicyService $policy
     ) {}
 
@@ -111,7 +111,7 @@ final class OrdenListService
         $lockSelect = 'NULL AS edit_lock_user_id, NULL AS edit_lock_nombre';
         if (Schema::hasTable('orden_servicio_edit_locks')) {
             $lockSelect = 'lk.locked_by_user_id AS edit_lock_user_id, lk.locked_by_nombre AS edit_lock_nombre';
-            $lockJoin = ' LEFT JOIN orden_servicio_edit_locks lk ON lk.id_orden_c = c.id_orden_c AND lk.expires_at >= NOW()';
+            $lockJoin = ' LEFT JOIN orden_servicio_edit_locks lk ON lk.id_orden_c = c.id_orden_c AND lk.expires_at >= CURRENT_TIMESTAMP';
         }
 
         $salidaSelect = '0 AS salida_temporal_activa, NULL AS fecha_salida_temporal';
@@ -122,6 +122,10 @@ final class OrdenListService
         } catch (\Throwable) {
             // keep defaults
         }
+
+        $tecnicosLogAggregate = DB::connection()->getDriverName() === 'sqlite'
+            ? "GROUP_CONCAT(nombre_tecnico, ' · ')"
+            : "GROUP_CONCAT(nombre_tecnico ORDER BY fecha ASC SEPARATOR ' · ')";
 
         $sql = "SELECT c.id_orden_c, c.folio, c.nombre_cliente, c.direccion, c.telefono, c.correo, c.poblacion, c.fecha_entrada, c.fecha_terminada, c.fecha_salida, c.estatus, c.tecnico_recibido, t.tecnico_recibido AS tecnico_recibido_t, t.entregado_por_tecnico, t.total_pagar,
                 (CASE WHEN TRIM(COALESCE(c.firma_c_e, '')) <> '' AND TRIM(COALESCE(c.firma_t_r, '')) <> '' THEN 1 ELSE 0 END) AS firmas_recepcion_ok,
@@ -140,7 +144,7 @@ final class OrdenListService
                     ) tx ON tx.id_orden_c = t1.id_orden_c AND tx.id_trabajo = t1.id_trabajo
                 ) t ON t.id_orden_c = c.id_orden_c
                 LEFT JOIN (
-                    SELECT id_orden_c, GROUP_CONCAT(nombre_tecnico ORDER BY fecha ASC SEPARATOR ' · ') AS tecnicos_log
+                    SELECT id_orden_c, {$tecnicosLogAggregate} AS tecnicos_log
                     FROM orden_servicio_tecnico_log
                     GROUP BY id_orden_c
                 ) tl ON tl.id_orden_c = c.id_orden_c
@@ -208,7 +212,7 @@ final class OrdenListService
         $sql .= ' ORDER BY '.$orderBy.' LIMIT '.(int) $perPage.' OFFSET '.(int) $offset;
         $rows = DB::select($sql, $params);
 
-        $lockUserId = ExactoAuthContext::editLockUserId();
+        $lockUserId = AnluxAuthContext::editLockUserId();
 
         foreach ($rows as &$rowOrden) {
             $r = (array) $rowOrden;

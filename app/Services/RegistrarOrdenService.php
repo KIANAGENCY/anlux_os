@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
-use App\Support\ExactoAuthContext;
+use App\Support\AnluxAuthContext;
 use App\Support\OrderStatus;
 use App\Support\WhatsappPhone;
 use Illuminate\Http\Request;
@@ -26,7 +26,7 @@ final class RegistrarOrdenService
     private const EQUIPO_ACCION_ENTREGADO = 2;
 
     public function __construct(
-        private readonly ExactoVaultService $vault,
+        private readonly AnluxVaultService $vault,
         private readonly OrdenPolicyService $policy,
         private readonly OrdenAuditService $audit,
         private readonly OrdenListService $list,
@@ -61,7 +61,7 @@ final class RegistrarOrdenService
 
     private function nombreTecnicoOperador(User $user): string
     {
-        return ExactoAuthContext::tecnicoRecepcionParaOrden($user);
+        return AnluxAuthContext::tecnicoRecepcionParaOrden($user);
     }
 
     private function tecnicoRecibidoLegibleDesdeBd(?string $stored): string
@@ -190,7 +190,7 @@ final class RegistrarOrdenService
         $normalized = $this->normalizePayloadForLock($payload);
         $json = json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-        return 'exacto:registrar-orden:submit:'.$userId.':'.sha1((string) $json);
+        return 'anlux:registrar-orden:submit:'.$userId.':'.sha1((string) $json);
     }
 
     private function normalizePayloadForLock(mixed $value): mixed
@@ -369,7 +369,7 @@ final class RegistrarOrdenService
 
         $waProbe = ['status' => 'skipped', 'phone' => '', 'message' => ''];
         $waResult = null;
-        $waFeatureOn = config('exacto.whatsapp_notifications_enabled', false)
+        $waFeatureOn = config('anlux.whatsapp_notifications_enabled', false)
             && filter_var(config('services.whatsapp.enabled', false), FILTER_VALIDATE_BOOL);
         try {
             $waProbe = $this->orderWhatsapp->probePhone($telefono);
@@ -381,7 +381,7 @@ final class RegistrarOrdenService
                     true,
                     $forceWhatsapp
                 );
-                Log::channel('exacto_ops')->info('order_whatsapp_dispatch_on_save', [
+                Log::channel('anlux_ops')->info('order_whatsapp_dispatch_on_save', [
                     'id_orden_c' => $idOrdenC,
                     'folio' => $folio,
                     'estatus' => $estatusCanon,
@@ -390,16 +390,16 @@ final class RegistrarOrdenService
                     'notification_id' => $waResult['notification_id'] ?? null,
                 ]);
             } else {
-                Log::channel('exacto_ops')->warning('order_whatsapp_dispatch_skipped', [
+                Log::channel('anlux_ops')->warning('order_whatsapp_dispatch_skipped', [
                     'id_orden_c' => $idOrdenC,
                     'folio' => $folio,
                     'estatus' => $estatusCanon,
-                    'exacto_flag' => config('exacto.whatsapp_notifications_enabled'),
+                    'anlux_flag' => config('anlux.whatsapp_notifications_enabled'),
                     'whatsapp_cloud' => config('services.whatsapp.enabled'),
                 ]);
             }
         } catch (\Throwable $e) {
-            Log::channel('exacto_ops')->error('order_whatsapp_dispatch_exception', [
+            Log::channel('anlux_ops')->error('order_whatsapp_dispatch_exception', [
                 'id_orden_c' => $idOrdenC,
                 'folio' => $folio,
                 'estatus' => $estatusCanon,
@@ -475,13 +475,13 @@ final class RegistrarOrdenService
         // Reenviar WhatsApp forzado (ignora el dedup de "ya enviado").
         $waProbe = $this->orderWhatsapp->probePhone($telefono);
         $waResult = null;
-        $waFeatureOn = config('exacto.whatsapp_notifications_enabled', false)
+        $waFeatureOn = config('anlux.whatsapp_notifications_enabled', false)
             && filter_var(config('services.whatsapp.enabled', false), FILTER_VALIDATE_BOOL);
         if ($waFeatureOn) {
             try {
                 $waResult = $this->orderWhatsapp->queueForStatusWithResult($idOrdenC, 'Recepción', null, true, true);
             } catch (\Throwable $e) {
-                Log::channel('exacto_ops')->error('order_reenviar_whatsapp_exception', [
+                Log::channel('anlux_ops')->error('order_reenviar_whatsapp_exception', [
                     'id_orden_c' => $idOrdenC,
                     'error' => $e->getMessage(),
                     'exception' => $e::class,
@@ -498,7 +498,7 @@ final class RegistrarOrdenService
 
         // Diagnostico: deja claro en el log por que el WhatsApp se envio o no (duplicate,
         // failed, rejected, accepted, feature off, celular vacio/invalido, etc.).
-        Log::channel('exacto_ops')->info('order_reenviar_whatsapp_result', [
+        Log::channel('anlux_ops')->info('order_reenviar_whatsapp_result', [
             'id_orden_c' => $idOrdenC,
             'wa_feature_on' => $waFeatureOn,
             'tel_len' => strlen($telefono),
@@ -535,12 +535,12 @@ final class RegistrarOrdenService
             return ['message' => null, 'level' => null];
         }
 
-        $featureOn = config('exacto.whatsapp_notifications_enabled', false)
+        $featureOn = config('anlux.whatsapp_notifications_enabled', false)
             && filter_var(config('services.whatsapp.enabled', false), FILTER_VALIDATE_BOOL);
 
         if (! $featureOn) {
             return [
-                'message' => '✖ WhatsApp no enviado. Activa EXACTO_WHATSAPP_NOTIFICATIONS=true o WHATSAPP_CLOUD_ENABLED=true en el servidor.',
+                'message' => '✖ WhatsApp no enviado. Activa ANLUX_WHATSAPP_NOTIFICATIONS=true o WHATSAPP_CLOUD_ENABLED=true en el servidor.',
                 'level' => 'error',
             ];
         }
@@ -762,7 +762,8 @@ final class RegistrarOrdenService
         int $idOrdenC,
         string $motivo,
         ?string $firmaClienteDataUrl,
-        ?string $firmaTecnicoDataUrl
+        ?string $firmaTecnicoDataUrl,
+        int $idEquipo = 0
     ): array {
         if (! $this->hasSalidaTemporalColumns()) {
             return ['success' => false, 'message' => 'Faltan columnas de salida temporal en la base de datos. Ejecuta la migración.'];
@@ -796,6 +797,17 @@ final class RegistrarOrdenService
             return ['success' => false, 'message' => 'Esta orden ya fue entregada y no se puede modificar.'];
         }
 
+        if ($idEquipo <= 0) {
+            return ['success' => false, 'message' => 'Selecciona el equipo que tendrá la salida temporal.'];
+        }
+        $equipo = DB::selectOne(
+            'SELECT id_equipo, marca, modelo, serie FROM equipos_orden WHERE id_orden_c = ? AND id_equipo = ? LIMIT 1',
+            [$idOrdenC, $idEquipo]
+        );
+        if (! $equipo) {
+            return ['success' => false, 'message' => 'El equipo seleccionado no pertenece a esta orden.'];
+        }
+
         $folio = (string) ($row->folio ?? ('orden_'.$idOrdenC));
         $firmaClientePlano = $this->guardarFirma($firmaClienteDataUrl, 'firma_cliente_salida_temp', $folio);
         $firmaTecnicoPlano = $this->guardarFirma($firmaTecnicoDataUrl, 'firma_tecnico_salida_temp', $folio);
@@ -804,26 +816,21 @@ final class RegistrarOrdenService
         }
 
         $now = now()->format('Y-m-d H:i:s');
-        DB::update(
-            'UPDATE orden_servicio_c SET
-                salida_temporal_activa = 1,
-                fecha_salida_temporal = ?,
-                fecha_regreso_temporal = NULL,
-                motivo_salida_temporal = ?,
-                firma_c_salida_temp = ?,
-                firma_t_salida_temp = ?
-             WHERE id_orden_c = ?',
-            [
-                $now,
-                $motivo,
-                $this->vault->firmaRutaSeal($firmaClientePlano),
-                $this->vault->firmaRutaSeal($firmaTecnicoPlano),
-                $idOrdenC,
-            ]
-        );
+        $update = [
+            'salida_temporal_activa' => 1,
+            'fecha_salida_temporal' => $now,
+            'fecha_regreso_temporal' => null,
+            'motivo_salida_temporal' => $motivo,
+            'firma_c_salida_temp' => $this->vault->firmaRutaSeal($firmaClientePlano),
+            'firma_t_salida_temp' => $this->vault->firmaRutaSeal($firmaTecnicoPlano),
+        ];
+        if (Schema::hasColumn('orden_servicio_c', 'salida_temporal_id_equipo')) {
+            $update['salida_temporal_id_equipo'] = $idEquipo;
+        }
+        DB::table('orden_servicio_c')->where('id_orden_c', $idOrdenC)->update($update);
 
         try {
-            $nombre = ExactoAuthContext::nombreTecnicoSesionActual($user);
+            $nombre = AnluxAuthContext::nombreTecnicoSesionActual($user);
             if ($nombre !== '') {
                 $this->registrarInvolucradoSiCambio($idOrdenC, 'Salida temporal', $nombre);
             }
@@ -836,6 +843,12 @@ final class RegistrarOrdenService
             'message' => 'Salida temporal registrada. El equipo queda fuera del taller.',
             'ask_salida_temporal' => false,
             'fecha_salida_temporal' => $now,
+            'id_equipo' => $idEquipo,
+            'equipo' => trim(implode(' ', array_filter([
+                (string) ($equipo->marca ?? ''),
+                (string) ($equipo->modelo ?? ''),
+                (string) ($equipo->serie ?? ''),
+            ]))),
         ];
     }
 
@@ -875,7 +888,7 @@ final class RegistrarOrdenService
         );
 
         try {
-            $nombre = ExactoAuthContext::nombreTecnicoSesionActual($user);
+            $nombre = AnluxAuthContext::nombreTecnicoSesionActual($user);
             if ($nombre !== '') {
                 $this->registrarInvolucradoSiCambio($idOrdenC, 'Regreso taller', $nombre);
             }
@@ -1670,7 +1683,7 @@ final class RegistrarOrdenService
             $permitirSaldoNegativo = (string) $request->input('permitir_saldo_negativo', '') === '1';
             $tecnicoRecibido = '';
             if ($idOrdenEditar <= 0) {
-                $tecnicoRecibido = ExactoAuthContext::tecnicoRecepcionParaOrden($user);
+                $tecnicoRecibido = AnluxAuthContext::tecnicoRecepcionParaOrden($user);
             }
 
         $observaciones = '';
@@ -2085,7 +2098,7 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
         $firmaTecnicoFinal = $this->vault->firmaRutaSeal($firmaTecnicoFinalPlano);
 
         $tecnicoRecepcion = $this->nombreTecnicoOperador($user);
-        $tecnicoInvolucrado = ExactoAuthContext::nombreTecnicoSesionActual($user);
+        $tecnicoInvolucrado = AnluxAuthContext::nombreTecnicoSesionActual($user);
         $tecnicoRecibidoUpdate = $this->tecnicoRecibidoLegibleDesdeBd($ex['tecnico_recibido'] ?? null);
         if ($tecnicoRecibidoUpdate === '' && $exT && isset($exT['tecnico_recibido'])) {
             $tecnicoRecibidoUpdate = $this->tecnicoRecibidoLegibleDesdeBd((string) $exT['tecnico_recibido']);
@@ -2724,6 +2737,17 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
                     $equipoColsIns[] = 'entrega_receptor_tipo';
                     $equipoColsIns[] = 'entrega_recibido_cliente';
                 }
+                if (
+                    Schema::hasColumn('equipos_orden', 'entrega_firma_cliente')
+                    && Schema::hasColumn('equipos_orden', 'entrega_firma_tecnico')
+                    && Schema::hasColumn('equipos_orden', 'entrega_tecnico')
+                    && Schema::hasColumn('equipos_orden', 'entrega_fecha')
+                ) {
+                    $equipoColsIns[] = 'entrega_firma_cliente';
+                    $equipoColsIns[] = 'entrega_firma_tecnico';
+                    $equipoColsIns[] = 'entrega_tecnico';
+                    $equipoColsIns[] = 'entrega_fecha';
+                }
                 $this->batchInsert(
                     'equipos_orden',
                     $equipoColsIns,
@@ -2734,7 +2758,7 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
                 $firmaTecnicoFinal = $this->vault->firmaRutaSeal($this->guardarFirma($request->input('firmaTecnico'), 'firma_tecnico_final', $folioNuevo));
 
                 $entregadoPorNuevo = ($estCanonIns === 'Entregado')
-                    ? trim(ExactoAuthContext::nombreTecnicoSesionActual())
+                    ? trim(AnluxAuthContext::nombreTecnicoSesionActual())
                     : null;
 
                 $tColumns = [
@@ -2765,7 +2789,7 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
                 if (trim($tecnicoRecibido) !== '') {
                     $this->registrarInvolucradoEnLog($idOrdenC, $estatus, trim($tecnicoRecibido));
                 }
-                $tecnicoLog = trim(ExactoAuthContext::nombreTecnicoSesionActual());
+                $tecnicoLog = trim(AnluxAuthContext::nombreTecnicoSesionActual());
                 if ($tecnicoLog !== '' && strcasecmp($tecnicoLog, trim($tecnicoRecibido)) !== 0) {
                     $this->registrarInvolucradoSiCambio($idOrdenC, $estatus, $tecnicoLog);
                 }

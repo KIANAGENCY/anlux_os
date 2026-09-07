@@ -1,7 +1,7 @@
-@extends('layouts.exacto_app')
+@extends('layouts.anlux_app')
 
 @php
-    $pageTitle = 'Panel de administrador - Exacto';
+    $pageTitle = 'Panel de administrador - Anlux';
     // Evita un error 500 si durante un despliegue la vista llega antes que el controlador.
     $maintenance = $maintenance ?? [
         'enabled' => false,
@@ -19,14 +19,14 @@
                 <div class="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
                     <img
                         src="{{ asset('legacy/public/img/logo.jpeg') }}?v={{ @filemtime(public_path('legacy/public/img/logo.jpeg')) ?: 1 }}"
-                        alt="Exacto"
+                        alt="Anlux"
                         class="h-14 w-auto rounded-lg bg-white/95 p-2 shadow-md sm:h-16"
                         width="180"
                         height="60"
                         style="max-width: 180px; object-fit: contain;"
                     >
                     <div class="text-white">
-                        <p class="text-xs font-semibold uppercase tracking-widest text-blue-200">Exacto &middot; Administraci&oacute;n</p>
+                        <p class="text-xs font-semibold uppercase tracking-widest text-blue-200">Anlux &middot; Administraci&oacute;n</p>
                         <h1 class="mt-1 text-2xl font-bold sm:text-3xl">Panel de administrador</h1>
                         <p class="mt-2 max-w-xl text-sm text-blue-100">
                             Selecciona una secci&oacute;n para gestionar &oacute;rdenes, usuarios, cat&aacute;logo y seguridad.

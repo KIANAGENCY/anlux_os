@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Controllers\AdminAppearanceController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminFoliosController;
+use App\Http\Controllers\AdminIntegrationsController;
 use App\Http\Controllers\AdminRegistroController;
 use App\Http\Controllers\AdminUsersController;
+use App\Http\Controllers\BrandingAssetController;
 use App\Http\Controllers\CatalogoSersopController;
 use App\Http\Controllers\HistorialOrdenesController;
 use App\Http\Controllers\ImpersonationController;
@@ -16,7 +19,7 @@ use App\Http\Controllers\OrderPdfController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SeguridadController;
 use App\Http\Controllers\WhatsappWebhookController;
-use App\Http\Middleware\ExactoUpdatePresence;
+use App\Http\Middleware\AnluxUpdatePresence;
 use App\Http\Middleware\LegacyRememberMiddleware;
 use App\Services\OrdenPolicyService;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -28,7 +31,7 @@ Route::get('/', function () {
     $isAdmin = $user ? app(OrdenPolicyService::class)->userIsAdmin($user) : false;
 
     return view('index', [
-        'pageTitle' => 'Inicio - Exacto',
+        'pageTitle' => 'Inicio - Anlux',
         'user' => $user,
         'isAdmin' => $isAdmin,
     ]);
@@ -37,8 +40,9 @@ Route::get('/', function () {
 Route::get('/terminos-y-condiciones', [LegalController::class, 'terminos'])->name('legal.terminos');
 Route::get('/aviso-de-privacidad', [LegalController::class, 'privacidad'])->name('legal.privacidad');
 Route::get('/eliminar-datos', [LegalController::class, 'eliminarDatos'])->name('legal.eliminar-datos');
+Route::get('/branding/logo', [BrandingAssetController::class, 'logo'])->name('branding.logo');
 
-if (config('exacto.catalogo_sersop_guest')) {
+if (config('anlux.catalogo_sersop_guest')) {
     Route::get('/admin/catalogo-sersop', [CatalogoSersopController::class, 'index'])->name('admin.catalogo.index');
     Route::post('/admin/catalogo-sersop', [CatalogoSersopController::class, 'update'])->name('admin.catalogo.update');
     Route::post('/admin/catalogo-sersop/sync-precios-sin-iva', [CatalogoSersopController::class, 'syncPreciosSinIva'])->name('admin.catalogo.syncPreciosSinIva');
@@ -49,10 +53,10 @@ Route::get('/dashboard', function () {
 })->middleware(['auth'])->name('dashboard');
 
 Route::get('/webhooks/whatsapp/cloud', [WhatsappWebhookController::class, 'verify'])
-    ->withoutMiddleware([VerifyCsrfToken::class, LegacyRememberMiddleware::class, ExactoUpdatePresence::class])
+    ->withoutMiddleware([VerifyCsrfToken::class, LegacyRememberMiddleware::class, AnluxUpdatePresence::class])
     ->name('webhooks.whatsapp.verify');
 Route::post('/webhooks/whatsapp/cloud', [WhatsappWebhookController::class, 'receive'])
-    ->withoutMiddleware([VerifyCsrfToken::class, LegacyRememberMiddleware::class, ExactoUpdatePresence::class])
+    ->withoutMiddleware([VerifyCsrfToken::class, LegacyRememberMiddleware::class, AnluxUpdatePresence::class])
     ->name('webhooks.whatsapp.receive');
 
 Route::get('/wa/pdf/orden/{id}', [OrderPdfController::class, 'showSigned'])
@@ -99,22 +103,29 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/historial', [HistorialOrdenesController::class, 'index'])->name('historial.index');
 
-    Route::get('/admin', [AdminController::class, 'index'])->middleware('exacto.admin')->name('admin.index');
-    Route::post('/admin/mantenimiento', [AdminController::class, 'updateMaintenance'])->middleware('exacto.admin')->name('admin.maintenance.update');
-    Route::get('/admin/registro', [AdminRegistroController::class, 'create'])->middleware('exacto.admin')->name('admin.registro.create');
-    Route::post('/admin/registro', [AdminRegistroController::class, 'store'])->middleware('exacto.admin')->name('admin.registro.store');
-    Route::get('/admin/usuarios', [AdminUsersController::class, 'index'])->middleware('exacto.admin')->name('admin.users.index');
-    Route::post('/admin/usuarios/{id}/password', [AdminUsersController::class, 'updatePassword'])->middleware('exacto.admin')->name('admin.users.updatePassword');
-    Route::patch('/admin/usuarios/{id}/activo', [AdminUsersController::class, 'toggleActivo'])->middleware('exacto.admin')->name('admin.users.toggleActivo');
-    Route::delete('/admin/usuarios/{id}', [AdminUsersController::class, 'destroy'])->middleware('exacto.admin')->whereNumber('id')->name('admin.users.destroy');
-    if (! config('exacto.catalogo_sersop_guest')) {
-        Route::get('/admin/catalogo-sersop', [CatalogoSersopController::class, 'index'])->middleware('exacto.admin')->name('admin.catalogo.index');
-        Route::post('/admin/catalogo-sersop', [CatalogoSersopController::class, 'update'])->middleware('exacto.admin')->name('admin.catalogo.update');
-        Route::post('/admin/catalogo-sersop/sync-precios-sin-iva', [CatalogoSersopController::class, 'syncPreciosSinIva'])->middleware('exacto.admin')->name('admin.catalogo.syncPreciosSinIva');
+    Route::get('/admin', [AdminController::class, 'index'])->middleware('anlux.admin')->name('admin.index');
+    Route::post('/admin/mantenimiento', [AdminController::class, 'updateMaintenance'])->middleware('anlux.admin')->name('admin.maintenance.update');
+    Route::get('/admin/integraciones', [AdminIntegrationsController::class, 'index'])->middleware('anlux.admin')->name('admin.integrations.index');
+    Route::put('/admin/integraciones', [AdminIntegrationsController::class, 'update'])->middleware('anlux.admin')->name('admin.integrations.update');
+    Route::post('/admin/integraciones/test-mail', [AdminIntegrationsController::class, 'testMail'])->middleware('anlux.admin')->name('admin.integrations.testMail');
+    Route::post('/admin/integraciones/test-whatsapp', [AdminIntegrationsController::class, 'testWhatsapp'])->middleware('anlux.admin')->name('admin.integrations.testWhatsapp');
+    Route::get('/admin/apariencia', [AdminAppearanceController::class, 'index'])->middleware('anlux.admin')->name('admin.appearance.index');
+    Route::put('/admin/apariencia', [AdminAppearanceController::class, 'update'])->middleware('anlux.admin')->name('admin.appearance.update');
+    Route::delete('/admin/apariencia', [AdminAppearanceController::class, 'reset'])->middleware('anlux.admin')->name('admin.appearance.reset');
+    Route::get('/admin/registro', [AdminRegistroController::class, 'create'])->middleware('anlux.admin')->name('admin.registro.create');
+    Route::post('/admin/registro', [AdminRegistroController::class, 'store'])->middleware('anlux.admin')->name('admin.registro.store');
+    Route::get('/admin/usuarios', [AdminUsersController::class, 'index'])->middleware('anlux.admin')->name('admin.users.index');
+    Route::post('/admin/usuarios/{id}/password', [AdminUsersController::class, 'updatePassword'])->middleware('anlux.admin')->name('admin.users.updatePassword');
+    Route::patch('/admin/usuarios/{id}/activo', [AdminUsersController::class, 'toggleActivo'])->middleware('anlux.admin')->name('admin.users.toggleActivo');
+    Route::delete('/admin/usuarios/{id}', [AdminUsersController::class, 'destroy'])->middleware('anlux.admin')->whereNumber('id')->name('admin.users.destroy');
+    if (! config('anlux.catalogo_sersop_guest')) {
+        Route::get('/admin/catalogo-sersop', [CatalogoSersopController::class, 'index'])->middleware('anlux.admin')->name('admin.catalogo.index');
+        Route::post('/admin/catalogo-sersop', [CatalogoSersopController::class, 'update'])->middleware('anlux.admin')->name('admin.catalogo.update');
+        Route::post('/admin/catalogo-sersop/sync-precios-sin-iva', [CatalogoSersopController::class, 'syncPreciosSinIva'])->middleware('anlux.admin')->name('admin.catalogo.syncPreciosSinIva');
     }
-    Route::get('/admin/seguridad', [SeguridadController::class, 'index'])->middleware('exacto.admin')->name('admin.seguridad.index');
-    Route::get('/admin/folios', [AdminFoliosController::class, 'index'])->middleware('exacto.admin')->name('admin.folios.index');
-    Route::post('/admin/folios/sync', [AdminFoliosController::class, 'sync'])->middleware('exacto.admin')->name('admin.folios.sync');
+    Route::get('/admin/seguridad', [SeguridadController::class, 'index'])->middleware('anlux.admin')->name('admin.seguridad.index');
+    Route::get('/admin/folios', [AdminFoliosController::class, 'index'])->middleware('anlux.admin')->name('admin.folios.index');
+    Route::post('/admin/folios/sync', [AdminFoliosController::class, 'sync'])->middleware('anlux.admin')->name('admin.folios.sync');
 });
 
 Route::middleware('auth')->group(function () {

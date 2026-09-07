@@ -1,4 +1,4 @@
-@extends('layouts.exacto_app')
+@extends('layouts.anlux_app')
 
 {{-- Debe ir fuera de @section: si va dentro del yield, el @stack del <head> ya pasó y ordenes.css no carga. --}}
 @php
@@ -182,9 +182,9 @@
 
     @php
         $ordenesJs = public_path('legacy/js/ordenes_laravel.js');
-        $pdfViewJsOrdenes = public_path('legacy/js/exacto_pdf_view.js');
+        $pdfViewJsOrdenes = public_path('legacy/js/anlux_pdf_view.js');
     @endphp
-    <script src="{{ asset('legacy/js/exacto_pdf_view.js') }}?v={{ is_file($pdfViewJsOrdenes) ? filemtime($pdfViewJsOrdenes) : 1 }}"></script>
+    <script src="{{ asset('legacy/js/anlux_pdf_view.js') }}?v={{ is_file($pdfViewJsOrdenes) ? filemtime($pdfViewJsOrdenes) : 1 }}"></script>
     <script src="{{ asset('legacy/js/ordenes_laravel.js') }}?v={{ is_file($ordenesJs) ? filemtime($ordenesJs) : 1 }}"></script>
 </body>
 @endsection

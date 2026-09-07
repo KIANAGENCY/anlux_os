@@ -6,7 +6,7 @@ SET status = 'expired', resolved_at = NOW()
 WHERE status IN ('pending', 'approved')
   AND expires_at > NOW();
 
--- Opcional: limpiar sesiones huérfanas sin actividad reciente (ajusta 10 al valor de EXACTO_PRESENCE_ONLINE_MINUTES).
+-- Opcional: limpiar sesiones huérfanas sin actividad reciente (ajusta 10 al valor de ANLUX_PRESENCE_ONLINE_MINUTES).
 UPDATE login
 SET active_session_id = NULL, active_session_at = NULL
 WHERE active_session_id IS NOT NULL

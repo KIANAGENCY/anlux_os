@@ -12,13 +12,13 @@ final class UserPresenceService
 {
     public function onlineMinutes(): int
     {
-        return max(1, (int) config('exacto.presence_online_minutes', 10));
+        return max(1, (int) config('anlux.presence_online_minutes', 10));
     }
 
     /** Tiempo máximo sin peticiones antes de forzar cierre de sesión. */
     public function sessionIdleMinutes(): int
     {
-        return max(1, (int) config('exacto.session_idle_minutes', $this->onlineMinutes()));
+        return max(1, (int) config('anlux.session_idle_minutes', $this->onlineMinutes()));
     }
 
     public function trackingEnabled(): bool
@@ -93,18 +93,19 @@ final class UserPresenceService
             return [];
         }
 
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $activoSql = $this->activoEnabledSql();
-        $params = array_merge($ids, [$this->onlineMinutes()]);
+        $query = DB::table('login')
+            ->select('id_tecnico')
+            ->whereIn('id_tecnico', $ids)
+            ->whereNotNull('last_seen_at')
+            ->where('last_seen_at', '>=', now()->subMinutes($this->onlineMinutes()));
 
-        $rows = DB::select(
-            "SELECT id_tecnico FROM login
-             WHERE id_tecnico IN ({$placeholders})
-             AND {$activoSql}
-             AND last_seen_at IS NOT NULL
-             AND last_seen_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)",
-            $params
-        );
+        if (Schema::hasColumn('login', 'activo')) {
+            $query->where(function ($active): void {
+                $active->where('activo', 1)->orWhereNull('activo');
+            });
+        }
+
+        $rows = $query->get();
 
         $online = [];
         foreach ($rows as $row) {
@@ -122,21 +123,22 @@ final class UserPresenceService
         }
 
         $exclude = array_values(array_filter(array_map('intval', $excludeIds), fn (int $id) => $id > 0));
-        $placeholders = $exclude !== [] ? implode(',', array_fill(0, count($exclude), '?')) : '';
-        $excludeSql = $exclude !== [] ? " AND id_tecnico NOT IN ({$placeholders})" : '';
+        $query = DB::table('login')
+            ->select('id_tecnico')
+            ->whereNotIn(DB::raw("LOWER(TRIM(COALESCE(perfil, '')))"), ['administrador', 'admin'])
+            ->whereNotNull('last_seen_at')
+            ->where('last_seen_at', '>=', now()->subMinutes($this->onlineMinutes()));
 
-        $params = $exclude;
-        $activoSql = $this->activoEnabledSql();
-        $sql = "SELECT id_tecnico FROM login
-            WHERE {$activoSql}
-            AND LOWER(TRIM(COALESCE(perfil, ''))) NOT IN ('administrador', 'admin')
-            AND last_seen_at IS NOT NULL
-            AND last_seen_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
-            {$excludeSql}";
+        if (Schema::hasColumn('login', 'activo')) {
+            $query->where(function ($active): void {
+                $active->where('activo', 1)->orWhereNull('activo');
+            });
+        }
+        if ($exclude !== []) {
+            $query->whereNotIn('id_tecnico', $exclude);
+        }
 
-        array_unshift($params, $this->onlineMinutes());
-
-        $rows = DB::select($sql, $params);
+        $rows = $query->get();
 
         return array_map(fn ($r) => (int) $r->id_tecnico, $rows);
     }

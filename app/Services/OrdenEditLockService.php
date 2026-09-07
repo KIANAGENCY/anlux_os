@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
-use App\Support\ExactoAuthContext;
+use App\Support\AnluxAuthContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -14,7 +14,7 @@ final class OrdenEditLockService
     public const LEASE_SECONDS = 180;
 
     public function __construct(
-        private readonly ExactoVaultService $vault
+        private readonly AnluxVaultService $vault
     ) {}
 
     public function tableExists(): bool
@@ -62,7 +62,7 @@ final class OrdenEditLockService
         $this->ensureTable();
         $this->purgeExpired();
 
-        $holderId = ExactoAuthContext::editLockUserId();
+        $holderId = AnluxAuthContext::editLockUserId();
         if ($holderId <= 0) {
             $holderId = (int) $operator->id_tecnico;
         }
@@ -91,8 +91,8 @@ final class OrdenEditLockService
         }
 
         $nombre = $this->displayNameForUser($operator);
-        if (ExactoAuthContext::isImpersonating()) {
-            $admin = ExactoAuthContext::operatorUser();
+        if (AnluxAuthContext::isImpersonating()) {
+            $admin = AnluxAuthContext::operatorUser();
             if ($admin) {
                 $nombre = $this->displayNameForUser($admin).' (como '.$nombre.')';
             }
@@ -113,7 +113,7 @@ final class OrdenEditLockService
     public function renew(int $orderId, ?int $holderId = null, ?string $nombre = null): bool
     {
         $this->ensureTable();
-        $holderId = $holderId ?? ExactoAuthContext::editLockUserId();
+        $holderId = $holderId ?? AnluxAuthContext::editLockUserId();
         if ($holderId <= 0) {
             return false;
         }
@@ -142,7 +142,7 @@ final class OrdenEditLockService
         if (! Schema::hasTable('orden_servicio_edit_locks')) {
             return;
         }
-        $holderId = $holderId ?? ExactoAuthContext::editLockUserId();
+        $holderId = $holderId ?? AnluxAuthContext::editLockUserId();
         DB::table('orden_servicio_edit_locks')
             ->where('id_orden_c', $orderId)
             ->where('locked_by_user_id', $holderId)
@@ -152,7 +152,7 @@ final class OrdenEditLockService
     public function assertHolder(int $orderId, ?int $holderId = null, ?User $operator = null): bool
     {
         $this->purgeExpired();
-        $holderId = $holderId ?? ExactoAuthContext::editLockUserId();
+        $holderId = $holderId ?? AnluxAuthContext::editLockUserId();
         if ($holderId <= 0 || ! Schema::hasTable('orden_servicio_edit_locks')) {
             return false;
         }
@@ -163,7 +163,7 @@ final class OrdenEditLockService
         );
         if (! $row) {
             // Lease expiró: intentar recuperar el bloqueo para el mismo operador.
-            $operator ??= ExactoAuthContext::currentUser();
+            $operator ??= AnluxAuthContext::currentUser();
             if (! $operator instanceof User) {
                 return false;
             }

@@ -3,7 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\User;
-use App\Support\ExactoAuthContext;
+use App\Support\AnluxAuthContext;
 use App\Services\RememberTokenService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -60,7 +60,7 @@ class LoginRequest extends FormRequest
         }
         $user = $userQuery->first();
 
-        $allowPlain = filter_var((string) env('EXACTO_LOGIN_ALLOW_PLAINTEXT_PASSWORD', false), FILTER_VALIDATE_BOOL);
+        $allowPlain = filter_var((string) env('ANLUX_LOGIN_ALLOW_PLAINTEXT_PASSWORD', false), FILTER_VALIDATE_BOOL);
         $valid = $user && (
             Hash::check($password, (string) $user->contrasena)
             || ($allowPlain && is_string($user->contrasena) && hash_equals((string) $user->contrasena, $password))
@@ -97,7 +97,7 @@ class LoginRequest extends FormRequest
             app(RememberTokenService::class)->issue($user);
         }
 
-        ExactoAuthContext::syncSessionForUser($user);
+        AnluxAuthContext::syncSessionForUser($user);
 
         RateLimiter::clear($this->throttleKey());
     }

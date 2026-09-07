@@ -46,7 +46,7 @@ final class WhatsappWebhookController extends Controller
             $reason = trim((string) $request->header('X-Hub-Signature-256', '')) === ''
                 ? 'missing_signature_header'
                 : 'invalid_signature';
-            Log::channel('exacto_ops')->warning('wa_webhook_signature_rejected', [
+            Log::channel('anlux_ops')->warning('wa_webhook_signature_rejected', [
                 'reason' => $reason,
                 'has_app_secret' => trim((string) config('services.whatsapp.app_secret', '')) !== '',
             ]);
@@ -65,7 +65,7 @@ final class WhatsappWebhookController extends Controller
         if (is_array($payload)) {
             $fields = $this->webhookFields($payload);
             $inboundCount = $this->countInboundMessages($payload);
-            Log::channel('exacto_ops')->info('wa_webhook_post', [
+            Log::channel('anlux_ops')->info('wa_webhook_post', [
                 'fields' => $fields,
                 'inbound_messages' => $inboundCount,
                 'statuses' => $this->countStatuses($payload),

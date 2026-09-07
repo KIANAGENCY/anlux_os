@@ -27,7 +27,7 @@ class AdminController extends Controller
         );
 
         return view('admin.index', [
-            'pageTitle' => 'Panel de administrador - Exacto',
+            'pageTitle' => 'Panel de administrador - Anlux',
             'nombreTecnico' => $nombreTecnico,
             'nav_admin_activo' => 'admin',
             'maintenance' => $this->maintenance->status(),

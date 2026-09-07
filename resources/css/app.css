@@ -1,3 +1,96 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    :root {
+        --anlux-font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        --anlux-primary: #2563eb;
+        --anlux-primary-hover: #1d4ed8;
+        --anlux-deep: #1e3a8a;
+        --anlux-pale: #eff6ff;
+        --anlux-canvas: #f8fafc;
+        --anlux-surface: #ffffff;
+        --anlux-text: #0f172a;
+        --anlux-text-muted: #64748b;
+        --anlux-border: #cbd5e1;
+        --anlux-border-soft: #e2e8f0;
+        --anlux-success: #16a34a;
+        --anlux-warning: #f59e0b;
+        --anlux-danger: #dc2626;
+        --anlux-blue-50: 239 246 255;
+        --anlux-blue-100: 219 234 254;
+        --anlux-blue-200: 191 219 254;
+        --anlux-blue-300: 147 197 253;
+        --anlux-blue-400: 96 165 250;
+        --anlux-blue-500: 59 130 246;
+        --anlux-blue-600: 37 99 235;
+        --anlux-blue-700: 29 78 216;
+        --anlux-blue-800: 30 64 175;
+        --anlux-blue-900: 30 58 138;
+        --anlux-blue-950: 23 37 84;
+        --anlux-cyan-50: 236 254 255;
+        --anlux-cyan-100: 207 250 254;
+        --anlux-cyan-200: 165 243 252;
+        --anlux-cyan-300: 103 232 249;
+        --anlux-cyan-400: 34 211 238;
+        --anlux-cyan-500: 6 182 212;
+        --anlux-cyan-600: 8 145 178;
+        --anlux-cyan-700: 14 116 144;
+        --anlux-cyan-800: 21 94 117;
+        --anlux-cyan-900: 22 78 99;
+        --anlux-cyan-950: 8 51 68;
+        --anlux-slate-50: 248 250 252;
+        --anlux-slate-100: 241 245 249;
+        --anlux-slate-200: 226 232 240;
+        --anlux-slate-300: 203 213 225;
+        --anlux-slate-400: 148 163 184;
+        --anlux-slate-500: 100 116 139;
+        --anlux-slate-600: 71 85 105;
+        --anlux-slate-700: 51 65 85;
+        --anlux-slate-800: 30 41 59;
+        --anlux-slate-900: 15 23 42;
+        --anlux-slate-950: 2 6 23;
+        --anlux-shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px rgb(15 23 42 / 0.06);
+    }
+
+    body {
+        background: var(--anlux-canvas);
+        color: var(--anlux-text);
+        font-family: var(--anlux-font-family);
+    }
+
+    :where(a, button, input, select, textarea):focus-visible {
+        outline: 3px solid rgb(var(--anlux-blue-600) / 0.42);
+        outline-offset: 2px;
+    }
+}
+
+@layer components {
+    .anlux-page-shell { @apply mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6; }
+    .anlux-logo-card { @apply inline-flex rounded-xl bg-white p-3 shadow-md ring-1 ring-slate-200/80; }
+    .anlux-page-card { @apply overflow-hidden rounded-2xl border border-slate-200 bg-white; box-shadow: var(--anlux-shadow-card); }
+    .anlux-page-header { @apply flex flex-col gap-3 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:px-6; }
+    .anlux-eyebrow { @apply text-xs font-semibold uppercase tracking-wider text-blue-700; }
+    .anlux-page-title { @apply mt-1 text-2xl font-bold tracking-tight text-slate-900; }
+    .anlux-page-description { @apply mt-1 text-sm leading-5 text-slate-600; }
+    .anlux-panel { @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5; }
+    .anlux-panel-muted { @apply rounded-xl border border-slate-200 bg-slate-50 p-4; }
+    .anlux-label { @apply mb-1.5 block text-[13px] font-semibold leading-[18px] text-slate-700; }
+    .anlux-control { @apply min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 transition duration-150 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-200; }
+    .anlux-btn { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition duration-150 disabled:cursor-not-allowed disabled:opacity-50; }
+    .anlux-btn-primary { @apply anlux-btn bg-blue-600 text-white shadow-sm hover:bg-blue-700; }
+    .anlux-btn-secondary { @apply anlux-btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+    .anlux-btn-success { @apply anlux-btn bg-green-600 text-white shadow-sm hover:bg-green-700; }
+    .anlux-btn-danger { @apply anlux-btn border border-red-300 bg-white text-red-700 hover:bg-red-50; }
+    .anlux-table-wrap { @apply w-full overflow-x-auto rounded-xl border border-slate-200 bg-white; }
+    .anlux-table { @apply w-full border-collapse text-sm; }
+    .anlux-table thead { @apply bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-600; }
+    .anlux-table th { @apply whitespace-nowrap border-b border-slate-200 px-3 py-3 text-left; }
+    .anlux-table td { @apply border-b border-slate-200 px-3 py-3; }
+    .anlux-table tbody tr { @apply transition-colors hover:bg-blue-50; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}

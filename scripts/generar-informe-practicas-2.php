@@ -18,17 +18,17 @@ $sections = [
     [
         'title' => 'Informe de prácticas profesionales — Segundo avance',
         'level' => 0,
-        'text' => "Proyecto: Sistema de soporte Exacto LP (Laravel)\nSitio: https://soporte.exactolp.mx\nEmpresa: Exacto LP\nPeriodo: junio 2026\nDocumento: informe_practicas_1.docx",
+        'text' => "Proyecto: Sistema de soporte Anlux (Laravel)\nSitio: https://soporte.anlux.mx\nEmpresa: Anlux\nPeriodo: junio 2026\nDocumento: informe_practicas_1.docx",
     ],
     [
         'title' => '1. Contexto (primer informe)',
         'level' => 1,
-        'text' => "En el informe anterior se documentó la migración del sistema legacy PHP a Laravel 13 para la gestión de órdenes de servicio de Exacto LP. Se estableció la base del proyecto: autenticación de técnicos, estructura de base de datos (orden_servicio_c, orden_servicio_t, equipos, trabajos, materiales) y el formulario de captura de órdenes.",
+        'text' => "En el informe anterior se documentó la migración del sistema legacy PHP a Laravel 13 para la gestión de órdenes de servicio de Anlux. Se estableció la base del proyecto: autenticación de técnicos, estructura de base de datos (orden_servicio_c, orden_servicio_t, equipos, trabajos, materiales) y el formulario de captura de órdenes.",
     ],
     [
         'title' => '2. Órdenes registradas',
         'level' => 1,
-        'text' => "Módulo para consultar y administrar las órdenes activas del taller.\n\nImplementación:\n• Vista /ordenes con tabla dinámica (folio, cliente, fechas, técnico, involucrados, estatus).\n• API GET /api/ordenes alimentada por OrdenListService (búsqueda por folio o cliente, filtros por estatus y rango de fechas).\n• Cambio de estatus vía POST /api/ordenes/estatus con OrdenStatusService y registro en orden_servicio_tecnico_log.\n• Formulario /orden_servicio para alta y edición; guardado con POST /api/ordenes/registrar (RegistrarOrdenService).\n• Columnas Involucrados y Técnico con nombres descifrados desde ExactoVaultService.\n• Bloqueo de edición concurrente (OrderEditLockController) para evitar conflictos entre técnicos.\n• Acceso desde el menú principal y la celda «Órdenes registradas» del flujo de navegación.",
+        'text' => "Módulo para consultar y administrar las órdenes activas del taller.\n\nImplementación:\n• Vista /ordenes con tabla dinámica (folio, cliente, fechas, técnico, involucrados, estatus).\n• API GET /api/ordenes alimentada por OrdenListService (búsqueda por folio o cliente, filtros por estatus y rango de fechas).\n• Cambio de estatus vía POST /api/ordenes/estatus con OrdenStatusService y registro en orden_servicio_tecnico_log.\n• Formulario /orden_servicio para alta y edición; guardado con POST /api/ordenes/registrar (RegistrarOrdenService).\n• Columnas Involucrados y Técnico con nombres descifrados desde AnluxVaultService.\n• Bloqueo de edición concurrente (OrderEditLockController) para evitar conflictos entre técnicos.\n• Acceso desde el menú principal y la celda «Órdenes registradas» del flujo de navegación.",
     ],
     [
         'title' => '3. Historial de órdenes',

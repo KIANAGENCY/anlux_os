@@ -88,7 +88,7 @@ final class MaintenanceModeTest extends TestCase
     {
         View::share('errors', new ViewErrorBag);
         $html = View::make('maintenance', [
-            'pageTitle' => 'Sistema en mantenimiento - Exacto',
+            'pageTitle' => 'Sistema en mantenimiento - Anlux',
         ])->render();
 
         $this->assertStringContainsString('Sistema en mantenimiento', $html);

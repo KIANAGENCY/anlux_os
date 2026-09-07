@@ -1,4 +1,4 @@
-@extends('layouts.exacto_app')
+@extends('layouts.anlux_app')
 
 @section('content')
 <body class="min-h-screen bg-slate-100 text-slate-800 antialiased">

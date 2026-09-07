@@ -1,5 +1,5 @@
 -- Tabla requerida para auditoría; sin ella los TÉCNICOS no veían órdenes (filtro devolvía vacío).
--- Ejecutar en joses16_exacto si falta la tabla orden_servicio_audit_log
+-- Ejecutar en anlux_os si falta la tabla orden_servicio_audit_log
 
 CREATE TABLE IF NOT EXISTS `orden_servicio_audit_log` (
   `id_audit` INT UNSIGNED NOT NULL AUTO_INCREMENT,

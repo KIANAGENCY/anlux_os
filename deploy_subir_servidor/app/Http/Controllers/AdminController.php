@@ -19,7 +19,7 @@ class AdminController extends Controller
         abort_unless($user, 403);
 
         return view('admin.index', [
-            'pageTitle' => 'Panel de administrador - Exacto',
+            'pageTitle' => 'Panel de administrador - Anlux',
             'nombreTecnico' => htmlspecialchars((string) (session('nombre_tecnico') ?? $user->nombre_tecnico ?? ''), ENT_QUOTES, 'UTF-8'),
             'nav_admin_activo' => 'admin',
             'maintenance' => $this->maintenance->status(),

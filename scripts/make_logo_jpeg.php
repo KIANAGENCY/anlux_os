@@ -15,7 +15,7 @@ $white = imagecolorallocate($im, 255, 255, 255);
 $blue = imagecolorallocate($im, 37, 99, 235);
 imagefilledrectangle($im, 0, 0, $w, $h, $white);
 $font = 'C:\\Windows\\Fonts\\arialbd.ttf';
-$text = 'EXACTO';
+$text = 'ANLUX';
 if (is_file($font) && function_exists('imagettfbbox')) {
     $size = 86;
     $bbox = imagettfbbox($size, 0, $font, $text);

@@ -1,4 +1,4 @@
--- Ejecutar en phpMyAdmin (base joses16_exacto).
+-- Ejecutar en phpMyAdmin (base anlux_os).
 -- La columna `activo` ya existe en tu servidor; NO la vuelvas a crear.
 
 -- 1) Ver qué columnas tiene login:

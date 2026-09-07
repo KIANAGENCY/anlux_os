@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $pageTitle ?? 'Inicio - Exacto' }}</title>
-    <link rel="icon" type="image/png" href="{{ asset('legacy/public/img/exacto-icon-1024.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('legacy/public/img/exacto-icon-1024.png') }}">
+    <title>{{ $pageTitle ?? 'Inicio - Anlux' }}</title>
+    <link rel="icon" type="image/png" href="{{ asset('legacy/public/img/anlux-icon-1024.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('legacy/public/img/anlux-icon-1024.png') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     @php
         $homeCssPath = public_path('legacy/assets/css/home.css');
@@ -22,14 +22,14 @@
             <div class="hero-inner">
                 <div>
                     <div class="brand-row">
-                        <img src="{{ asset('legacy/public/img/logo.jpeg') }}?v={{ @filemtime(public_path('legacy/public/img/logo.jpeg')) ?: 1 }}" alt="Exacto" class="brand-logo">
+                        <img src="{{ asset('legacy/public/img/logo.jpeg') }}?v={{ @filemtime(public_path('legacy/public/img/logo.jpeg')) ?: 1 }}" alt="Anlux" class="brand-logo">
                         <span class="eyebrow">
                             <i class="fas fa-lock"></i>
                             Uso interno
                         </span>
                     </div>
 
-                    <h1>Menu principal Exacto</h1>
+                    <h1>Menu principal Anlux</h1>
                     @if ($user)
                         <div class="session-pill">
                             <i class="fas fa-circle-check"></i>
@@ -136,7 +136,7 @@
         </div>
 
         <div class="footer-note">
-            <span>Exacto | Sistema interno de ordenes y administracion</span>
+            <span>Anlux | Sistema interno de ordenes y administracion</span>
             <nav class="footer-legal" aria-label="Enlaces legales">
                 <a href="{{ route('legal.terminos') }}">Terminos y condiciones</a>
                 <span class="footer-sep" aria-hidden="true">|</span>

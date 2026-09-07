@@ -1,7 +1,7 @@
-@extends('layouts.exacto_app')
+@extends('layouts.anlux_app')
 
 @php
-    $pageTitle = $pageTitle ?? 'Folios de órdenes - Exacto';
+    $pageTitle = $pageTitle ?? 'Folios de órdenes - Anlux';
     $status = $status ?? ['anio' => (int) date('Y'), 'next_num' => 1, 'max_usado' => 0, 'proximo_folio' => '', 'huecos' => []];
     $anio = (int) ($anio ?? date('Y'));
 @endphp
@@ -12,7 +12,7 @@
         <div class="overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200/80">
             <header class="border-b border-slate-200 bg-gradient-to-br from-blue-800 via-blue-700 to-blue-600 px-5 py-6 sm:px-8">
                 <div class="text-white">
-                    <p class="text-xs font-semibold uppercase tracking-widest text-blue-200">Exacto &middot; Administraci&oacute;n</p>
+                    <p class="text-xs font-semibold uppercase tracking-widest text-blue-200">Anlux &middot; Administraci&oacute;n</p>
                     <h1 class="mt-1 text-2xl font-bold sm:text-3xl">Folios de &oacute;rdenes</h1>
                     <p class="mt-2 max-w-xl text-sm text-blue-100">
                         Consulta huecos liberados (p.ej. &oacute;rdenes de prueba borradas) y sincroniza el contador.

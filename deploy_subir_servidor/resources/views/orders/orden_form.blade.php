@@ -78,7 +78,7 @@
                 <a href="{{ $sinPrueba }}" class="shrink-0 text-amber-800 underline hover:text-amber-950 text-xs font-semibold">Quitar panel</a>
             </div>
             <p class="mt-2 text-xs text-amber-900">
-                Con <code class="rounded bg-amber-100 px-1">EXACTO_TELEFONO_SECRET</code> en <code class="rounded bg-amber-100 px-1">.env</code>, al guardar la orden el servidor cifra telefono y direccion (prefijo <code class="rounded bg-amber-100 px-1">v1:</code>), no hash irreversible. Sin secreto, se guardan en claro.
+                Con <code class="rounded bg-amber-100 px-1">ANLUX_TELEFONO_SECRET</code> en <code class="rounded bg-amber-100 px-1">.env</code>, al guardar la orden el servidor cifra telefono y direccion (prefijo <code class="rounded bg-amber-100 px-1">v1:</code>), no hash irreversible. Sin secreto, se guardan en claro.
             </p>
             <ul class="mt-3 list-disc space-y-1 pl-5 text-xs sm:text-sm">
                 <li><strong>Secreto en .env:</strong> <?php echo $vaultDiagSim['secreto_env'] ? 'si (activo cifrado en ordenes)' : 'no (telefono y domicilio se guardarian en texto plano al enviar el formulario)'; ?></li>
@@ -90,7 +90,7 @@
                     · al descifrar coincide: <?php echo $vaultDiagSim['dir_roundtrip_ok'] ? 'si' : 'no'; ?></li>
                 <?php if ($idEditar > 0 && is_array($vaultDiagOrdenDb)): ?>
                 <li><strong>Esta orden en BD (sin descifrar):</strong>
-                    telefono @php $v = app(\App\Services\ExactoVaultService::class); @endphp {{ $v->isSealed($vaultDiagOrdenDb['telefono'] ?? '') ? 'esta cifrado (v1:)' : 'parece texto plano o vacio' }},
+                    telefono @php $v = app(\App\Services\AnluxVaultService::class); @endphp {{ $v->isSealed($vaultDiagOrdenDb['telefono'] ?? '') ? 'esta cifrado (v1:)' : 'parece texto plano o vacio' }},
                     direccion {{ $v->isSealed($vaultDiagOrdenDb['direccion'] ?? '') ? 'esta cifrada (v1:)' : 'parece texto plano o vacio' }}.
                     <span class="block mt-1 font-mono text-[10px] opacity-90 break-all">tel raw: <?php echo htmlspecialchars(substr((string)($vaultDiagOrdenDb['telefono'] ?? ''), 0, 80), ENT_QUOTES, 'UTF-8'); ?><?php echo strlen((string)($vaultDiagOrdenDb['telefono'] ?? '')) > 80 ? '' : ''; ?></span>
                 </li>
@@ -110,7 +110,7 @@
             <input type="hidden" name="id_orden_c" id="id_orden_c" value="<?php echo $idEditar > 0 ? (int)$idEditar : ''; ?>">
             <input type="hidden" name="modo_completar" id="modo_completar" value="<?php echo $modoSoloCompletar ? '1' : '0'; ?>">
             {{-- Contenedor para cobro oculto SERSOP01 (en orden nueva la tabla de trabajos no se renderiza). --}}
-            <div id="exactoSersop01Campos"></div>
+            <div id="anluxSersop01Campos"></div>
 
             <?php if ($modoSoloCompletar): ?>
             <div class="mb-6 p-5 rounded-lg border-2 border-blue-600 bg-blue-50 shadow-sm">
@@ -1101,7 +1101,7 @@
                                     p-3
                                     border
                                   "
-                                ><div class="exacto-money-field"><span class="exacto-money-prefix">$</span><input type="number" step="0.01"
+                                ><div class="anlux-money-field"><span class="anlux-money-prefix">$</span><input type="number" step="0.01"
                                   class="
                                     w-full
                                     px-2 py-1
@@ -1381,7 +1381,7 @@
                                     p-3
                                     border
                                   "
-                                ><div class="exacto-money-field"><span class="exacto-money-prefix">$</span><input type="number" step="0.01" min="0"
+                                ><div class="anlux-money-field"><span class="anlux-money-prefix">$</span><input type="number" step="0.01" min="0"
                                   class="
                                     w-full
                                     px-2 py-1
@@ -1395,7 +1395,7 @@
                                     p-3
                                     border
                                   "
-                                ><span class="exacto-money-prefix">$</span><span class="importe-calc">0.00</span></td>
+                                ><span class="anlux-money-prefix">$</span><span class="importe-calc">0.00</span></td>
                                 <td
                                   class="
                                     p-3
@@ -1487,7 +1487,7 @@
                                     <input type="text" class="w-full px-2 py-1 border border-blue-300 rounded" name="anticipos[0][descripcion]" placeholder="Descripcion de refaccion">
                                 </td>
                                 <td class="p-3 border">
-                                    <div class="exacto-money-field"><span class="exacto-money-prefix">$</span><input type="number" step="0.01" class="w-full px-2 py-1 border border-blue-300 rounded anticipo-input" name="anticipos[0][monto]" value="" placeholder="Neto c/IVA" title="Escribe el monto neto (con IVA). Se convierte a sin IVA automáticamente."></div>
+                                    <div class="anlux-money-field"><span class="anlux-money-prefix">$</span><input type="number" step="0.01" class="w-full px-2 py-1 border border-blue-300 rounded anticipo-input" name="anticipos[0][monto]" value="" placeholder="Neto c/IVA" title="Escribe el monto neto (con IVA). Se convierte a sin IVA automáticamente."></div>
                                 </td>
                                 <td class="p-3 border">
                                     <input type="text" class="w-full px-2 py-1 border border-blue-300 rounded anticipo-ticket-input ticket-factura-input" name="anticipos[0][ticket]" placeholder="Ticket, factura o folio">
@@ -1802,7 +1802,7 @@
 
             <!-- Modal: Firmas para Entrega (expandida) -->
             <style>
-                #modalFirmasEntrega .exacto-entrega-receptor-selector {
+                #modalFirmasEntrega .anlux-entrega-receptor-selector {
                     display: flex;
                     gap: 0.25rem;
                     padding: 0.25rem;
@@ -1810,7 +1810,7 @@
                     border-radius: 0.5rem;
                     background: #f1f5f9;
                 }
-                #modalFirmasEntrega .exacto-entrega-receptor-option {
+                #modalFirmasEntrega .anlux-entrega-receptor-option {
                     position: relative;
                     display: flex;
                     min-height: 2.5rem;
@@ -1825,31 +1825,31 @@
                     font-weight: 700;
                     transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
                 }
-                #modalFirmasEntrega .exacto-entrega-receptor-option input {
+                #modalFirmasEntrega .anlux-entrega-receptor-option input {
                     position: absolute;
                     width: 1px;
                     height: 1px;
                     opacity: 0;
                 }
-                #modalFirmasEntrega .exacto-entrega-receptor-option:has(input:checked) {
+                #modalFirmasEntrega .anlux-entrega-receptor-option:has(input:checked) {
                     background: #ffffff;
                     color: #1d4ed8;
                     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.14);
                 }
-                #modalFirmasEntrega .exacto-entrega-receptor-option--tercero:has(input:checked) {
+                #modalFirmasEntrega .anlux-entrega-receptor-option--tercero:has(input:checked) {
                     color: #b45309;
                 }
-                #modalFirmasEntrega .exacto-entrega-receptor-option:has(input:focus-visible) {
+                #modalFirmasEntrega .anlux-entrega-receptor-option:has(input:focus-visible) {
                     outline: 2px solid #60a5fa;
                     outline-offset: 2px;
                 }
-                #modalFirmasEntrega .exacto-firma-canvas-wrap {
+                #modalFirmasEntrega .anlux-firma-canvas-wrap {
                     height: clamp(11rem, 29vh, 14rem);
                     min-height: 11rem;
                     background: #ffffff;
                 }
                 @media (max-width: 767px) {
-                    #modalFirmasEntrega .exacto-firma-canvas-wrap {
+                    #modalFirmasEntrega .anlux-firma-canvas-wrap {
                         height: 12rem;
                     }
                 }
@@ -1877,12 +1877,12 @@
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
                                 <div>
                                     <p class="mb-2 text-sm font-bold text-slate-800">¿Quién recoge el equipo?</p>
-                                    <div class="exacto-entrega-receptor-selector">
-                                        <label class="exacto-entrega-receptor-option">
+                                    <div class="anlux-entrega-receptor-selector">
+                                        <label class="anlux-entrega-receptor-option">
                                             <input type="radio" name="entrega_quien_recibe" id="entregaQuienCliente" value="cliente" checked>
                                             <span><i class="fas fa-user mr-1.5 text-xs" aria-hidden="true"></i>Cliente titular</span>
                                         </label>
-                                        <label class="exacto-entrega-receptor-option exacto-entrega-receptor-option--tercero">
+                                        <label class="anlux-entrega-receptor-option anlux-entrega-receptor-option--tercero">
                                             <input type="radio" name="entrega_quien_recibe" id="entregaQuienTercero" value="tercero">
                                             <span><i class="fas fa-user-shield mr-1.5 text-xs" aria-hidden="true"></i>Tercero</span>
                                         </label>
@@ -1907,7 +1907,7 @@
                                         <i class="fas fa-eraser" aria-hidden="true"></i> Limpiar
                                     </button>
                                 </div>
-                                <div class="exacto-firma-canvas-wrap overflow-hidden">
+                                <div class="anlux-firma-canvas-wrap overflow-hidden">
                                     <canvas id="firmaClienteEntrega" class="w-full h-full rounded-lg cursor-crosshair" style="display: block; background: white;"></canvas>
                                 </div>
                             </div>
@@ -1919,7 +1919,7 @@
                                         <i class="fas fa-eraser" aria-hidden="true"></i> Limpiar
                                     </button>
                                 </div>
-                                <div class="exacto-firma-canvas-wrap overflow-hidden">
+                                <div class="anlux-firma-canvas-wrap overflow-hidden">
                                     <canvas id="firmaTecnicoEntrega" class="w-full h-full rounded-lg cursor-crosshair" style="display: block; background: white;"></canvas>
                                 </div>
                             </div>
@@ -2000,28 +2000,28 @@
         </div>
     </div>
 
-    <div id="exactoUiModal" class="hidden fixed inset-0 z-[30000] items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-labelledby="exactoUiModalTitle" style="z-index:30000;">
+    <div id="anluxUiModal" class="hidden fixed inset-0 z-[30000] items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-labelledby="anluxUiModalTitle" style="z-index:30000;">
         <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl">
             <div class="border-b border-slate-200 px-5 py-4">
-                <h3 id="exactoUiModalTitle" class="text-center text-xl font-bold text-blue-900">Aviso</h3>
+                <h3 id="anluxUiModalTitle" class="text-center text-xl font-bold text-blue-900">Aviso</h3>
             </div>
-            <div class="exacto-ui-modal-body px-5 py-5 text-center">
-                <div id="exactoUiModalIconWrap" class="mb-4 hidden flex justify-center">
-                    <span id="exactoUiModalIconCircle" class="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
-                        <i id="exactoUiModalIcon" class="fas fa-info-circle text-2xl text-slate-600"></i>
+            <div class="anlux-ui-modal-body px-5 py-5 text-center">
+                <div id="anluxUiModalIconWrap" class="mb-4 hidden flex justify-center">
+                    <span id="anluxUiModalIconCircle" class="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
+                        <i id="anluxUiModalIcon" class="fas fa-info-circle text-2xl text-slate-600"></i>
                     </span>
                 </div>
-                <p id="exactoUiModalMessage" class="mx-auto max-w-prose whitespace-pre-line text-center text-sm leading-relaxed text-slate-700"></p>
-                <div id="exactoUiModalInputWrap" class="mt-4 hidden text-left">
-                    <label id="exactoUiModalInputLabel" for="exactoUiModalInput" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600"></label>
-                    <input type="text" id="exactoUiModalInput" class="w-full rounded-lg border-2 border-blue-300 px-3 py-2 text-sm font-semibold uppercase text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200" autocomplete="off" maxlength="80">
+                <p id="anluxUiModalMessage" class="mx-auto max-w-prose whitespace-pre-line text-center text-sm leading-relaxed text-slate-700"></p>
+                <div id="anluxUiModalInputWrap" class="mt-4 hidden text-left">
+                    <label id="anluxUiModalInputLabel" for="anluxUiModalInput" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600"></label>
+                    <input type="text" id="anluxUiModalInput" class="w-full rounded-lg border-2 border-blue-300 px-3 py-2 text-sm font-semibold uppercase text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200" autocomplete="off" maxlength="80">
                 </div>
             </div>
             <div class="flex flex-col-reverse items-center gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:justify-center">
-                <button type="button" id="exactoUiModalCancel" class="hidden rounded-lg border-2 border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
+                <button type="button" id="anluxUiModalCancel" class="hidden rounded-lg border-2 border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
                     Cancelar
                 </button>
-                <button type="button" id="exactoUiModalConfirm" class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700">
+                <button type="button" id="anluxUiModalConfirm" class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700">
                     Aceptar
                 </button>
             </div>
@@ -2043,22 +2043,22 @@
 
     <script>
         // ===== LÓGICA: Entrega por Equipo =====
-        window.exactoEntregaEquipoSeleccionado = null;
-        window.exactoEntregaEquipoDbId = null;
+        window.anluxEntregaEquipoSeleccionado = null;
+        window.anluxEntregaEquipoDbId = null;
 
-        function exactoQuitarResaltadoEquipos() {
+        function anluxQuitarResaltadoEquipos() {
             document.querySelectorAll('#equiposTableBody .equipo-row').forEach(f => {
-                f.classList.remove('exacto-equipo-seleccionado', 'bg-blue-50', 'ring-2', 'ring-blue-300');
+                f.classList.remove('anlux-equipo-seleccionado', 'bg-blue-50', 'ring-2', 'ring-blue-300');
             });
         }
 
-        function exactoFilasEquipos() {
+        function anluxFilasEquipos() {
             return Array.from(document.querySelectorAll('#equiposTableBody .equipo-row'));
         }
 
         /** Número de equipo 1..N (igual que la columna EQUIPO en trabajos/materiales). */
-        function exactoResolverNumeroEquipoDesdeBoton(btn) {
-            const filas = exactoFilasEquipos();
+        function anluxResolverNumeroEquipoDesdeBoton(btn) {
+            const filas = anluxFilasEquipos();
             if (!filas.length) {
                 return 0;
             }
@@ -2083,8 +2083,8 @@
             return 0;
         }
 
-        function exactoResolverIdEquipoDb(numEquipo) {
-            const filas = exactoFilasEquipos();
+        function anluxResolverIdEquipoDb(numEquipo) {
+            const filas = anluxFilasEquipos();
             const fila = filas[numEquipo - 1] || null;
             if (fila) {
                 const fromRow = Number(fila.dataset.idEquipoDb || 0);
@@ -2102,8 +2102,8 @@
             return dbId > 0 ? dbId : 0;
         }
 
-        function exactoDatosEquipoPorNumero(numEquipo) {
-            const filas = exactoFilasEquipos();
+        function anluxDatosEquipoPorNumero(numEquipo) {
+            const filas = anluxFilasEquipos();
             const fila = filas[numEquipo - 1] || null;
             let marca = '';
             let modelo = '';
@@ -2132,20 +2132,20 @@
             };
         }
 
-        function exactoResaltarEquipoRow(numEquipo) {
-            exactoQuitarResaltadoEquipos();
-            const fila = exactoFilasEquipos()[numEquipo - 1];
+        function anluxResaltarEquipoRow(numEquipo) {
+            anluxQuitarResaltadoEquipos();
+            const fila = anluxFilasEquipos()[numEquipo - 1];
             if (fila) {
-                fila.classList.add('exacto-equipo-seleccionado', 'bg-blue-50', 'ring-2', 'ring-blue-300');
+                fila.classList.add('anlux-equipo-seleccionado', 'bg-blue-50', 'ring-2', 'ring-blue-300');
                 fila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         }
 
-        function exactoEstatusOrdenFormulario() {
+        function anluxEstatusOrdenFormulario() {
             const el = document.getElementById('inputEstatus') || document.querySelector('[name="estatus"]');
             const raw = String(el?.value || '').trim();
-            if (typeof exactoNormalizarEstatusOrden === 'function') {
-                return exactoNormalizarEstatusOrden(raw);
+            if (typeof anluxNormalizarEstatusOrden === 'function') {
+                return anluxNormalizarEstatusOrden(raw);
             }
             const k = raw.toLowerCase().replace(/\s+/g, '');
             if (k.includes('entreg')) return 'Entregado';
@@ -2155,10 +2155,10 @@
         }
 
         /** 0=pendiente, 1=terminado, 2=entregado (tabla ESTATUS / dataset; legado orden global). */
-        function exactoAccionesEquipoSeleccionado() {
-            const num = Number(window.exactoEntregaEquipoSeleccionado) || 0;
+        function anluxAccionesEquipoSeleccionado() {
+            const num = Number(window.anluxEntregaEquipoSeleccionado) || 0;
             if (num < 1) return 0;
-            const fila = exactoFilasEquipos()[num - 1];
+            const fila = anluxFilasEquipos()[num - 1];
             const fromHidden = Number(fila?.querySelector?.('.equipo-acciones-input')?.value || NaN);
             let acc = Number.isFinite(fromHidden)
                 ? fromHidden
@@ -2166,36 +2166,36 @@
             if (acc >= 2) return 2;
             if (acc >= 1) return 1;
             // Legado: órdenes marcadas Terminado/Entregado a nivel global antes del flujo por equipo.
-            const est = exactoEstatusOrdenFormulario();
+            const est = anluxEstatusOrdenFormulario();
             if (est === 'Entregado') return 2;
             if (est === 'Terminado') return 1;
             return 0;
         }
 
-        function exactoEquipoPuedeEntregarse() {
-            if (exactoAccionesEquipoSeleccionado() >= 1) return true;
+        function anluxEquipoPuedeEntregarse() {
+            if (anluxAccionesEquipoSeleccionado() >= 1) return true;
             const chkTerminado = document.getElementById('chkTerminado');
             return Boolean(chkTerminado && chkTerminado.checked && !chkTerminado.disabled);
         }
 
-        function exactoMarcarAccionesEquipoLocal(numEquipo, acciones) {
-            const fila = exactoFilasEquipos()[numEquipo - 1];
+        function anluxMarcarAccionesEquipoLocal(numEquipo, acciones) {
+            const fila = anluxFilasEquipos()[numEquipo - 1];
             if (!fila) return;
-            if (typeof window.exactoPintarEstatusEquipoFila === 'function') {
-                window.exactoPintarEstatusEquipoFila(fila, acciones);
+            if (typeof window.anluxPintarEstatusEquipoFila === 'function') {
+                window.anluxPintarEstatusEquipoFila(fila, acciones);
             } else {
                 const acc = Math.max(0, Number(acciones) || 0);
                 fila.dataset.acciones = String(acc);
             }
         }
 
-        function exactoAplicarBloqueoEntregaCheckboxes() {
+        function anluxAplicarBloqueoEntregaCheckboxes() {
             const chkTerminado = document.getElementById('chkTerminado');
             const chkEntregado = document.getElementById('chkEntregado');
             const labelTerm = document.getElementById('labelChkTerminado');
             const labelEnt = document.getElementById('labelChkEntregado');
             const hint = document.getElementById('entregaEquipoFlujoHint');
-            const acciones = exactoAccionesEquipoSeleccionado();
+            const acciones = anluxAccionesEquipoSeleccionado();
             const yaTerminadoDb = acciones >= 1;
             const yaEntregado = acciones >= 2;
             const puedeEntregar = yaTerminadoDb || Boolean(chkTerminado && chkTerminado.checked);
@@ -2233,19 +2233,19 @@
             }
         }
 
-        function exactoAbrirModalEntregaEquipo(numEquipo) {
-            const total = exactoFilasEquipos().length;
+        function anluxAbrirModalEntregaEquipo(numEquipo) {
+            const total = anluxFilasEquipos().length;
             if (!numEquipo || numEquipo < 1 || numEquipo > total) {
-                exactoShowAlert('Selecciona el equipo a entregar desde el ícono de camión.', {
+                anluxShowAlert('Selecciona el equipo a entregar desde el ícono de camión.', {
                     title: 'Entrega por Equipo',
                     icon: 'error',
                 });
                 return;
             }
 
-            window.exactoEntregaEquipoSeleccionado = numEquipo;
-            window.exactoEntregaEquipoDbId = exactoResolverIdEquipoDb(numEquipo);
-            exactoResaltarEquipoRow(numEquipo);
+            window.anluxEntregaEquipoSeleccionado = numEquipo;
+            window.anluxEntregaEquipoDbId = anluxResolverIdEquipoDb(numEquipo);
+            anluxResaltarEquipoRow(numEquipo);
 
             const modal = document.getElementById('modalEntregaEquipo');
             if (!modal) return;
@@ -2253,7 +2253,7 @@
                 document.body.appendChild(modal);
             }
 
-            const datos = exactoDatosEquipoPorNumero(numEquipo);
+            const datos = anluxDatosEquipoPorNumero(numEquipo);
             const elMarca = document.getElementById('equipoInfoMarca');
             const elModelo = document.getElementById('equipoInfoModelo');
             const elSerie = document.getElementById('equipoInfoSerie');
@@ -2266,13 +2266,13 @@
             const pendienteEl = document.getElementById('validacionSaldoPendiente');
             if (pendienteEl) pendienteEl.classList.add('hidden');
 
-            const accionesEquipo = exactoAccionesEquipoSeleccionado();
+            const accionesEquipo = anluxAccionesEquipoSeleccionado();
             const chkTerminado = document.getElementById('chkTerminado');
             const chkEntregado = document.getElementById('chkEntregado');
             if (chkTerminado) chkTerminado.checked = accionesEquipo >= 1;
             if (chkEntregado) chkEntregado.checked = accionesEquipo >= 2;
 
-            exactoAplicarBloqueoEntregaCheckboxes();
+            anluxAplicarBloqueoEntregaCheckboxes();
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
@@ -2284,16 +2284,16 @@
             document.body.style.overflow = 'hidden';
         }
 
-        window.exactoBtnEntregaEquipo = function() {
-            const numEquipo = exactoResolverNumeroEquipoDesdeBoton(this);
+        window.anluxBtnEntregaEquipo = function() {
+            const numEquipo = anluxResolverNumeroEquipoDesdeBoton(this);
             if (!numEquipo) {
-                exactoShowAlert('Selecciona el equipo a entregar desde el ícono de camión en la fila del equipo.', {
+                anluxShowAlert('Selecciona el equipo a entregar desde el ícono de camión en la fila del equipo.', {
                     title: 'Entrega por Equipo',
                     icon: 'error',
                 });
                 return;
             }
-            exactoAbrirModalEntregaEquipo(numEquipo);
+            anluxAbrirModalEntregaEquipo(numEquipo);
         };
 
         // Cancelar modal Entrega por Equipo
@@ -2305,29 +2305,29 @@
                 modal.style.display = 'none';
                 document.body.style.overflow = '';
             }
-            exactoQuitarResaltadoEquipos();
+            anluxQuitarResaltadoEquipos();
         });
 
         // Manejar cambio de checkboxes Terminado/Entregado
         document.getElementById('chkTerminado')?.addEventListener('change', function() {
             const pendienteEl = document.getElementById('validacionSaldoPendiente');
             if (this.disabled) {
-                this.checked = exactoAccionesEquipoSeleccionado() >= 1;
-                exactoAplicarBloqueoEntregaCheckboxes();
+                this.checked = anluxAccionesEquipoSeleccionado() >= 1;
+                anluxAplicarBloqueoEntregaCheckboxes();
                 return;
             }
             if (this.checked) {
-                const numEq = Number(window.exactoEntregaEquipoSeleccionado) || 0;
-                const saldo = (typeof exactoSaldoPendienteActual === 'function')
-                    ? exactoSaldoPendienteActual()
+                const numEq = Number(window.anluxEntregaEquipoSeleccionado) || 0;
+                const saldo = (typeof anluxSaldoPendienteActual === 'function')
+                    ? anluxSaldoPendienteActual()
                     : (parseFloat(document.getElementById('saldoPendiente')?.textContent || '0') || 0);
-                const saldoEq = (numEq > 0 && typeof exactoCalcularSaldoEquipo === 'function')
-                    ? exactoCalcularSaldoEquipo(numEq)
+                const saldoEq = (numEq > 0 && typeof anluxCalcularSaldoEquipo === 'function')
+                    ? anluxCalcularSaldoEquipo(numEq)
                     : saldo;
                 if (saldoEq > 0.009 && saldo > 0.009) {
                     pendienteEl?.classList.remove('hidden');
                     this.checked = false;
-                    exactoShowAlert(
+                    anluxShowAlert(
                         `Queda un saldo pendiente de $${saldoEq.toFixed(2)} en este equipo. Liquídalo antes de marcar Terminado.`,
                         { title: 'Validación', icon: 'error' }
                     );
@@ -2337,26 +2337,26 @@
             } else {
                 pendienteEl?.classList.add('hidden');
                 const chkEntregado = document.getElementById('chkEntregado');
-                if (chkEntregado && exactoAccionesEquipoSeleccionado() < 1) {
+                if (chkEntregado && anluxAccionesEquipoSeleccionado() < 1) {
                     chkEntregado.checked = false;
                 }
             }
             // Al marcar Terminado se habilita Entregado de inmediato (sin esperar otro guardado).
-            exactoAplicarBloqueoEntregaCheckboxes();
+            anluxAplicarBloqueoEntregaCheckboxes();
         });
 
         document.getElementById('chkEntregado')?.addEventListener('change', function() {
             if (this.disabled) {
-                this.checked = exactoAccionesEquipoSeleccionado() >= 2;
+                this.checked = anluxAccionesEquipoSeleccionado() >= 2;
                 return;
             }
-            if (this.checked && !exactoEquipoPuedeEntregarse()) {
+            if (this.checked && !anluxEquipoPuedeEntregarse()) {
                 this.checked = false;
-                exactoShowAlert(
+                anluxShowAlert(
                     'Primero marca Terminado (uso interno). En cuanto lo marques, Entregado se habilita.',
                     { title: 'Flujo de entrega', icon: 'warning' }
                 );
-                exactoAplicarBloqueoEntregaCheckboxes();
+                anluxAplicarBloqueoEntregaCheckboxes();
                 return;
             }
         });
@@ -2367,15 +2367,15 @@
             const chkTerminado = document.getElementById('chkTerminado')?.checked;
             const chkEntregado = document.getElementById('chkEntregado')?.checked;
             const idOrden = Number(document.getElementById('id_orden_c')?.value || 0);
-            const numEquipo = Number(window.exactoEntregaEquipoSeleccionado) || 0;
+            const numEquipo = Number(window.anluxEntregaEquipoSeleccionado) || 0;
 
             if (idOrden <= 0) {
-                await exactoShowAlert('No hay orden activa', {title: 'Error', icon: 'error'});
+                await anluxShowAlert('No hay orden activa', {title: 'Error', icon: 'error'});
                 return;
             }
 
             if (numEquipo < 1) {
-                await exactoShowAlert('Selecciona el equipo a entregar desde el ícono de camión.', {
+                await anluxShowAlert('Selecciona el equipo a entregar desde el ícono de camión.', {
                     title: 'Entrega por Equipo',
                     icon: 'error',
                 });
@@ -2383,20 +2383,20 @@
             }
 
             if (!chkTerminado && !chkEntregado) {
-                await exactoShowAlert('Selecciona al menos un estatus (Terminado o Entregado)', {title: 'Error', icon: 'error'});
+                await anluxShowAlert('Selecciona al menos un estatus (Terminado o Entregado)', {title: 'Error', icon: 'error'});
                 return;
             }
 
-            const accionesEq = exactoAccionesEquipoSeleccionado();
-            if (chkEntregado && !exactoEquipoPuedeEntregarse()) {
-                await exactoShowAlert(
+            const accionesEq = anluxAccionesEquipoSeleccionado();
+            if (chkEntregado && !anluxEquipoPuedeEntregarse()) {
+                await anluxShowAlert(
                     'Primero marca Terminado (uso interno). Luego podrás marcar Entregado.',
                     { title: 'Flujo de entrega', icon: 'warning' }
                 );
                 return;
             }
             if (chkTerminado && accionesEq >= 1 && !chkEntregado) {
-                await exactoShowAlert(
+                await anluxShowAlert(
                     'Este equipo ya está Terminado. Marca Entregado para firmar y enviar la OS solo de este equipo.',
                     { title: 'Flujo de entrega', icon: 'warning' }
                 );
@@ -2411,11 +2411,11 @@
 
             // Solo Terminado: validar saldo del formulario (misma fuente que SALDO PENDIENTE en pantalla)
             // y guardar. No usar /validar-saldo de BD aquí: el abono liquidado en UI puede no estar guardado aún.
-            const saldo = (typeof exactoSaldoPendienteActual === 'function')
-                ? exactoSaldoPendienteActual()
+            const saldo = (typeof anluxSaldoPendienteActual === 'function')
+                ? anluxSaldoPendienteActual()
                 : (parseFloat(document.getElementById('saldoPendiente')?.textContent || '0') || 0);
             if (saldo > 0.009) {
-                await exactoShowAlert(
+                await anluxShowAlert(
                     `Queda un saldo pendiente de $${saldo.toFixed(2)}. Liquídalo antes de marcar Terminado.`,
                     { title: 'Error', icon: 'error' }
                 );
@@ -2430,7 +2430,7 @@
                 await Promise.resolve(guardarOrdenConEstatus(idOrden, 'Terminado'));
             } catch (err) {
                 console.error(err);
-                await exactoShowAlert('Error de red al guardar. Revisa tu conexión.', {title: 'Error', icon: 'error'});
+                await anluxShowAlert('Error de red al guardar. Revisa tu conexión.', {title: 'Error', icon: 'error'});
             } finally {
                 btn.disabled = false;
                 btn.textContent = textoOriginal;
@@ -2438,24 +2438,24 @@
         });
 
         // ===== LÓGICA: Modal de firmas de entrega =====
-        function exactoNombreClienteTitular() {
+        function anluxNombreClienteTitular() {
             return String(document.getElementById('nombreCliente')?.value
                 || document.querySelector('[name="nombreCliente"]')?.value
                 || '').trim();
         }
 
-        function exactoEsEntregaPorTercero() {
+        function anluxEsEntregaPorTercero() {
             return Boolean(document.getElementById('entregaQuienTercero')?.checked);
         }
 
-        function exactoSincronizarQuienRecibeEntrega() {
+        function anluxSincronizarQuienRecibeEntrega() {
             const input = document.getElementById('inputRecibidoClienteEntrega');
             const hint = document.getElementById('hintRecibidoTercero');
-            const esTercero = exactoEsEntregaPorTercero();
+            const esTercero = anluxEsEntregaPorTercero();
             if (hint) hint.classList.toggle('hidden', !esTercero);
             if (!input) return;
             if (!esTercero) {
-                const titular = exactoNombreClienteTitular();
+                const titular = anluxNombreClienteTitular();
                 if (titular !== '') {
                     input.value = titular.toUpperCase();
                 }
@@ -2464,34 +2464,34 @@
             } else {
                 input.readOnly = false;
                 input.classList.remove('bg-slate-100');
-                if (input.value.trim().toUpperCase() === exactoNombreClienteTitular().toUpperCase()) {
+                if (input.value.trim().toUpperCase() === anluxNombreClienteTitular().toUpperCase()) {
                     input.value = '';
                 }
                 input.focus();
             }
         }
 
-        function exactoNombreQuienRecibeEntrega() {
+        function anluxNombreQuienRecibeEntrega() {
             const input = document.getElementById('inputRecibidoClienteEntrega');
             let nombre = String(input?.value || '').trim();
-            if (nombre === '' && !exactoEsEntregaPorTercero()) {
-                nombre = exactoNombreClienteTitular();
+            if (nombre === '' && !anluxEsEntregaPorTercero()) {
+                nombre = anluxNombreClienteTitular();
             }
             return nombre.toUpperCase();
         }
 
-        document.getElementById('entregaQuienCliente')?.addEventListener('change', exactoSincronizarQuienRecibeEntrega);
-        document.getElementById('entregaQuienTercero')?.addEventListener('change', exactoSincronizarQuienRecibeEntrega);
+        document.getElementById('entregaQuienCliente')?.addEventListener('change', anluxSincronizarQuienRecibeEntrega);
+        document.getElementById('entregaQuienTercero')?.addEventListener('change', anluxSincronizarQuienRecibeEntrega);
         document.getElementById('inputRecibidoClienteEntrega')?.addEventListener('input', function () {
             this.value = String(this.value || '').toUpperCase();
         });
 
-        function exactoPrepararFirmasEntregaModal() {
+        function anluxPrepararFirmasEntregaModal() {
             const ids = ['firmaClienteEntrega', 'firmaTecnicoEntrega'];
             ids.forEach((id) => {
                 try {
-                    if (typeof window.exactoPrepararCanvasFirmaVisible === 'function') {
-                        window.exactoPrepararCanvasFirmaVisible(id);
+                    if (typeof window.anluxPrepararCanvasFirmaVisible === 'function') {
+                        window.anluxPrepararCanvasFirmaVisible(id);
                     } else if (typeof window.inicializarFirma === 'function') {
                         window.inicializarFirma(id);
                         if (typeof window.pintarFondoBlancoFirma === 'function') {
@@ -2513,8 +2513,8 @@
             if (infoMarca && eqMarca) eqMarca.textContent = infoMarca.textContent;
             if (infoModelo && eqModelo) eqModelo.textContent = infoModelo.textContent;
 
-            const numEquipo = Number(window.exactoEntregaEquipoSeleccionado) || 0;
-            const filaEquipo = numEquipo > 0 ? exactoFilasEquipos()[numEquipo - 1] : null;
+            const numEquipo = Number(window.anluxEntregaEquipoSeleccionado) || 0;
+            const filaEquipo = numEquipo > 0 ? anluxFilasEquipos()[numEquipo - 1] : null;
             const receptorTipo = String(filaEquipo?.dataset?.entregaReceptorTipo || '').toLowerCase();
             const receptorNombre = String(filaEquipo?.dataset?.entregaRecibidoCliente || '').trim();
             const radioCliente = document.getElementById('entregaQuienCliente');
@@ -2529,7 +2529,7 @@
                     inputReceptor.value = receptorNombre.toUpperCase();
                 }
             }
-            exactoSincronizarQuienRecibeEntrega();
+            anluxSincronizarQuienRecibeEntrega();
 
             // Cerrar modal de confirmación y abrir modal de firmas PRIMERO
             // (si se inicializa el canvas oculto, queda negro).
@@ -2554,8 +2554,8 @@
             }
             document.body.style.overflow = 'hidden';
 
-            requestAnimationFrame(exactoPrepararFirmasEntregaModal);
-            setTimeout(exactoPrepararFirmasEntregaModal, 80);
+            requestAnimationFrame(anluxPrepararFirmasEntregaModal);
+            setTimeout(anluxPrepararFirmasEntregaModal, 80);
         }
 
         document.getElementById('btnCancelarFirmasEntrega')?.addEventListener('click', function() {
@@ -2594,22 +2594,22 @@
 
         document.getElementById('btnGuardarFirmasEntrega')?.addEventListener('click', async function() {
             const idOrden = Number(document.getElementById('id_orden_c')?.value || 0);
-            const numEquipo = Number(window.exactoEntregaEquipoSeleccionado) || 0;
+            const numEquipo = Number(window.anluxEntregaEquipoSeleccionado) || 0;
             if (idOrden <= 0) {
-                exactoShowAlert('No hay orden activa', {title: 'Error', icon: 'error'});
+                anluxShowAlert('No hay orden activa', {title: 'Error', icon: 'error'});
                 return;
             }
             if (numEquipo < 1) {
-                exactoShowAlert('Selecciona el equipo a entregar desde el ícono de camión.', {
+                anluxShowAlert('Selecciona el equipo a entregar desde el ícono de camión.', {
                     title: 'Entrega por Equipo',
                     icon: 'error',
                 });
                 return;
             }
-            const quienRecibe = exactoNombreQuienRecibeEntrega();
+            const quienRecibe = anluxNombreQuienRecibeEntrega();
             if (quienRecibe.length < 3) {
-                exactoShowAlert(
-                    exactoEsEntregaPorTercero()
+                anluxShowAlert(
+                    anluxEsEntregaPorTercero()
                         ? 'Escribe el nombre completo del tercero que recoge el equipo.'
                         : 'Indica el nombre de quien recibe el equipo.',
                     { title: 'Quién recibe', icon: 'error' }
@@ -2617,8 +2617,8 @@
                 document.getElementById('inputRecibidoClienteEntrega')?.focus();
                 return;
             }
-            if (exactoEsEntregaPorTercero()) {
-                const confirmado = await exactoShowConfirm(
+            if (anluxEsEntregaPorTercero()) {
+                const confirmado = await anluxShowConfirm(
                     `¿Confirmas que ${quienRecibe} recogerá este equipo como tercero?`,
                     {
                         title: 'Confirmar entrega a tercero',
@@ -2639,22 +2639,22 @@
         function guardarOrdenConEstatus(idOrden, estatus) {
             const form = document.getElementById('ordenForm');
             if (!form) {
-                return exactoShowAlert('No se encontró el formulario', {title: 'Error', icon: 'error'});
+                return anluxShowAlert('No se encontró el formulario', {title: 'Error', icon: 'error'});
             }
 
-            const numEquipo = Number(window.exactoEntregaEquipoSeleccionado) || 0;
+            const numEquipo = Number(window.anluxEntregaEquipoSeleccionado) || 0;
             if (numEquipo < 1) {
-                return exactoShowAlert('Selecciona el equipo a entregar desde el ícono de camión.', {
+                return anluxShowAlert('Selecciona el equipo a entregar desde el ícono de camión.', {
                     title: 'Entrega por Equipo',
                     icon: 'error',
                 });
             }
 
             if (estatus === 'Entregado') {
-                const quienRecibe = exactoNombreQuienRecibeEntrega();
+                const quienRecibe = anluxNombreQuienRecibeEntrega();
                 if (quienRecibe.length < 3) {
-                    return exactoShowAlert(
-                        exactoEsEntregaPorTercero()
+                    return anluxShowAlert(
+                        anluxEsEntregaPorTercero()
                             ? 'Escribe el nombre completo del tercero que recoge el equipo.'
                             : 'Indica el nombre de quien recibe el equipo.',
                         { title: 'Quién recibe', icon: 'error' }
@@ -2664,9 +2664,9 @@
 
             const formData = new FormData(form);
             // Mantener observaciones en texto plano (igual que el guardado normal)
-            if (typeof exactoLeerTextosObservaciones === 'function') {
+            if (typeof anluxLeerTextosObservaciones === 'function') {
                 formData.delete('observaciones[]');
-                exactoLeerTextosObservaciones().forEach((texto) => {
+                anluxLeerTextosObservaciones().forEach((texto) => {
                     formData.append('observaciones[]', texto);
                 });
             }
@@ -2677,7 +2677,7 @@
             formData.set('entrega_por_equipo', '1');
             formData.set('equipo_indice', String(numEquipo));
             // Preferir id real de BD; si no hay, el servidor acepta el índice 1..N.
-            const idEquipoDb = Number(window.exactoEntregaEquipoDbId) || exactoResolverIdEquipoDb(numEquipo) || 0;
+            const idEquipoDb = Number(window.anluxEntregaEquipoDbId) || anluxResolverIdEquipoDb(numEquipo) || 0;
             formData.set('id_equipo', String(idEquipoDb > 0 ? idEquipoDb : numEquipo));
             // Persistir acciones del equipo en el payload (Terminado=1, Entregado=2).
             const accionesGuardar = estatus === 'Entregado' ? 2 : (estatus === 'Terminado' ? 1 : 0);
@@ -2685,24 +2685,24 @@
                 formData.set(`equipos[${numEquipo - 1}][acciones]`, String(accionesGuardar));
             }
             if (estatus === 'Entregado') {
-                formData.set('recibido_cliente', exactoNombreQuienRecibeEntrega());
-                formData.set('entrega_quien_recibe', exactoEsEntregaPorTercero() ? 'tercero' : 'cliente');
+                formData.set('recibido_cliente', anluxNombreQuienRecibeEntrega());
+                formData.set('entrega_quien_recibe', anluxEsEntregaPorTercero() ? 'tercero' : 'cliente');
             }
 
             // Firmas del modal de entrega
-            const firmaFn = typeof exactoFirmaDataUrlSiHay === 'function'
-                ? exactoFirmaDataUrlSiHay
-                : (typeof window.exactoFirmaDataUrlSiHay === 'function' ? window.exactoFirmaDataUrlSiHay : null);
+            const firmaFn = typeof anluxFirmaDataUrlSiHay === 'function'
+                ? anluxFirmaDataUrlSiHay
+                : (typeof window.anluxFirmaDataUrlSiHay === 'function' ? window.anluxFirmaDataUrlSiHay : null);
             const firmaClienteDataUrl = firmaFn ? firmaFn('firmaClienteEntrega') : '';
             const firmaTecnicoDataUrl = firmaFn ? firmaFn('firmaTecnicoEntrega') : '';
             formData.set('firmaCliente', firmaClienteDataUrl || '');
             formData.set('firmaTecnico', firmaTecnicoDataUrl || '');
 
             // CSRF en FormData por si el middleware lo exige
-            const csrf = (typeof exactoCsrfToken === 'function')
-                ? exactoCsrfToken()
+            const csrf = (typeof anluxCsrfToken === 'function')
+                ? anluxCsrfToken()
                 : ((document.querySelector('meta[name="csrf-token"]') || {}).content
-                    || window.EXACTO_CSRF_TOKEN
+                    || window.ANLUX_CSRF_TOKEN
                     || document.querySelector('#ordenForm input[name="_token"]')?.value
                     || '');
             if (csrf && !formData.get('_token')) {
@@ -2714,10 +2714,10 @@
             if (btnGuardarFirmas) btnGuardarFirmas.disabled = true;
             if (btnGuardarEntrega) btnGuardarEntrega.disabled = true;
 
-            const urlRegistrar = (typeof exactoUrlApiRegistrar === 'function')
-                ? exactoUrlApiRegistrar()
-                : ((typeof window.EXACTO_REGISTRAR_ORDEN_URL === 'string' && window.EXACTO_REGISTRAR_ORDEN_URL.trim())
-                    ? window.EXACTO_REGISTRAR_ORDEN_URL.trim()
+            const urlRegistrar = (typeof anluxUrlApiRegistrar === 'function')
+                ? anluxUrlApiRegistrar()
+                : ((typeof window.ANLUX_REGISTRAR_ORDEN_URL === 'string' && window.ANLUX_REGISTRAR_ORDEN_URL.trim())
+                    ? window.ANLUX_REGISTRAR_ORDEN_URL.trim()
                     : '/api/ordenes/registrar');
 
             return fetch(urlRegistrar, {
@@ -2747,7 +2747,7 @@
                         status: r.status,
                         body: raw,
                     });
-                    await exactoShowAlert(mensajeRespuesta, {
+                    await anluxShowAlert(mensajeRespuesta, {
                         title: 'Error',
                         icon: 'error',
                     });
@@ -2755,7 +2755,7 @@
                 }
 
                 if (!r.ok || !data.success) {
-                    await exactoShowAlert(
+                    await anluxShowAlert(
                         String(data.message || `No se pudo guardar la orden (HTTP ${r.status}).`),
                         {title: 'Error', icon: 'error'}
                     );
@@ -2763,19 +2763,19 @@
                 }
 
                 if (data.success) {
-                    if (typeof exactoPermitirSalidaOrdenForm === 'function') {
-                        exactoPermitirSalidaOrdenForm();
-                    } else if (typeof window.exactoPermitirSalidaOrdenForm === 'function') {
-                        window.exactoPermitirSalidaOrdenForm();
+                    if (typeof anluxPermitirSalidaOrdenForm === 'function') {
+                        anluxPermitirSalidaOrdenForm();
+                    } else if (typeof window.anluxPermitirSalidaOrdenForm === 'function') {
+                        window.anluxPermitirSalidaOrdenForm();
                     }
                     const accResp = Number(data.equipo_acciones);
-                    const numEq = Number(window.exactoEntregaEquipoSeleccionado) || 0;
+                    const numEq = Number(window.anluxEntregaEquipoSeleccionado) || 0;
                     const accionesConfirmadas = Number.isFinite(accResp) && accResp > 0
                         ? accResp
                         : accionesGuardar;
                     if (numEq > 0 && accionesConfirmadas > 0) {
                         // Cambiar el color únicamente después de que el servidor confirme el guardado.
-                        exactoMarcarAccionesEquipoLocal(numEq, accionesConfirmadas);
+                        anluxMarcarAccionesEquipoLocal(numEq, accionesConfirmadas);
                     }
                     const modalFirmas = document.getElementById('modalFirmasEntrega');
                     if (modalFirmas) {
@@ -2790,8 +2790,8 @@
                         modalConf.style.display = 'none';
                     }
                     document.body.style.overflow = '';
-                    exactoQuitarResaltadoEquipos();
-                    await exactoShowAlert(data.message || 'Orden guardada', {title: 'Éxito', icon: 'success'});
+                    anluxQuitarResaltadoEquipos();
+                    await anluxShowAlert(data.message || 'Orden guardada', {title: 'Éxito', icon: 'success'});
                     if (estatus === 'Entregado' && numEq > 0) {
                         const reporteUrl = String(data.reporte_url || '').trim()
                             || `${window.location.origin}/pdf/orden/${encodeURIComponent(idOrden)}?eq=${encodeURIComponent(numEq)}&inline=1&_=${Date.now()}`;
@@ -2810,7 +2810,7 @@
                 }
             })
               .catch(async () => {
-                  await exactoShowAlert('Error de red al guardar', {title: 'Error', icon: 'error'});
+                  await anluxShowAlert('Error de red al guardar', {title: 'Error', icon: 'error'});
               })
               .finally(() => {
                   if (btnGuardarFirmas) btnGuardarFirmas.disabled = false;
@@ -2842,8 +2842,8 @@
         }
 
         /* Evita que la pgina se desplace al firmar con dedo o lpiz en tableta */
-        .exacto-firma-pad,
-        canvas.exacto-firma-canvas {
+        .anlux-firma-pad,
+        canvas.anlux-firma-canvas {
             touch-action: none;
             -ms-touch-action: none;
             overscroll-behavior: contain;
@@ -2851,11 +2851,11 @@
             -webkit-user-select: none;
         }
 
-        .exacto-firma-pad {
+        .anlux-firma-pad {
             overflow: hidden;
         }
 
-        canvas.exacto-firma-canvas {
+        canvas.anlux-firma-canvas {
             touch-action: none;
         }
 
@@ -2863,16 +2863,16 @@
             display: none !important;
         }
 
-        #exactoUiModal.flex,
+        #anluxUiModal.flex,
         #modalLiquidarSaldo.flex,
         #modalFirmasEntrega.flex,
         #modalEntregaEquipo.flex {
             display: flex !important;
         }
 
-        #exactoUiModalMessage,
+        #anluxUiModalMessage,
         #ordenSubmitStatusText,
-        .exacto-ui-modal-body {
+        .anlux-ui-modal-body {
             text-align: center;
         }
 
@@ -2887,18 +2887,18 @@
             appearance: textfield;
         }
 
-        .exacto-money-field {
+        .anlux-money-field {
             display: flex;
             align-items: center;
             gap: 0.25rem;
             width: 100%;
         }
-        .exacto-money-field > .exacto-money-prefix {
+        .anlux-money-field > .anlux-money-prefix {
             flex-shrink: 0;
             font-weight: 600;
             color: #475569;
         }
-        .exacto-money-field > input {
+        .anlux-money-field > input {
             flex: 1 1 auto;
             min-width: 0;
         }

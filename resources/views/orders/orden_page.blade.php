@@ -1,4 +1,4 @@
-@extends('layouts.exacto_app')
+@extends('layouts.anlux_app')
 
 @section('content')
     @include('orders.orden_form')

@@ -1,4 +1,4 @@
-EXACTO — Rutas relativas (desde la raíz del proyecto Laravel en cPanel)
+ANLUX — Rutas relativas (desde la raíz del proyecto Laravel en cPanel)
 ================================================================================
 Abre cada archivo en Laragon y súbelo a la MISMA ruta en el servidor.
 
@@ -23,8 +23,8 @@ app/Jobs/SendOrderStatusEmailJob.php
 RECOMENDADOS (impersonación, técnicos, cifrado nombres)
 ------------------------------------------------------
 app/Services/OrdenPolicyService.php
-app/Support/ExactoAuthContext.php
-app/Services/ExactoVaultService.php
+app/Support/AnluxAuthContext.php
+app/Services/AnluxVaultService.php
 app/Services/OrdenStatusService.php
 app/Models/User.php
 
@@ -38,7 +38,7 @@ Ctrl+F5 en: /ordenes  /historial  /orden_servicio/{id}
 
 EMPaquetar todo de una vez (Windows)
 ------------------------------------
-En PowerShell, desde c:\laragon\www\exacto_laravel:
+En PowerShell, desde c:\laragon\www\anlux_laravel:
 
   .\database\scripts\preparar_subida_servidor.ps1
 

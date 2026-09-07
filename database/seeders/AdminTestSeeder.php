@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\User;
-use App\Services\ExactoVaultService;
+use App\Services\AnluxVaultService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -13,19 +13,19 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Usuario administrador para pruebas locales (correo fijo, contraseña conocida).
- * No ejecuta nada en production salvo EXACTO_SEED_ADMIN=true en .env.
+ * No ejecuta nada en production salvo ANLUX_SEED_ADMIN=true en .env.
  */
 class AdminTestSeeder extends Seeder
 {
-    public const EMAIL = 'admin@exacto.test';
+    public const EMAIL = 'admin@anlux.test';
 
-    public const PASSWORD = 'ExactoAdmin12#';
+    public const PASSWORD = 'AnluxAdmin12#';
 
     public function run(): void
     {
         if (app()->environment('production')
-            && ! filter_var((string) env('EXACTO_SEED_ADMIN', ''), FILTER_VALIDATE_BOOL)
-            && empty($GLOBALS['EXACTO_FORCE_TEST_LOGIN_SEED'] ?? false)) {
+            && ! filter_var((string) env('ANLUX_SEED_ADMIN', ''), FILTER_VALIDATE_BOOL)
+            && empty($GLOBALS['ANLUX_FORCE_TEST_LOGIN_SEED'] ?? false)) {
             return;
         }
 
@@ -33,7 +33,7 @@ class AdminTestSeeder extends Seeder
             return;
         }
 
-        $vault = app(ExactoVaultService::class);
+        $vault = app(AnluxVaultService::class);
         $nombre = 'Administrador pruebas';
         $correo = mb_strtolower(self::EMAIL, 'UTF-8');
         $celularDigits = '5510000999';

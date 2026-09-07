@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Services\IntegrationSettingsService;
 use App\Services\OrderWhatsappService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -28,8 +29,9 @@ final class SendOrderWhatsappJob implements ShouldQueue
         $this->afterCommit();
     }
 
-    public function handle(OrderWhatsappService $orderWhatsapp): void
+    public function handle(OrderWhatsappService $orderWhatsapp, IntegrationSettingsService $settings): void
     {
+        $settings->apply();
         $orderWhatsapp->sendQueuedNotification($this->notificationId);
     }
 }

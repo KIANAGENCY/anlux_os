@@ -5,7 +5,7 @@
     $rawNombreTecnico = html_entity_decode((string) ($nombreTecnico ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $nombreTecnicoMostrado = trim($rawNombreTecnico);
     if ($nombreTecnicoMostrado !== '' && str_starts_with($nombreTecnicoMostrado, 'v1:')) {
-        $revealed = app(\App\Services\ExactoVaultService::class)->revealString($nombreTecnicoMostrado, false);
+        $revealed = app(\App\Services\AnluxVaultService::class)->revealString($nombreTecnicoMostrado, false);
         if ($revealed !== '') {
             $nombreTecnicoMostrado = $revealed;
         } elseif (auth()->check()) {
@@ -20,7 +20,7 @@
         $nombreTecnicoMostrado = $idTecnico > 0 ? ('Técnico #'.$idTecnico) : 'Técnico';
     }
 @endphp
-@include('partials.exacto-cutover-notice')
+@include('partials.anlux-cutover-notice')
 
 <nav
     class="sticky top-0 z-50 mb-6 flex flex-col gap-3 rounded-lg border border-blue-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur-[2px] sm:min-h-[76px] lg:flex-row lg:items-center lg:justify-between"
@@ -29,11 +29,11 @@
 >
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
         <a href="{{ route('ordenes.index') }}" class="inline-flex shrink-0 items-center gap-2" aria-label="Ir a órdenes registradas">
-            <img src="{{ asset('legacy/public/img/logo.jpeg') }}?v={{ @filemtime(public_path('legacy/public/img/logo.jpeg')) ?: 1 }}" alt="Logo Exacto" class="h-12 w-auto object-contain sm:h-14" style="max-width: 230px;">
+            <img src="{{ asset('legacy/public/img/logo.jpeg') }}?v={{ @filemtime(public_path('legacy/public/img/logo.jpeg')) ?: 1 }}" alt="Logo Anlux" class="h-12 w-auto object-contain sm:h-14" style="max-width: 230px;">
         </a>
     </div>
     <div class="flex h-full flex-col justify-center gap-2 self-stretch sm:flex-row sm:items-center sm:justify-end sm:gap-4">
-        @include('partials.nav-exacto-user-bar')
+        @include('partials.nav-anlux-user-bar')
         <button type="button" id="navBtnCerrarSesion" class="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-red-300 bg-white px-4 py-2 text-sm font-bold text-red-700 shadow-sm transition hover:bg-red-50">
             <i class="fas fa-sign-out-alt"></i>
             Cerrar sesión

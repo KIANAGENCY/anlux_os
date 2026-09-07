@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
 final class EquipoEntregaResolver
 {
     public function __construct(
-        private readonly ExactoVaultService $vault
+        private readonly AnluxVaultService $vault
     ) {}
 
     /**

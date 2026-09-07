@@ -7,7 +7,7 @@ namespace Tests\Feature;
 use App\Http\Controllers\OrderPdfController;
 use App\Models\User;
 use App\Services\EquipoEntregaResolver;
-use App\Services\ExactoVaultService;
+use App\Services\AnluxVaultService;
 use App\Services\RegistrarOrdenService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -113,7 +113,7 @@ final class EquipoEntregaReceptorTest extends TestCase
     public function test_delivered_equipment_endpoint_returns_only_delivered_items_without_signature_paths(): void
     {
         $user = User::factory()->administrador()->create();
-        $vault = app(ExactoVaultService::class);
+        $vault = app(AnluxVaultService::class);
 
         DB::table('orden_servicio_c')->insert([
             'id_orden_c' => 850,
@@ -175,7 +175,7 @@ final class EquipoEntregaReceptorTest extends TestCase
     public function test_legacy_equipment_delivery_uses_its_whatsapp_event_for_receiver_and_date(): void
     {
         $user = User::factory()->administrador()->create();
-        $vault = app(ExactoVaultService::class);
+        $vault = app(AnluxVaultService::class);
         DB::table('orden_servicio_c')->insert([
             'id_orden_c' => 851,
             'folio' => 'OS-LEGACY-851',
@@ -232,7 +232,7 @@ final class EquipoEntregaReceptorTest extends TestCase
 
     public function test_shared_resolver_keeps_each_receiver_and_summarizes_multiple_names(): void
     {
-        $vault = app(ExactoVaultService::class);
+        $vault = app(AnluxVaultService::class);
         $resolver = app(EquipoEntregaResolver::class);
         $equipos = [
             (object) [
@@ -267,7 +267,7 @@ final class EquipoEntregaReceptorTest extends TestCase
 
     public function test_pending_equipment_does_not_inherit_last_global_receiver(): void
     {
-        $vault = app(ExactoVaultService::class);
+        $vault = app(AnluxVaultService::class);
         $entregas = app(EquipoEntregaResolver::class)->resolveAll(0, [
             (object) [
                 'acciones' => 0,
@@ -285,7 +285,7 @@ final class EquipoEntregaReceptorTest extends TestCase
 
     public function test_delivered_equipment_does_not_inherit_global_signature(): void
     {
-        $vault = app(ExactoVaultService::class);
+        $vault = app(AnluxVaultService::class);
         $firmaEquipo = $vault->firmaRutaSeal('firmas/equipo-2.png');
         $firmaGlobal = $vault->firmaRutaSeal('firmas/global.png');
 

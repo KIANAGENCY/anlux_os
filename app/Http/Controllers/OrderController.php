@@ -10,8 +10,8 @@ use App\Services\EquipoEntregaResolver;
 use App\Services\OrdenListService;
 use App\Services\OrdenStatusService;
 use App\Services\RegistrarOrdenService;
-use App\Support\ExactoAuthContext;
-use App\Support\ExactoUtf8;
+use App\Support\AnluxAuthContext;
+use App\Support\AnluxUtf8;
 use App\Support\MaterialesOrdenClassifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,7 +41,7 @@ class OrderController extends Controller
             'UTF-8'
         );
         $nav_activo = 'ordenes';
-        $pageTitle = ExactoUtf8::fromCodepoint(0x00D3).'rdenes de Servicio - Exacto';
+        $pageTitle = AnluxUtf8::fromCodepoint(0x00D3).'rdenes de Servicio - Anlux';
         $pageHeadExtra = '';
 
         return view('orders.index', compact(
@@ -54,7 +54,7 @@ class OrderController extends Controller
 
     public function list(Request $request): JsonResponse
     {
-        $user = ExactoAuthContext::currentUser();
+        $user = AnluxAuthContext::currentUser();
         if (! $user instanceof User) {
             return response()->json(['success' => false, 'message' => 'No autorizado'], 401);
         }
@@ -114,7 +114,7 @@ class OrderController extends Controller
         try {
             $result = $this->registrarService->handle($request, $user);
         } catch (\Throwable $e) {
-            Log::channel('exacto_ops')->error('order_registrar_exception', [
+            Log::channel('anlux_ops')->error('order_registrar_exception', [
                 'user_id' => $user->id_tecnico ?? null,
                 'error' => $e->getMessage(),
                 'exception' => $e::class,
@@ -198,7 +198,7 @@ class OrderController extends Controller
         try {
             $result = $this->registrarService->reenviarRecepcion($id, $request);
         } catch (\Throwable $e) {
-            Log::channel('exacto_ops')->error('order_reenviar_exception', [
+            Log::channel('anlux_ops')->error('order_reenviar_exception', [
                 'id_orden_c' => $id,
                 'user_id' => $user->id_tecnico ?? null,
                 'error' => $e->getMessage(),
@@ -230,7 +230,8 @@ class OrderController extends Controller
             $id,
             (string) $request->input('motivo', ''),
             $request->input('firma_cliente'),
-            $request->input('firma_tecnico')
+            $request->input('firma_tecnico'),
+            (int) $request->input('id_equipo', 0)
         );
 
         return response()->json($result, ($result['success'] ?? false) ? 200 : 422);
@@ -416,7 +417,7 @@ class OrderController extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::channel('exacto_ops')->error('liquidar_saldo_equipo_exception', [
+            Log::channel('anlux_ops')->error('liquidar_saldo_equipo_exception', [
                 'id_orden' => $id,
                 'ids_equipo' => $idsEquipo,
                 'error' => $e->getMessage(),

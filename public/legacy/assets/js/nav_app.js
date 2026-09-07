@@ -17,8 +17,8 @@
     }
     function permitirSalidaSinAviso() {
         try {
-            if (typeof window.exactoPermitirSalidaOrdenForm === 'function') {
-                window.exactoPermitirSalidaOrdenForm();
+            if (typeof window.anluxPermitirSalidaOrdenForm === 'function') {
+                window.anluxPermitirSalidaOrdenForm();
             }
         } catch (e) {
             // ignore

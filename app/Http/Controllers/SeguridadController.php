@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Services\ExactoVaultService;
+use App\Services\AnluxVaultService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +15,7 @@ use Illuminate\View\View;
 class SeguridadController extends Controller
 {
     public function __construct(
-        private readonly ExactoVaultService $vault
+        private readonly AnluxVaultService $vault
     ) {}
 
     private function ensureSecurityTable(): void
@@ -235,7 +235,7 @@ class SeguridadController extends Controller
         }, $suspiciousIps);
 
         return view('admin.seguridad', [
-            'pageTitle' => 'Seguridad / Actividad - Exacto',
+            'pageTitle' => 'Seguridad / Actividad - Anlux',
             'nombreTecnico' => htmlspecialchars((string) (session('nombre_tecnico') ?? $user->nombre_tecnico ?? ''), ENT_QUOTES, 'UTF-8'),
             'nav_admin_activo' => 'seguridad_actividad',
             'totalOrdenes' => $totalOrdenes,

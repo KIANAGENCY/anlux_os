@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 /**
  * Diagnóstico del 500 en /admin/usuarios (ejecutar EN EL SERVIDOR).
- * URL: https://soporte.exactolp.mx/diagnose-admin-usuarios.php?key=exacto2026usuarios
+ * URL: https://soporte.anlux.mx/diagnose-admin-usuarios.php?key=anlux2026usuarios
  * BORRAR cuando termines.
  */
 
-const DIAG_KEY = 'exacto2026usuarios';
+const DIAG_KEY = 'anlux2026usuarios';
 
 if (($_GET['key'] ?? '') !== DIAG_KEY) {
     http_response_code(403);
@@ -51,7 +51,7 @@ if (is_file($ctrlPath)) {
 $bladePath = $root.'/resources/views/admin/users.blade.php';
 if (is_file($bladePath)) {
     $src = file_get_contents($bladePath) ?: '';
-    $extends = substr_count($src, "@extends('layouts.exacto_app')");
+    $extends = substr_count($src, "@extends('layouts.anlux_app')");
     echo $extends === 1
         ? "[OK] users.blade.php — un solo @extends\n"
         : "[ERROR] users.blade.php — @extends repetido: {$extends}\n";

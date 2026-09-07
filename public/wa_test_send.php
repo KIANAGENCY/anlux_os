@@ -8,39 +8,39 @@ declare(strict_types=1);
  * BORRAR cuando termines — expone capacidad de envío.
  *
  * Ping (¿llega a Meta?):
- *   wa_test_send.php?key=exacto99&mode=ping
+ *   wa_test_send.php?key=anlux99&mode=ping
  *
  * Reintentar orden fallida (sin SSH):
- *   docheck.php?key=exacto99&wa_requeue_run=7
+ *   docheck.php?key=anlux99&wa_requeue_run=7
  *
  * Texto libre (solo si el cliente escribió a tu número en las últimas 24 h):
- *   wa_test_send.php?key=exacto99&mode=text&to=526121684390&body=Prueba+Exacto
+ *   wa_test_send.php?key=anlux99&mode=text&to=526121684390&body=Prueba+Anlux
  *
  * Plantilla solo texto (falla si la plantilla exige DOCUMENT):
- *   wa_test_send.php?key=exacto99&mode=template&to=5216121684390&name=orden_recepcion&p1=OS-2026-020&p2=Recepcion
+ *   wa_test_send.php?key=anlux99&mode=template&to=5216121684390&name=orden_recepcion&p1=OS-2026-020&p2=Recepcion
  *
  * Plantilla CON PDF (subida a Meta — recomendado para orden_recepcion):
- *   wa_test_send.php?key=exacto99&mode=template_doc&to=5216121684390&name=orden_recepcion&p1=OS-TEST&p2=Recepcion
+ *   wa_test_send.php?key=anlux99&mode=template_doc&to=5216121684390&name=orden_recepcion&p1=OS-TEST&p2=Recepcion
  *
  * Dar de alta el número en Cloud API (PIN de verificación en 2 pasos, 6 dígitos):
- *   wa_test_send.php?key=exacto99&mode=register&pin=123456
+ *   wa_test_send.php?key=anlux99&mode=register&pin=123456
  *
  * Suscribir la app al WABA (necesario para webhooks delivered/failed reales):
- *   wa_test_send.php?key=exacto99&mode=subscribe&waba_id=1984496095494792
- *   wa_test_send.php?key=exacto99&mode=subscriptions&waba_id=1984496095494792
+ *   wa_test_send.php?key=anlux99&mode=subscribe&waba_id=1984496095494792
+ *   wa_test_send.php?key=anlux99&mode=subscriptions&waba_id=1984496095494792
  *
  * Verificar si un ID es Phone Number ID (GET + POST prueba):
- *   wa_test_send.php?key=exacto99&mode=verify_phone
- *   wa_test_send.php?key=exacto99&mode=verify_phone&phone_id=1964158600503621
- *   wa_test_send.php?key=exacto99&mode=verify_phone&waba_id=1964158600503621
- *   wa_test_send.php?key=exacto99&mode=verify_phone&compare=1537852524373963,1964158600503621,61590273249931
+ *   wa_test_send.php?key=anlux99&mode=verify_phone
+ *   wa_test_send.php?key=anlux99&mode=verify_phone&phone_id=1964158600503621
+ *   wa_test_send.php?key=anlux99&mode=verify_phone&waba_id=1964158600503621
+ *   wa_test_send.php?key=anlux99&mode=verify_phone&compare=1537852524373963,1964158600503621,61590273249931
  *
  * Descubrir WABA + Phone Number ID reales del token (recomendado si verify falla):
- *   wa_test_send.php?key=exacto99&mode=discover
- *   wa_test_send.php?key=exacto99&mode=discover&business_id=1964158600503621
+ *   wa_test_send.php?key=anlux99&mode=discover
+ *   wa_test_send.php?key=anlux99&mode=discover&business_id=1964158600503621
  */
 
-const WA_TEST_KEY = 'exacto99';
+const WA_TEST_KEY = 'anlux99';
 
 if (($_GET['key'] ?? '') !== WA_TEST_KEY) {
     http_response_code(403);
@@ -248,7 +248,7 @@ if ($mode === 'discover') {
 
     echo "=== Conclusion de tu prueba verify_phone ===\n";
     echo "• 1537852524373963 = App «CELULAR SOPORTE» — nunca para /messages.\n";
-    echo "• 1964158600503621 = objeto «EXACTO» sin campos de telefono — NO es Phone Number ID.\n";
+    echo "• 1964158600503621 = objeto «ANLUX» sin campos de telefono — NO es Phone Number ID.\n";
     echo "• 61590273249931 = «SOPORTE_TOKEN» sin display_phone_number — tampoco es nodo de linea WA.\n";
     echo "• Los tres dan POST subcode 33 → token sin permiso de envio sobre esos objetos,\n";
     echo "  o ninguno es el Phone Number ID de la linea de soporte.\n\n";
@@ -305,7 +305,7 @@ if ($mode === 'subscribe' || $mode === 'subscriptions') {
     if ($wabaId === '') {
         exit(
             "Falta &waba_id=...\n".
-            "En Business Suite → Cuentas de WhatsApp → Exacto La paz → Identificador.\n".
+            "En Business Suite → Cuentas de WhatsApp → Anlux WhatsApp → Identificador.\n".
             "Ejemplo: waba_id=1984496095494792\n"
         );
     }
@@ -554,7 +554,7 @@ if ($to === '' && $mode !== 'ping') {
 $messagesUrl = $base.'/'.$version.'/'.$phoneId.'/messages';
 
 if ($mode === 'text') {
-    $body = trim((string) ($_GET['body'] ?? 'Prueba Exacto soporte'));
+    $body = trim((string) ($_GET['body'] ?? 'Prueba Anlux soporte'));
     $payload = [
         'messaging_product' => 'whatsapp',
         'to' => $to,
@@ -580,12 +580,12 @@ if ($mode === 'text') {
             ."2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n"
             ."3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 144] /Contents 4 0 R /Resources<< /Font<< /F1 5 0 R >> >> >>endobj\n"
             ."4 0 obj<< /Length 44 >>stream\n"
-            ."BT /F1 12 Tf 40 80 Td (Exacto WA test) Tj ET\n"
+            ."BT /F1 12 Tf 40 80 Td (Anlux WA test) Tj ET\n"
             ."endstream\nendobj\n"
             ."5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj\n"
             ."xref\n0 6\n0000000000 65535 f \n"
             ."trailer<< /Size 6 /Root 1 0 R >>\nstartxref\n0\n%%EOF\n";
-        $filename = 'prueba_exacto.pdf';
+        $filename = 'prueba_anlux.pdf';
 
         echo "1) Subiendo PDF a Meta media...\n";
         echo "POST {$mediaUrl}\n";

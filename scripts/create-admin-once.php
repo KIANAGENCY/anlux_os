@@ -7,8 +7,8 @@ declare(strict_types=1);
  *
  * 1. Copia este archivo a public/create-admin-once.php en el servidor.
  * 2. Edita CREATE_ADMIN_SECRET abajo (texto largo y único).
- * 3. Abre: https://soporte.exactolp.mx/create-admin-once.php?key=TU_SECRETO
- *    Opcional: &email=admin@soporte.exactolp.mx&password=TuClave12!
+ * 3. Abre: https://soporte.anlux.mx/create-admin-once.php?key=TU_SECRETO
+ *    Opcional: &email=admin@soporte.anlux.mx&password=TuClave12!
  * 4. BORRA public/create-admin-once.php después de usarlo.
  */
 
@@ -32,7 +32,7 @@ $app = require dirname(__DIR__).'/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 use App\Models\User;
-use App\Services\ExactoVaultService;
+use App\Services\AnluxVaultService;
 use App\Services\LoginIdSequenceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -44,8 +44,8 @@ if (! Schema::hasTable('login')) {
     exit("Error: no existe la tabla login.\n");
 }
 
-$email = trim((string) ($_GET['email'] ?? 'admin@soporte.exactolp.mx'));
-$password = (string) ($_GET['password'] ?? 'ExactoAdmin12#');
+$email = trim((string) ($_GET['email'] ?? 'admin@soporte.anlux.mx'));
+$password = (string) ($_GET['password'] ?? 'AnluxAdmin12#');
 $nombre = trim((string) ($_GET['nombre'] ?? 'Administrador'));
 $celularDigits = preg_replace('/\D+/', '', (string) ($_GET['celular'] ?? '5510000999')) ?? '';
 
@@ -61,8 +61,8 @@ if (! preg_match('/^\d{7,15}$/', $celularDigits)) {
     exit("Error: celular inválido (7-15 dígitos).\n");
 }
 
-/** @var ExactoVaultService $vault */
-$vault = app(ExactoVaultService::class);
+/** @var AnluxVaultService $vault */
+$vault = app(AnluxVaultService::class);
 $correo = mb_strtolower($email, 'UTF-8');
 $nombreToken = $vault->tecnicoNombreToken($nombre);
 $nombreSeal = $vault->tecnicoNombreSeal($nombre);
@@ -96,6 +96,6 @@ try {
 echo "OK. Administrador creado.\n";
 echo "id_tecnico: {$idTecnico}\n";
 echo "correo: {$correo}\n";
-echo "contraseña: (la que enviaste en ?password= o ExactoAdmin12# por defecto)\n";
+echo "contraseña: (la que enviaste en ?password= o AnluxAdmin12# por defecto)\n";
 echo "Entra en: ".url('/login')."\n";
 echo "\nBORRA public/create-admin-once.php ahora.\n";

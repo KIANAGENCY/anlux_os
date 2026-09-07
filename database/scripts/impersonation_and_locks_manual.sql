@@ -1,6 +1,6 @@
 -- =============================================================================
--- Exacto: impersonación + locks + usuarios activos
--- Ejecutar en phpMyAdmin → base joses16_exacto → pestaña SQL
+-- Anlux: impersonación + locks + usuarios activos
+-- Ejecutar en phpMyAdmin → base anlux_os → pestaña SQL
 --
 -- IMPORTANTE (cPanel / MariaDB):
 --   - NO uses "IF NOT EXISTS" en ALTER TABLE (no funciona en muchos hostings).

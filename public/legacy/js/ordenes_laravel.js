@@ -1,8 +1,8 @@
 // JavaScript del listado de ordenes.
 
-        const csrfToken = window.EXACTO_CSRF_TOKEN || '';
-        const baseUrl = String(window.EXACTO_BASE_URL || '').replace(/\/$/, '');
-        const exactoUrl = (path) => `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+        const csrfToken = window.ANLUX_CSRF_TOKEN || '';
+        const baseUrl = String(window.ANLUX_BASE_URL || '').replace(/\/$/, '');
+        const anluxUrl = (path) => `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
         let currentPage = 1;
         let totalPages = 1;
         /** 'fecha' = m&aacute;s recientes primero; 'estatus' = Recepci&oacute;n &rarr; En proceso &rarr; Terminado &rarr; Entregado, luego fecha */
@@ -67,7 +67,7 @@
         const urlPdfOrden = (id, inline) => {
             const bust = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
             const q = inline ? 'inline=1&refresh_pdf=1' : 'refresh_pdf=1';
-            return exactoUrl(`/pdf/orden/${encodeURIComponent(id)}?${q}&nocache=1&_=${bust}`);
+            return anluxUrl(`/pdf/orden/${encodeURIComponent(id)}?${q}&nocache=1&_=${bust}`);
         };
         const urlPdfInlineOrdenes = (id) => urlPdfOrden(id, true);
 
@@ -138,7 +138,7 @@
             document.getElementById('modalPdf').classList.remove('flex');
             document.getElementById('iframePdfOrdenes').src = 'about:blank';
             document.body.style.overflow = '';
-            document.body.classList.remove('exacto-pdf-open');
+            document.body.classList.remove('anlux-pdf-open');
             pdfOrdenesIdActual = 0;
         }
 
@@ -395,7 +395,7 @@
             params.set('sort', sortOrdenes === 'estatus' ? 'estatus' : 'fecha');
             paginationInfo.textContent = 'Cargando órdenes...';
 
-            const apiUrl = exactoUrl(`/api/ordenes?${params.toString()}`);
+            const apiUrl = anluxUrl(`/api/ordenes?${params.toString()}`);
             try {
                 const response = await fetch(apiUrl, {
                     credentials: 'same-origin',
@@ -404,7 +404,7 @@
                 const contentType = String(response.headers.get('content-type') || '').toLowerCase();
                 if (!response.ok || !contentType.includes('application/json')) {
                     if (response.status === 401 || response.status === 419 || response.redirected) {
-                        window.location.href = exactoUrl('/login');
+                        window.location.href = anluxUrl('/login');
                         return;
                     }
                     showTableMessage('No se pudo cargar el listado. Recarga la p&aacute;gina.', 'Error al cargar órdenes');
@@ -435,8 +435,8 @@
             if (filaBloqueada && !e.target.closest('.btn-pdf-inline') && !e.target.closest('.btn-pdf-descargar') && !e.target.closest('.btn-editar-estatus')) {
                 const nombre = filaBloqueada.getAttribute('data-lock-nombre') || 'otro usuario';
                 const msg = `Esta orden está en edición por ${nombre}. Espera a que termine.`;
-                if (typeof window.exactoShowAlert === 'function') {
-                    await window.exactoShowAlert(msg, { title: 'Orden en uso', icon: 'warning' });
+                if (typeof window.anluxShowAlert === 'function') {
+                    await window.anluxShowAlert(msg, { title: 'Orden en uso', icon: 'warning' });
                 } else {
                     window.alert(msg);
                 }
@@ -444,7 +444,7 @@
             }
             const ver = e.target.closest('.btn-ver-orden');
             if (ver && ver.dataset.ordenId) {
-                window.location.href = exactoUrl('/orden_servicio/' + encodeURIComponent(ver.dataset.ordenId) + '?ref=ordenes');
+                window.location.href = anluxUrl('/orden_servicio/' + encodeURIComponent(ver.dataset.ordenId) + '?ref=ordenes');
                 return;
             }
             const editBtn = e.target.closest('.btn-editar-estatus');
@@ -469,7 +469,7 @@
             if (fila && fila.dataset.lockActivo !== '1' && !e.target.closest('button') && !e.target.closest('a')) {
                 const id = fila.dataset.ordenId;
                 if (id && fila.querySelector('.btn-ver-orden')) {
-                    window.location.href = exactoUrl('/orden_servicio/' + encodeURIComponent(id) + '?ref=ordenes');
+                    window.location.href = anluxUrl('/orden_servicio/' + encodeURIComponent(id) + '?ref=ordenes');
                 }
             }
         });
@@ -514,7 +514,7 @@
                 formData.append('_token', csrfToken);
             }
 
-            const response = await fetch(exactoUrl('/api/ordenes/estatus'), {
+            const response = await fetch(anluxUrl('/api/ordenes/estatus'), {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },

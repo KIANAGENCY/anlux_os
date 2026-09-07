@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 /**
  * Diagnóstico 500 en hosting (NO requiere Laravel).
- * URL: https://soporte.exactolp.mx/diagnose-hosting.php?key=exacto2026diag
+ * URL: https://soporte.anlux.mx/diagnose-hosting.php?key=anlux2026diag
  * BORRAR este archivo cuando termines.
  */
 
-const DIAG_KEY = 'exacto2026diag';
+const DIAG_KEY = 'anlux2026diag';
 
 if (($_GET['key'] ?? '') !== DIAG_KEY) {
     http_response_code(403);
@@ -19,7 +19,7 @@ header('Content-Type: text/html; charset=utf-8');
 echo '<pre style="font:14px monospace">';
 
 $root = dirname(__DIR__);
-echo "=== Diagnóstico Exacto Laravel ===\n\n";
+echo "=== Diagnóstico Anlux Laravel ===\n\n";
 echo 'PHP: '.PHP_VERSION."\n";
 echo 'Raíz proyecto: '.$root."\n\n";
 
@@ -94,8 +94,8 @@ if ($db['DB_DATABASE'] === '' || $db['DB_USERNAME'] === '') {
     } catch (Throwable $e) {
         echo "Conexión PDO: FALLO\n";
         echo $e->getMessage()."\n";
-        echo "\n→ Revisa en cPanel: usuario MySQL, contraseña y que el usuario tenga acceso a joses16_exacto.\n";
-        echo "  El usuario NO siempre es 'joses16'; mira el nombre exacto en Bases de datos MySQL.\n";
+        echo "\n→ Revisa en cPanel: usuario MySQL, contraseña y que el usuario tenga acceso a anlux_os.\n";
+        echo "  El usuario NO siempre es 'joses16'; mira el nombre anlux en Bases de datos MySQL.\n";
     }
 }
 

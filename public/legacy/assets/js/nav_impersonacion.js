@@ -4,19 +4,19 @@
 
 
 
-    const csrf = window.EXACTO_CSRF_TOKEN || '';
+    const csrf = window.ANLUX_CSRF_TOKEN || '';
 
-    const baseUrl = String(window.EXACTO_BASE_URL || '').replace(/\/$/, '');
+    const baseUrl = String(window.ANLUX_BASE_URL || '').replace(/\/$/, '');
 
-    const exactoUrl = (path) => `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+    const anluxUrl = (path) => `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
 
-    const STORAGE_TOKEN_KEY = 'exacto_impersonacion_token';
+    const STORAGE_TOKEN_KEY = 'anlux_impersonacion_token';
 
 
 
-    const isImpersonating = Boolean(window.EXACTO_IS_IMPERSONATING);
+    const isImpersonating = Boolean(window.ANLUX_IS_IMPERSONATING);
 
-    const userId = Number(window.EXACTO_USER_ID || 0);
+    const userId = Number(window.ANLUX_USER_ID || 0);
 
 
 
@@ -70,7 +70,7 @@
 
     function ensureLoadingOverlay() {
 
-        let el = document.getElementById('exactoImpersonationLoading');
+        let el = document.getElementById('anluxImpersonationLoading');
 
         if (el) {
 
@@ -82,7 +82,7 @@
 
         el = document.createElement('div');
 
-        el.id = 'exactoImpersonationLoading';
+        el.id = 'anluxImpersonationLoading';
 
         el.className = 'hidden fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/75 p-4';
 
@@ -94,9 +94,9 @@
 
             <div class="w-full max-w-xs rounded-2xl bg-white px-6 py-7 text-center shadow-2xl">
 
-                <div class="exacto-imperson-spinner mx-auto mb-3 h-12 w-12 rounded-full border-4 border-blue-200 border-t-blue-600" aria-hidden="true"></div>
+                <div class="anlux-imperson-spinner mx-auto mb-3 h-12 w-12 rounded-full border-4 border-blue-200 border-t-blue-600" aria-hidden="true"></div>
 
-                <p id="exactoImpersonationLoadingMsg" class="text-sm font-semibold text-blue-900"></p>
+                <p id="anluxImpersonationLoadingMsg" class="text-sm font-semibold text-blue-900"></p>
 
             </div>
 
@@ -108,9 +108,9 @@
 
         style.textContent = `
 
-            @keyframes exacto-imperson-spin { to { transform: rotate(360deg); } }
+            @keyframes anlux-imperson-spin { to { transform: rotate(360deg); } }
 
-            .exacto-imperson-spinner { animation: exacto-imperson-spin 0.85s linear infinite; }
+            .anlux-imperson-spinner { animation: anlux-imperson-spin 0.85s linear infinite; }
 
         `;
 
@@ -130,7 +130,7 @@
 
         const el = ensureLoadingOverlay();
 
-        const msg = el.querySelector('#exactoImpersonationLoadingMsg');
+        const msg = el.querySelector('#anluxImpersonationLoadingMsg');
 
         if (msg) {
 
@@ -150,7 +150,7 @@
 
     function updateLoadingMessage(message) {
 
-        const msg = document.getElementById('exactoImpersonationLoadingMsg');
+        const msg = document.getElementById('anluxImpersonationLoadingMsg');
 
         if (msg) {
 
@@ -164,7 +164,7 @@
 
     function hideLoading() {
 
-        const el = document.getElementById('exactoImpersonationLoading');
+        const el = document.getElementById('anluxImpersonationLoading');
 
         if (!el) {
 
@@ -246,7 +246,7 @@
 
             try {
 
-                await fetchJson(exactoUrl('/api/impersonacion/cancelar'), {
+                await fetchJson(anluxUrl('/api/impersonacion/cancelar'), {
 
                     method: 'POST',
 
@@ -324,15 +324,15 @@
 
     function optionClass(status) {
 
-        if (status === 'online') return 'exacto-opt-online';
+        if (status === 'online') return 'anlux-opt-online';
 
-        if (status === 'in_use') return 'exacto-opt-in_use';
+        if (status === 'in_use') return 'anlux-opt-in_use';
 
-        if (status === 'offline') return 'exacto-opt-offline';
+        if (status === 'offline') return 'anlux-opt-offline';
 
-        if (status === 'inactive') return 'exacto-opt-inactive';
+        if (status === 'inactive') return 'anlux-opt-inactive';
 
-        if (status === 'self') return 'exacto-opt-self';
+        if (status === 'self') return 'anlux-opt-self';
 
         return '';
 
@@ -346,7 +346,7 @@
 
         updateLoadingMessage('Entrando…');
 
-        const apply = await fetchJson(exactoUrl('/api/impersonacion/aplicar'), {
+        const apply = await fetchJson(anluxUrl('/api/impersonacion/aplicar'), {
 
             method: 'POST',
 
@@ -390,7 +390,7 @@
 
         const { res, data } = await fetchJson(
 
-            exactoUrl(`/api/impersonacion/estado/${encodeURIComponent(pollRequesterToken)}`)
+            anluxUrl(`/api/impersonacion/estado/${encodeURIComponent(pollRequesterToken)}`)
 
         );
 
@@ -402,9 +402,9 @@
 
                 stopRequesterPoll(true);
 
-                if (typeof window.exactoShowAlert === 'function') {
+                if (typeof window.anluxShowAlert === 'function') {
 
-                    await window.exactoShowAlert(
+                    await window.anluxShowAlert(
 
                         data.message || 'La solicitud ya no es válida.',
 
@@ -448,9 +448,9 @@
 
                 stopRequesterPoll(true);
 
-                if (typeof window.exactoShowAlert === 'function') {
+                if (typeof window.anluxShowAlert === 'function') {
 
-                    await window.exactoShowAlert(
+                    await window.anluxShowAlert(
 
                         'No se pudo entrar a la cuenta.',
 
@@ -480,9 +480,9 @@
 
             }
 
-            if (typeof window.exactoShowAlert === 'function') {
+            if (typeof window.anluxShowAlert === 'function') {
 
-                await window.exactoShowAlert(data.message || 'Acceso no autorizado.', { icon: 'warning' });
+                await window.anluxShowAlert(data.message || 'Acceso no autorizado.', { icon: 'warning' });
 
             }
 
@@ -521,9 +521,9 @@
 
             hideLoading();
 
-            if (typeof window.exactoShowAlert === 'function') {
+            if (typeof window.anluxShowAlert === 'function') {
 
-                await window.exactoShowAlert(
+                await window.anluxShowAlert(
 
                     opt.dataset.hint || 'Esta cuenta no está disponible para cambio.',
 
@@ -539,7 +539,7 @@
 
 
 
-        const { res, data } = await fetchJson(exactoUrl('/api/impersonacion/solicitar'), {
+        const { res, data } = await fetchJson(anluxUrl('/api/impersonacion/solicitar'), {
 
             method: 'POST',
 
@@ -561,9 +561,9 @@
 
             select.value = previous;
 
-            if (typeof window.exactoShowAlert === 'function') {
+            if (typeof window.anluxShowAlert === 'function') {
 
-                await window.exactoShowAlert(data.message || 'No se pudo solicitar el acceso.', { icon: 'error' });
+                await window.anluxShowAlert(data.message || 'No se pudo solicitar el acceso.', { icon: 'error' });
 
             }
 
@@ -593,9 +593,9 @@
 
                 select.value = previous;
 
-                if (typeof window.exactoShowAlert === 'function') {
+                if (typeof window.anluxShowAlert === 'function') {
 
-                    await window.exactoShowAlert('No se pudo entrar a la cuenta.', { icon: 'error' });
+                    await window.anluxShowAlert('No se pudo entrar a la cuenta.', { icon: 'error' });
 
                 }
 
@@ -617,9 +617,9 @@
 
             select.value = previous;
 
-            if (typeof window.exactoShowAlert === 'function') {
+            if (typeof window.anluxShowAlert === 'function') {
 
-                await window.exactoShowAlert('No se pudo entrar a la cuenta.', { icon: 'error' });
+                await window.anluxShowAlert('No se pudo entrar a la cuenta.', { icon: 'error' });
 
             }
 
@@ -637,7 +637,7 @@
 
         }
 
-        const { res, data } = await fetchJson(exactoUrl('/api/impersonacion/pendientes'));
+        const { res, data } = await fetchJson(anluxUrl('/api/impersonacion/pendientes'));
 
         if (!res.ok || !data.success || !Array.isArray(data.data)) {
 
@@ -669,9 +669,9 @@
 
             let approve = false;
 
-            if (typeof window.exactoShowConfirm === 'function') {
+            if (typeof window.anluxShowConfirm === 'function') {
 
-                approve = await window.exactoShowConfirm(mensaje, {
+                approve = await window.anluxShowConfirm(mensaje, {
 
                     title: 'Acceso a tu cuenta',
 
@@ -691,7 +691,7 @@
 
 
 
-            await fetchJson(exactoUrl('/api/impersonacion/responder'), {
+            await fetchJson(anluxUrl('/api/impersonacion/responder'), {
 
                 method: 'POST',
 
@@ -719,7 +719,7 @@
 
 
 
-        const { res, data } = await fetchJson(exactoUrl('/api/impersonacion/cuentas'));
+        const { res, data } = await fetchJson(anluxUrl('/api/impersonacion/cuentas'));
 
         const current = Number(select.dataset.currentId || userId || 0);
 
@@ -729,13 +729,13 @@
 
         if (!res.ok || !data.success) {
 
-            if (select.options.length <= 1 && typeof window.exactoShowAlert === 'function') {
+            if (select.options.length <= 1 && typeof window.anluxShowAlert === 'function') {
 
                 const msg = data.message
 
                     || (res.status === 500 ? 'Error del servidor al cargar cuentas.' : 'No se pudieron cargar las cuentas.');
 
-                await window.exactoShowAlert(msg, { icon: 'warning', title: 'Selector de cuentas' });
+                await window.anluxShowAlert(msg, { icon: 'warning', title: 'Selector de cuentas' });
 
             }
 
@@ -831,7 +831,7 @@
 
         showLoading('Volviendo a tu cuenta…');
 
-        const { res, data } = await fetchJson(exactoUrl('/api/impersonacion/salir'), { method: 'POST' });
+        const { res, data } = await fetchJson(anluxUrl('/api/impersonacion/salir'), { method: 'POST' });
 
         if (res.ok && data.success) {
 
@@ -845,9 +845,9 @@
 
         hideLoading();
 
-        if (typeof window.exactoShowAlert === 'function') {
+        if (typeof window.anluxShowAlert === 'function') {
 
-            await window.exactoShowAlert(data.message || 'No se pudo volver a tu cuenta.', { icon: 'error' });
+            await window.anluxShowAlert(data.message || 'No se pudo volver a tu cuenta.', { icon: 'error' });
 
         }
 

@@ -25,7 +25,7 @@ final class MaintenanceController extends Controller
         }
 
         return view('maintenance', [
-            'pageTitle' => 'Sistema en mantenimiento - Exacto',
+            'pageTitle' => 'Sistema en mantenimiento - Anlux',
             'maintenance' => $status,
             'canDisableMaintenance' => $this->policy->userIsAdmin($request->user()),
         ]);

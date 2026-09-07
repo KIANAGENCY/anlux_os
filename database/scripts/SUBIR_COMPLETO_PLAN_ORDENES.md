@@ -1,4 +1,4 @@
-# EXACTO — Subida completa (plan órdenes)
+# ANLUX — Subida completa (plan órdenes)
 
 ## Ya está en tu proyecto (sube tal cual)
 
@@ -12,8 +12,8 @@ app/Services/RegistrarOrdenService.php          ← ver parche IVA abajo
 app/Http/Controllers/OrderFormController.php
 app/Http/Controllers/OrderPdfController.php
 app/Services/OrdenPolicyService.php           ← si no está en servidor
-app/Support/ExactoAuthContext.php
-app/Services/ExactoVaultService.php
+app/Support/AnluxAuthContext.php
+app/Services/AnluxVaultService.php
 app/Services/OrdenStatusService.php
 app/Models/User.php
 
@@ -40,7 +40,7 @@ resources/views/orders/orden_form.blade.php   ← ver parche label IVA abajo
 Busca la función `calcularTotalFactura` (~línea 2095) y **reemplázala** por:
 
 ```javascript
-        function exactoEsEdicionOrden() {
+        function anluxEsEdicionOrden() {
             return Number(document.getElementById('id_orden_c')?.value || 0) > 0;
         }
 
@@ -53,7 +53,7 @@ Busca la función `calcularTotalFactura` (~línea 2095) y **reemplázala** por:
             if (!elSt || !elSm || !elIva || !elTot) return;
             const subtotalTrabajos = parseFloat(elSt.textContent) || 0;
             const subtotalMateriales = parseFloat(elSm.textContent) || 0;
-            const esEdicion = exactoEsEdicionOrden();
+            const esEdicion = anluxEsEdicionOrden();
             const baseIva = esEdicion ? subtotalMateriales : (subtotalTrabajos + subtotalMateriales);
             const iva = baseIva * 0.16;
             elIva.textContent = iva.toFixed(2);

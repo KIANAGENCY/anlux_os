@@ -1,5 +1,5 @@
 -- Prueba manual: la tabla impersonation_requests acepta INSERT
--- Ejecutar en joses16_exacto. Ajusta admin_id y target_id a tus id_tecnico reales.
+-- Ejecutar en anlux_os. Ajusta admin_id y target_id a tus id_tecnico reales.
 
 INSERT INTO `impersonation_requests` (
   `admin_id`,

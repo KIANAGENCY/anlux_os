@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Support\ExactoAuthContext;
+use App\Support\AnluxAuthContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +27,7 @@ final class OrdenAuditService
         }
         try {
             $this->policy->ensureAuditTable();
-            $usuario = ExactoAuthContext::nombreTecnicoSesionActual();
+            $usuario = AnluxAuthContext::nombreTecnicoSesionActual();
             if ($usuario === '') {
                 $usuario = trim((string) session('nombre_tecnico', ''));
             }

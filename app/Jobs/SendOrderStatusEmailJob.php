@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Services\IntegrationSettingsService;
 use App\Services\OrderEmailService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -31,8 +32,9 @@ final class SendOrderStatusEmailJob implements ShouldQueue
         $this->afterCommit();
     }
 
-    public function handle(OrderEmailService $orderEmail): void
+    public function handle(OrderEmailService $orderEmail, IntegrationSettingsService $settings): void
     {
+        $settings->apply();
         $orderEmail->sendForStatusWithResult($this->idOrdenC, $this->estatus, $this->probeResult, $this->orderPayload);
     }
 }

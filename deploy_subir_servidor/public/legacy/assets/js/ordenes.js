@@ -1,6 +1,6 @@
 // JavaScript del listado de ordenes.
 
-        const csrfToken = window.EXACTO_CSRF_TOKEN || '';
+        const csrfToken = window.ANLUX_CSRF_TOKEN || '';
         let currentPage = 1;
         let totalPages = 1;
 

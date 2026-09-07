@@ -25,7 +25,7 @@ final class LegacyAppShortcut
 
     private static function normalizedBase(): ?string
     {
-        $u = trim((string) config('exacto.legacy_url'));
+        $u = trim((string) config('anlux.legacy_url'));
         if ($u === '') {
             return null;
         }

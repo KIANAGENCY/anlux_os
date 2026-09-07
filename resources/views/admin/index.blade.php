@@ -1,18 +1,19 @@
-@extends('layouts.exacto_app')
+@extends('layouts.anlux_app')
 
 @php
-    $pageTitle = 'Panel de administrador - Exacto';
-    // Evita un error 500 si durante un despliegue la vista llega antes que el controlador.
+    $pageTitle = 'Panel de administrador - Anlux';
+    $nav_admin_activo = 'admin';
     $maintenance = $maintenance ?? [
         'enabled' => false,
         'message' => 'Estamos actualizando el sistema. Por favor, vuelve a intentarlo en unos minutos.',
         'updated_at' => null,
     ];
+    $logoUrl = $anluxLogoUrl ?? asset('legacy/public/img/logo.jpeg');
 @endphp
 
 @push('styles')
 <style>
-    .exacto-maintenance-button {
+    .anlux-maintenance-button {
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -24,181 +25,89 @@
         color: #ffffff !important;
         font-weight: 700 !important;
         cursor: pointer !important;
-        opacity: 1 !important;
-        visibility: visible !important;
     }
-    .exacto-maintenance-button--disable {
-        background: #059669 !important;
-        box-shadow: 0 6px 15px rgba(5, 150, 105, .25) !important;
-    }
-    .exacto-maintenance-button--disable:hover { background: #047857 !important; }
-    .exacto-maintenance-button--enable {
-        background: #d97706 !important;
-        box-shadow: 0 6px 15px rgba(217, 119, 6, .25) !important;
-    }
-    .exacto-maintenance-button--enable:hover { background: #b45309 !important; }
+    .anlux-maintenance-button--disable { background: #059669 !important; }
+    .anlux-maintenance-button--enable { background: #d97706 !important; }
 </style>
+@vite(['resources/js/admin/index/main.tsx'])
 @endpush
 
 @section('content')
 <body class="min-h-screen bg-slate-100 text-slate-800 antialiased">
-    <div class="mx-auto w-full max-w-4xl px-4 py-6 sm:py-8">
-        <div class="overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200/80">
-            {{-- Encabezado --}}
-            <header class="border-b border-slate-200 bg-gradient-to-br from-blue-800 via-blue-700 to-blue-600 px-5 py-6 sm:px-8">
-                <div class="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
-                    <img
-                        src="{{ asset('legacy/public/img/logo.jpeg') }}?v={{ @filemtime(public_path('legacy/public/img/logo.jpeg')) ?: 1 }}"
-                        alt="Exacto"
-                        class="h-14 w-auto rounded-lg bg-white/95 p-2 shadow-md sm:h-16"
-                        width="180"
-                        height="60"
-                        style="max-width: 180px; object-fit: contain;"
-                    >
-                    <div class="text-white">
-                        <p class="text-xs font-semibold uppercase tracking-widest text-blue-200">Exacto &middot; Administraci&oacute;n</p>
-                        <h1 class="mt-1 text-2xl font-bold sm:text-3xl">Panel de administrador</h1>
-                        <p class="mt-2 max-w-xl text-sm text-blue-100">
-                            Selecciona una secci&oacute;n para gestionar &oacute;rdenes, usuarios, cat&aacute;logo y seguridad.
-                        </p>
+    <div class="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
+        @include('partials.nav-admin')
+
+        <div id="admin-index-react-root">
+            {{-- Fallback operativo para despliegues parciales; React lo reemplaza al montar. --}}
+            <section class="anlux-page-card">
+                <header class="anlux-page-header">
+                    <div>
+                        <p class="anlux-eyebrow">Anlux &middot; Administraci&oacute;n</p>
+                        <h1 class="anlux-page-title">Panel de administrador</h1>
+                        <p class="anlux-page-description">Controla el mantenimiento y abre las &aacute;reas administrativas del sistema.</p>
                     </div>
-                </div>
-            </header>
-
-            <div class="px-4 py-5 sm:px-6 sm:py-6">
-                @include('partials.nav-admin')
-
-                @if(session('status'))
-                    <div class="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-                        {{ session('status') }}
-                    </div>
-                @endif
-
-                <section class="mt-6 rounded-xl border-2 {{ $maintenance['enabled'] ? 'border-amber-400 bg-amber-50' : 'border-slate-200 bg-slate-50' }} p-5 shadow-sm">
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <div class="flex items-center gap-3">
-                                <span class="flex h-11 w-11 items-center justify-center rounded-xl {{ $maintenance['enabled'] ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-600' }}">
-                                    <i class="fas fa-screwdriver-wrench text-lg" aria-hidden="true"></i>
-                                </span>
-                                <div>
-                                    <h2 class="text-lg font-extrabold text-slate-900">Modo de mantenimiento</h2>
-                                    <p class="text-sm font-semibold {{ $maintenance['enabled'] ? 'text-amber-800' : 'text-slate-500' }}">
-                                        {{ $maintenance['enabled'] ? 'ACTIVO: los usuarios no administradores están bloqueados.' : 'INACTIVO: el sistema está disponible.' }}
-                                    </p>
-                                </div>
+                </header>
+                <div class="p-4 sm:p-6">
+                    @if(session('status'))
+                        <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{{ session('status') }}</div>
+                    @endif
+                    <section class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+                        <h2 class="text-lg font-extrabold text-slate-900">Modo de mantenimiento</h2>
+                        @if($maintenance['enabled'])
+                            <p class="mt-1 text-sm font-semibold text-amber-800">ACTIVO: los usuarios no administradores están bloqueados.</p>
+                        @else
+                            <p class="mt-1 text-sm font-semibold text-slate-600">INACTIVO: el sistema está disponible.</p>
+                        @endif
+                        <form method="POST" action="{{ route('admin.maintenance.update') }}" class="mt-5">
+                            @csrf
+                            <label for="maintenanceMessageFallback" class="anlux-label">Mensaje para los usuarios</label>
+                            <textarea id="maintenanceMessageFallback" name="message" rows="3" maxlength="500" class="anlux-control w-full py-3">{{ old('message', $maintenance['message']) }}</textarea>
+                            @error('message')
+                                <p class="mt-1 text-sm font-semibold text-red-600">{{ $message }}</p>
+                            @enderror
+                            <div class="mt-4 flex justify-end">
+                                <button type="submit" name="enabled" value="{{ $maintenance['enabled'] ? '0' : '1' }}" class="anlux-maintenance-button {{ $maintenance['enabled'] ? 'anlux-maintenance-button--disable' : 'anlux-maintenance-button--enable' }}">
+                                    <i class="fas {{ $maintenance['enabled'] ? 'fa-play' : 'fa-pause' }}" aria-hidden="true"></i>
+                                    {{ $maintenance['enabled'] ? 'Desactivar mantenimiento' : 'Activar mantenimiento' }}
+                                </button>
                             </div>
-                            <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                                Actívalo antes de subir, sustituir o eliminar archivos. Los administradores podrán seguir usando este panel para desactivarlo al terminar.
-                            </p>
-                        </div>
-                    </div>
-
-                    <form method="POST" action="{{ route('admin.maintenance.update') }}" class="mt-5">
-                        @csrf
-                        <label for="maintenanceMessage" class="mb-2 block text-sm font-bold text-slate-700">Mensaje para los usuarios</label>
-                        <textarea id="maintenanceMessage" name="message" rows="3" maxlength="500" class="w-full rounded-lg border-2 border-slate-300 bg-white px-4 py-3 text-sm focus:border-blue-600 focus:outline-none">{{ old('message', $maintenance['message']) }}</textarea>
-                        @error('message')
-                            <p class="mt-1 text-sm font-semibold text-red-600">{{ $message }}</p>
-                        @enderror
-
-                        <div class="mt-4 flex flex-wrap gap-3">
-                            @if($maintenance['enabled'])
-                                <button type="submit" name="enabled" value="0" class="exacto-maintenance-button exacto-maintenance-button--disable">
-                                    <i class="fas fa-play" aria-hidden="true"></i>
-                                    Desactivar mantenimiento
-                                </button>
-                            @else
-                                <button type="submit" name="enabled" value="1" class="exacto-maintenance-button exacto-maintenance-button--enable">
-                                    <i class="fas fa-pause" aria-hidden="true"></i>
-                                    Activar mantenimiento
-                                </button>
-                            @endif
-                        </div>
-                    </form>
-                </section>
-
-                <div class="mt-6 grid gap-3 sm:grid-cols-2">
-                    <a
-                        href="{{ route('orden_servicio.create') }}"
-                        class="group flex gap-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:bg-white hover:shadow-md"
-                    >
-                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 transition group-hover:bg-blue-600 group-hover:text-white">
-                            <i class="fas fa-clipboard-list text-xl" aria-hidden="true"></i>
-                        </span>
-                        <span class="min-w-0">
-                            <span class="block font-bold text-slate-900 group-hover:text-blue-800">&Oacute;rdenes de servicio</span>
-                            <span class="mt-1 block text-sm leading-snug text-slate-600">Registrar y editar &oacute;rdenes t&eacute;cnicas.</span>
-                        </span>
-                    </a>
-
-                    <a
-                        href="{{ route('admin.catalogo.index') }}"
-                        class="group flex gap-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-white hover:shadow-md"
-                    >
-                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 transition group-hover:bg-emerald-600 group-hover:text-white">
-                            <i class="fas fa-list text-xl" aria-hidden="true"></i>
-                        </span>
-                        <span class="min-w-0">
-                            <span class="block font-bold text-slate-900 group-hover:text-emerald-800">Cat&aacute;logo SERSOP</span>
-                            <span class="mt-1 block text-sm leading-snug text-slate-600">Claves, precios y condiciones del PDF.</span>
-                        </span>
-                    </a>
-
-                    <a
-                        href="{{ route('admin.registro.create') }}"
-                        class="group flex gap-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-white hover:shadow-md"
-                    >
-                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-800 transition group-hover:bg-cyan-600 group-hover:text-white">
-                            <i class="fas fa-user-plus text-xl" aria-hidden="true"></i>
-                        </span>
-                        <span class="min-w-0">
-                            <span class="block font-bold text-slate-900 group-hover:text-cyan-800">Registro de usuarios</span>
-                            <span class="mt-1 block text-sm leading-snug text-slate-600">Dar de alta nuevos t&eacute;cnicos o administradores.</span>
-                        </span>
-                    </a>
-
-                    <a
-                        href="{{ route('admin.users.index') }}"
-                        class="group flex gap-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-amber-300 hover:bg-white hover:shadow-md"
-                    >
-                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 transition group-hover:bg-amber-500 group-hover:text-white">
-                            <i class="fas fa-users text-xl" aria-hidden="true"></i>
-                        </span>
-                        <span class="min-w-0">
-                            <span class="block font-bold text-slate-900 group-hover:text-amber-900">Tabla de usuarios</span>
-                            <span class="mt-1 block text-sm leading-snug text-slate-600">Consultar y actualizar cuentas existentes.</span>
-                        </span>
-                    </a>
-
-                    <a
-                        href="{{ route('admin.folios.index') }}"
-                        class="group flex gap-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-white hover:shadow-md"
-                    >
-                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-800 transition group-hover:bg-orange-500 group-hover:text-white">
-                            <i class="fas fa-hashtag text-xl" aria-hidden="true"></i>
-                        </span>
-                        <span class="min-w-0">
-                            <span class="block font-bold text-slate-900 group-hover:text-orange-900">Folios</span>
-                            <span class="mt-1 block text-sm leading-snug text-slate-600">Huecos liberados y contador de folio OS-a&ntilde;o.</span>
-                        </span>
-                    </a>
-
-                    <a
-                        href="{{ route('admin.seguridad.index') }}"
-                        class="group flex gap-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-red-300 hover:bg-white hover:shadow-md"
-                    >
-                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700 transition group-hover:bg-red-600 group-hover:text-white">
-                            <i class="fas fa-shield-alt text-xl" aria-hidden="true"></i>
-                        </span>
-                        <span class="min-w-0">
-                            <span class="block font-bold text-slate-900 group-hover:text-red-800">Seguridad / Actividad</span>
-                            <span class="mt-1 block text-sm leading-snug text-slate-600">Eventos, alertas y estado del cifrado.</span>
-                        </span>
-                    </a>
+                        </form>
+                    </section>
+                    <nav class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Destinos administrativos">
+                        <a href="{{ route('orden_servicio.create') }}" class="rounded-xl border border-slate-200 bg-white p-4 font-semibold text-blue-800 shadow-sm">&Oacute;rdenes de servicio</a>
+                        <a href="{{ route('admin.catalogo.index') }}" class="rounded-xl border border-slate-200 bg-white p-4 font-semibold text-blue-800 shadow-sm">Cat&aacute;logo SERSOP</a>
+                        <a href="{{ route('admin.registro.create') }}" class="rounded-xl border border-slate-200 bg-white p-4 font-semibold text-blue-800 shadow-sm">Registro de usuarios</a>
+                        <a href="{{ route('admin.users.index') }}" class="rounded-xl border border-slate-200 bg-white p-4 font-semibold text-blue-800 shadow-sm">Tabla de usuarios</a>
+                        <a href="{{ route('admin.folios.index') }}" class="rounded-xl border border-slate-200 bg-white p-4 font-semibold text-blue-800 shadow-sm">Folios</a>
+                        <a href="{{ route('admin.integrations.index') }}" class="rounded-xl border border-slate-200 bg-white p-4 font-semibold text-blue-800 shadow-sm">Dominio y comunicaciones</a>
+                        <a href="{{ route('admin.appearance.index') }}" class="rounded-xl border border-slate-200 bg-white p-4 font-semibold text-blue-800 shadow-sm">Apariencia</a>
+                        <a href="{{ route('admin.seguridad.index') }}" class="rounded-xl border border-slate-200 bg-white p-4 font-semibold text-blue-800 shadow-sm">Seguridad / Actividad</a>
+                    </nav>
                 </div>
-            </div>
+            </section>
         </div>
+        <script type="application/json" id="react-page-props">
+            {!! json_encode([
+                'logoUrl' => $logoUrl,
+                'status' => session('status'),
+                'maintenance' => [
+                    'enabled' => (bool) ($maintenance['enabled'] ?? false),
+                    'message' => (string) ($maintenance['message'] ?? ''),
+                ],
+                'maintenanceAction' => route('admin.maintenance.update'),
+                'csrf' => csrf_token(),
+                'links' => [
+                    ['href' => route('orden_servicio.create'), 'title' => 'Órdenes de servicio', 'desc' => 'Registrar y editar órdenes técnicas.', 'icon' => 'fa-clipboard-list', 'color' => 'blue'],
+                    ['href' => route('admin.catalogo.index'), 'title' => 'Catálogo SERSOP', 'desc' => 'Claves, precios y condiciones del PDF.', 'icon' => 'fa-list', 'color' => 'emerald'],
+                    ['href' => route('admin.registro.create'), 'title' => 'Registro de usuarios', 'desc' => 'Dar de alta nuevos técnicos o administradores.', 'icon' => 'fa-user-plus', 'color' => 'cyan'],
+                    ['href' => route('admin.users.index'), 'title' => 'Tabla de usuarios', 'desc' => 'Consultar y actualizar cuentas existentes.', 'icon' => 'fa-users', 'color' => 'amber'],
+                    ['href' => route('admin.folios.index'), 'title' => 'Folios', 'desc' => 'Huecos liberados y contador de folio OS-año.', 'icon' => 'fa-hashtag', 'color' => 'orange'],
+                    ['href' => route('admin.integrations.index'), 'title' => 'Dominio y comunicaciones', 'desc' => 'Configurar dominio, correo SMTP y WhatsApp Cloud.', 'icon' => 'fa-plug', 'color' => 'violet'],
+                    ['href' => route('admin.appearance.index'), 'title' => 'Apariencia', 'desc' => 'Cambiar paleta, tipografía y logo del sistema.', 'icon' => 'fa-palette', 'color' => 'pink'],
+                    ['href' => route('admin.seguridad.index'), 'title' => 'Seguridad / Actividad', 'desc' => 'Eventos, alertas y estado del cifrado.', 'icon' => 'fa-shield-alt', 'color' => 'red'],
+                ],
+            ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}
+        </script>
     </div>
 </body>
 @endsection

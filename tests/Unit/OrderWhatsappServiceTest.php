@@ -233,7 +233,7 @@ final class OrderWhatsappServiceTest extends TestCase
         config([
             'services.whatsapp.template_include_document' => true,
             'services.whatsapp.document_delivery' => 'link',
-            'app.url' => 'https://soporte.exactolp.mx',
+            'app.url' => 'https://soporte.anlux.mx',
         ]);
 
         $this->mock(OrderPdfController::class, function ($mock): void {
@@ -285,7 +285,7 @@ final class OrderWhatsappServiceTest extends TestCase
     {
         Bus::fake();
         config([
-            'exacto.whatsapp_notifications_enabled' => true,
+            'anlux.whatsapp_notifications_enabled' => true,
             'services.whatsapp.enabled' => true,
             'services.whatsapp.base_url' => 'https://graph.facebook.com',
             'services.whatsapp.graph_version' => 'v20.0',

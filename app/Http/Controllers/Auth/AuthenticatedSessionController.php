@@ -71,7 +71,7 @@ class AuthenticatedSessionController extends Controller
     ): RedirectResponse {
         $userId = (int) ($request->user()?->id_tecnico ?? 0);
         $sessionId = $request->session()->getId();
-        $impersonatorId = (int) ($request->session()->get('exacto_impersonator_id') ?? 0);
+        $impersonatorId = (int) ($request->session()->get('anlux_impersonator_id') ?? 0);
 
         $rememberTokens->forget();
 
@@ -84,7 +84,7 @@ class AuthenticatedSessionController extends Controller
             $presence->markOffline($impersonatorId);
         }
 
-        $request->session()->forget(['exacto_impersonating', 'exacto_impersonator_id']);
+        $request->session()->forget(['anlux_impersonating', 'anlux_impersonator_id']);
 
         Auth::guard('web')->logout();
 

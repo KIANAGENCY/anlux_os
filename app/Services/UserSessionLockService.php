@@ -21,7 +21,7 @@ final class UserSessionLockService
     {
         // Sesión única desactivada por configuración: se permite la misma cuenta en
         // varios dispositivos. No se reclama ni valida sesión activa.
-        if (! filter_var(config('exacto.session_single_device', false), FILTER_VALIDATE_BOOL)) {
+        if (! filter_var(config('anlux.session_single_device', false), FILTER_VALIDATE_BOOL)) {
             return false;
         }
 

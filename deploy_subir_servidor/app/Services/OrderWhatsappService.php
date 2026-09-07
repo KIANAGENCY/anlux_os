@@ -38,7 +38,7 @@ final class OrderWhatsappService
 
     public function __construct(
 
-        private readonly ExactoVaultService $vault
+        private readonly AnluxVaultService $vault
 
     ) {}
 
@@ -267,7 +267,7 @@ final class OrderWhatsappService
         try {
             SendOrderWhatsappJob::dispatch($notificationId)->onConnection('database');
         } catch (\Throwable $e) {
-            Log::channel('exacto_ops')->warning('order_whatsapp_dispatch_failed', [
+            Log::channel('anlux_ops')->warning('order_whatsapp_dispatch_failed', [
                 'notification_id' => $notificationId,
                 'error' => $e->getMessage(),
             ]);
@@ -455,7 +455,7 @@ final class OrderWhatsappService
                         $mediaId = $this->uploadPdfMedia($pdfBinary, $pdfFilename);
                     } catch (\Throwable $uploadError) {
                         if ($this->shouldFallbackWithoutDocument()) {
-                            Log::channel('exacto_ops')->warning('order_whatsapp_pdf_upload_fallback', [
+                            Log::channel('anlux_ops')->warning('order_whatsapp_pdf_upload_fallback', [
                                 'notification_id' => $notificationId,
                                 'filename' => $pdfFilename,
                                 'pdf_bytes' => strlen($pdfBinary),
@@ -464,7 +464,7 @@ final class OrderWhatsappService
                             $mediaId = null;
                             $pdfFilename = null;
                         } elseif ($this->resolveOrderPdfBinary($idOrdenC, $payload) !== null) {
-                            Log::channel('exacto_ops')->warning('order_whatsapp_pdf_upload_link_fallback', [
+                            Log::channel('anlux_ops')->warning('order_whatsapp_pdf_upload_link_fallback', [
                                 'notification_id' => $notificationId,
                                 'error' => $uploadError->getMessage(),
                             ]);
@@ -618,7 +618,7 @@ final class OrderWhatsappService
 
         } catch (\Throwable $e) {
 
-            Log::channel('exacto_ops')->warning('order_whatsapp_failed', [
+            Log::channel('anlux_ops')->warning('order_whatsapp_failed', [
 
                 'notification_id' => $notificationId,
 
@@ -1009,7 +1009,7 @@ final class OrderWhatsappService
 
         } catch (\Throwable $e) {
 
-            Log::channel('exacto_ops')->warning('order_whatsapp_pdf_failed', [
+            Log::channel('anlux_ops')->warning('order_whatsapp_pdf_failed', [
 
                 'id_orden_c' => $idOrdenC,
 
@@ -1072,7 +1072,7 @@ final class OrderWhatsappService
                 ]);
         } catch (\Throwable $e) {
 
-            Log::channel('exacto_ops')->warning('order_whatsapp_media_upload_failed', [
+            Log::channel('anlux_ops')->warning('order_whatsapp_media_upload_failed', [
 
                 'filename' => $filename,
 
@@ -1106,7 +1106,7 @@ final class OrderWhatsappService
 
 
 
-        Log::channel('exacto_ops')->warning('order_whatsapp_media_upload_failed', [
+        Log::channel('anlux_ops')->warning('order_whatsapp_media_upload_failed', [
 
             'filename' => $filename,
 

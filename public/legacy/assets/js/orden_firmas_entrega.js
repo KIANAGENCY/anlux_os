@@ -1,5 +1,5 @@
 (function () {
-    function exactoSyncFirmasEntregaInline() {
+    function anluxSyncFirmasEntregaInline() {
         var estatusEl = document.getElementById('inputEstatus');
         var seccionEntrega = document.getElementById('ordenSeccionFirmasEntrega');
         var seccionIniciales = document.getElementById('ordenSeccionFirmasIniciales');
@@ -30,11 +30,11 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', exactoSyncFirmasEntregaInline);
+    document.addEventListener('DOMContentLoaded', anluxSyncFirmasEntregaInline);
     document.addEventListener('change', function (e) {
         if (e.target && e.target.id === 'inputEstatus') {
-            exactoSyncFirmasEntregaInline();
+            anluxSyncFirmasEntregaInline();
         }
     });
-    window.exactoSyncFirmasEntregaInline = exactoSyncFirmasEntregaInline;
+    window.anluxSyncFirmasEntregaInline = anluxSyncFirmasEntregaInline;
 })();

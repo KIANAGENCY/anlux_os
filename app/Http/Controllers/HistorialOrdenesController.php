@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Support\ExactoUtf8;
+use App\Support\AnluxUtf8;
 use Illuminate\View\View;
 
 class HistorialOrdenesController extends Controller
@@ -20,7 +20,7 @@ class HistorialOrdenesController extends Controller
             'UTF-8'
         );
         $nav_activo = 'historial_ordenes';
-        $pageTitle = 'Historial PDF '.ExactoUtf8::fromCodepoint(0x00F3).'rdenes - Exacto';
+        $pageTitle = 'Historial PDF '.AnluxUtf8::fromCodepoint(0x00F3).'rdenes - Anlux';
         $pageHeadExtra = '';
 
         return view('orders.historial_page', compact(

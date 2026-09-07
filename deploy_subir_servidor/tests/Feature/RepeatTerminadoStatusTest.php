@@ -33,7 +33,7 @@ final class RepeatTerminadoStatusTest extends TestCase
             ]),
         ]);
         config([
-            'exacto.whatsapp_notifications_enabled' => true,
+            'anlux.whatsapp_notifications_enabled' => true,
             'services.whatsapp.enabled' => true,
             'services.whatsapp.base_url' => 'https://graph.facebook.com',
             'services.whatsapp.graph_version' => 'v20.0',

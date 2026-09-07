@@ -1,5 +1,5 @@
 # Hosting: si el Document Root es la raíz del proyecto (no public/), redirige a public/
-# Subdominio recomendado: soporte.exactolp.mx → Document Root = .../public/
+# Subdominio recomendado: soporte.anlux.mx → Document Root = .../public/
 <IfModule mod_rewrite.c>
     DirectoryIndex index.php
     RewriteEngine On

@@ -1,0 +1,20 @@
+.anlux-account-switch-wrap .anlux-dot {
+    display: inline-block;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 9999px;
+    margin-right: 0.2rem;
+    vertical-align: middle;
+}
+.anlux-account-switch-wrap .anlux-dot--online { background: #16a34a; }
+.anlux-account-switch-wrap .anlux-dot--in_use { background: #ea580c; }
+.anlux-account-switch-wrap .anlux-dot--offline { background: #9ca3af; }
+.anlux-account-switch-wrap .anlux-dot--inactive { background: #dc2626; }
+.anlux-account-switch { color: #1e3a8a; background-color: #fff; }
+.anlux-account-switch option { color: #1e3a8a; background-color: #fff; }
+.anlux-account-switch option.anlux-opt-online { color: #166534; font-weight: 600; }
+.anlux-account-switch option.anlux-opt-in_use { color: #c2410c; font-weight: 600; }
+.anlux-account-switch option.anlux-opt-offline { color: #6b7280; }
+.anlux-account-switch option.anlux-opt-inactive { color: #991b1b; }
+.anlux-account-switch option.anlux-opt-self { color: #1d4ed8; font-style: italic; }
+.anlux-account-switch option:disabled { color: #9ca3af; }

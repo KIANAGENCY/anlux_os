@@ -16,7 +16,7 @@ use App\Services\ImpersonationService;
 
 use App\Services\UserPresenceService;
 
-use App\Support\ExactoAuthContext;
+use App\Support\AnluxAuthContext;
 
 use Illuminate\Http\JsonResponse;
 
@@ -272,7 +272,7 @@ final class ImpersonationController extends Controller
 
     {
 
-        $user = ExactoAuthContext::currentUser();
+        $user = AnluxAuthContext::currentUser();
 
         abort_unless($user !== null, 403);
 

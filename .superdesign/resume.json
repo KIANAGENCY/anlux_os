@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "delivery-signature-modal": {
+      "targetKind": "existing-ui",
+      "projectId": "975f21f2-d3af-40ec-86af-9cac4de0a902",
+      "baselineDraftId": "4c6090d2-7b06-4cdd-8147-1fbeeed2ec17",
+      "activeDraftId": "72fe2c32-d9b5-46df-86d8-a88cc16c5a80",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "a98623ac-60b9-41bf-aaf4-6396d7bd1c23"
+      ],
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "resources/views/orders/orden_form.blade.php:1808:1885",
+        "resources/views/layouts/anlux_app.blade.php",
+        "public/legacy/assets/css/app.css",
+        "tailwind.config.js"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "5241f810ffa2f64d47b83ea3557716a733e79606bc19223abc4782479f944dc3",
+        "resources/views/orders/orden_form.blade.php": "02e875603ac23597101c31fc888206134dde03d7b0ec53ff605749e3028bf507",
+        "resources/views/layouts/anlux_app.blade.php": "e231cdce8e13f17967a784328615ba4b641cb077e96f85719accc7ccf72472cd",
+        "public/legacy/assets/css/app.css": "ef82408160bfa6118c944248a88d5f025b76de305d95e12a858922a11662ba56",
+        "tailwind.config.js": "c57c50e5816a545cbc8b412239f01fb7df1a212abec635eb000c06b6e66688fa"
+      },
+      "components": [],
+      "drafts": {
+        "4c6090d2-7b06-4cdd-8147-1fbeeed2ec17": {
+          "title": "Modal actual - Firmas de Entrega",
+          "visualDirection": "reproducción fiel del modal actual",
+          "currentVersion": 1
+        },
+        "72fe2c32-d9b5-46df-86d8-a88cc16c5a80": {
+          "title": "Firmas de Entrega - Compacto y operativo",
+          "visualDirection": "modal compacto con selector segmentado y tarjetas de firma",
+          "parentDraftId": "4c6090d2-7b06-4cdd-8147-1fbeeed2ec17",
+          "currentVersion": 1
+        },
+        "1bbd29f8-36ee-4a39-ac1a-57875bb2de65": {
+          "title": "Firmas de Entrega - Entrega guiada",
+          "visualDirection": "flujo guiado con opciones de receptor y contexto destacado",
+          "parentDraftId": "4c6090d2-7b06-4cdd-8147-1fbeeed2ec17",
+          "currentVersion": 1
+        }
+      },
+      "updatedAt": "2026-08-21T20:01:53Z"
+    },
+    "admin-shell": {
+      "targetKind": "existing-ui",
+      "projectId": "9f25f4de-aced-4414-87b2-17e9f39c226f",
+      "baselineDraftId": "5ec488d3-8bc9-4142-a2dc-57fbf76b432b",
+      "activeDraftId": "f7992e44-5d1b-45bf-b4b8-1793c70a9474",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "public-legacy-public-img-logo.jpeg"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "public-legacy-public-img-logo.jpeg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/9f25f4de-aced-4414-87b2-17e9f39c226f/brand-assets/public-legacy-public-img-logo.jpeg/logo.jpeg",
+          "sourcePath": "public/legacy/public/img/logo.jpeg"
+        }
+      },
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "resources/css/app.css",
+        "tailwind.config.js",
+        "resources/js/shared/nav/NavAdminBar.tsx",
+        "resources/js/shared/nav/AccountSwitch.tsx",
+        "resources/js/shared/nav/ImpersonationEngine.tsx",
+        "resources/js/shared/nav/ui.tsx",
+        "resources/js/admin/index/App.tsx"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "7758e9aac6dfc8e000a98e45563c0b2f86a7465554d47b08bf6084948bfedd63",
+        "resources/css/app.css": "cc1a7ad0d019ddb1d32d0ecb588ba0ac26ce41d8625dd6c366348b25f83a28ec",
+        "tailwind.config.js": "2dc47d9ed4baae142e8965a9884a92111aea793f70a2432271d64ebf9ea58a21",
+        "resources/js/shared/nav/NavAdminBar.tsx": "5e03c03d33792bff07593b43c5e28608fa81f11485ea7be56c1237c65de65a0e",
+        "resources/js/shared/nav/AccountSwitch.tsx": "3d6fcf88db580155d4e9a5295c867f84b5de6cac0cfbe78fd9a9fae27a33fd95",
+        "resources/js/shared/nav/ImpersonationEngine.tsx": "ac885bb759b3ad30a77cd96e00eda0edf3a9a8256a29dcaec8042f2f69046265",
+        "resources/js/shared/nav/ui.tsx": "ae9ffd9c7bc605eb62d70021764678f766ba3bbd6a7c20921f7a7eca0c4d8ea2",
+        "resources/js/admin/index/App.tsx": "88f727c22a0f658afae3d3be548d43f70f163e53d56c0bd62606cce411d26799"
+      },
+      "components": [
+        {
+          "name": "AdminShell",
+          "id": "607a47ec-8d55-4f91-9ba5-6d6e3423cf12",
+          "sourcePath": "resources/js/shared/nav/NavAdminBar.tsx",
+          "logoAssetKey": "public-legacy-public-img-logo.jpeg"
+        }
+      ],
+      "drafts": {
+        "5ec488d3-8bc9-4142-a2dc-57fbf76b432b": {
+          "title": "Panel de administrador — Anlux OS",
+          "visualDirection": "reproducción estructural del panel actual",
+          "currentVersion": 1
+        },
+        "f7992e44-5d1b-45bf-b4b8-1793c70a9474": {
+          "title": "Panel operativo de administrador — Anlux OS",
+          "visualDirection": "shell operativo azul Anlux, estable y denso",
+          "parentDraftId": "5ec488d3-8bc9-4142-a2dc-57fbf76b432b",
+          "currentVersion": 1
+        }
+      },
+      "updatedAt": "2026-09-06T00:00:00-06:00"
+    }
+  }
+}

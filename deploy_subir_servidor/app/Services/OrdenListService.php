@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
-use App\Support\ExactoAuthContext;
+use App\Support\AnluxAuthContext;
 use App\Support\OrderStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -14,7 +14,7 @@ use RuntimeException;
 final class OrdenListService
 {
     public function __construct(
-        private readonly ExactoVaultService $vault,
+        private readonly AnluxVaultService $vault,
         private readonly OrdenPolicyService $policy
     ) {}
 
@@ -208,7 +208,7 @@ final class OrdenListService
         $sql .= ' ORDER BY '.$orderBy.' LIMIT '.(int) $perPage.' OFFSET '.(int) $offset;
         $rows = DB::select($sql, $params);
 
-        $lockUserId = ExactoAuthContext::editLockUserId();
+        $lockUserId = AnluxAuthContext::editLockUserId();
 
         foreach ($rows as &$rowOrden) {
             $r = (array) $rowOrden;

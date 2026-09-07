@@ -1,13 +1,17 @@
 @extends('layouts.legal')
 
 @section('content')
+    @php
+        $empresa = config('anlux.company_legal_name', 'La empresa titular del sistema');
+        $producto = config('app.name', 'Anlux');
+    @endphp
     <h1>Terminos y condiciones</h1>
     <p class="legal-updated">Ultima actualizacion: {{ now()->format('d/m/Y') }}</p>
 
     <p>
-        Los presentes terminos regulan el acceso y uso del sistema <strong>Exacto</strong>,
-        plataforma interna para la gestion de ordenes de servicio, administracion operativa
-        y comunicacion con clientes de <strong>Expertos en Administracion y en Computo, S.A. de C.V.</strong>
+        Los presentes terminos regulan el acceso y uso del sistema <strong>{{ $producto }}</strong>,
+        plataforma para la gestion de ordenes de servicio, administracion operativa
+        y comunicacion con clientes de <strong>{{ $empresa }}</strong>
         (en adelante, &laquo;la Empresa&raquo;), disponible en
         <strong>{{ config('app.url') }}</strong>.
     </p>
@@ -19,7 +23,7 @@
     </p>
 
     <h2>2. Uso autorizado</h2>
-    <p>Exacto es de <strong>uso interno y profesional</strong>. Solo pueden utilizarlo:</p>
+    <p>{{ $producto }} es de <strong>uso interno y profesional</strong>. Solo pueden utilizarlo:</p>
     <ul>
         <li>Personal autorizado por la Empresa (tecnicos, administradores y cuentas registradas).</li>
         <li>Usuarios con credenciales validas emitidas por un administrador del sistema.</li>
@@ -38,44 +42,31 @@
         <li>Administracion de usuarios, seguridad y catalogos internos.</li>
     </ul>
 
-    <h2>4. Comunicaciones por WhatsApp</h2>
-    <p>
-        Las notificaciones y mensajes enviados por WhatsApp se realizan conforme a las politicas de
-        Meta/WhatsApp Business y con consentimiento previo del cliente cuando corresponda.
-        El personal autorizado debe utilizar el chat unicamente para fines de soporte y seguimiento
-        vinculados a ordenes de servicio.
-    </p>
-
-    <h2>5. Responsabilidades del usuario</h2>
+    <h2>4. Responsabilidades del usuario</h2>
+    <p>El usuario se compromete a:</p>
     <ul>
-        <li>Mantener la confidencialidad de sus credenciales de acceso.</li>
-        <li>Registrar informacion veraz y actualizada en las ordenes de servicio.</li>
-        <li>No intentar vulnerar, copiar indebidamente o interferir con el funcionamiento del sistema.</li>
-        <li>Cumplir la legislacion aplicable en materia de proteccion de datos personales.</li>
+        <li>Proporcionar informacion veraz y actualizada.</li>
+        <li>Custodiar sus credenciales de acceso.</li>
+        <li>Usar el sistema conforme a las politicas internas de la Empresa y la legislacion aplicable.</li>
     </ul>
 
-    <h2>6. Propiedad intelectual</h2>
+    <h2>5. Disponibilidad y cambios</h2>
     <p>
-        El software, diseno, logotipos, bases de datos y contenidos del sistema son propiedad de la Empresa
-        o de sus licenciantes. No se concede ninguna licencia de uso mas alla del acceso operativo autorizado.
+        La Empresa puede modificar, suspender o interrumpir temporalmente el servicio por mantenimiento,
+        mejoras o causas de fuerza mayor. Tambien puede actualizar estos terminos; la version vigente
+        sera la publicada en esta pagina.
     </p>
 
-    <h2>7. Limitacion de responsabilidad</h2>
+    <h2>6. Limitacion de responsabilidad</h2>
     <p>
-        La Empresa procurara mantener la disponibilidad del sistema, pero no garantiza operacion ininterrumpida.
-        No sera responsable por fallas de terceros (hosting, Meta/WhatsApp, proveedores de correo) ni por
-        uso indebido del sistema por parte de usuarios no autorizados.
+        En la medida permitida por la ley, la Empresa no sera responsable por danos indirectos,
+        lucro cesante o perdida de datos derivados del uso o imposibilidad de uso del sistema,
+        salvo dolo o negligencia grave.
     </p>
 
-    <h2>8. Modificaciones</h2>
+    <h2>7. Contacto</h2>
     <p>
-        La Empresa puede actualizar estos terminos en cualquier momento. Las versiones vigentes se publicaran
-        en esta pagina. El uso continuado del sistema implica la aceptacion de los cambios.
-    </p>
-
-    <h2>9. Contacto</h2>
-    <p>
-        Para dudas sobre estos terminos puede contactarnos a traves de los canales oficiales de la Empresa
-        o del administrador del sistema Exacto.
+        Para dudas sobre estos terminos, contacte al administrador de {{ $producto }} o a la Empresa
+        a traves de los canales oficiales publicados en el sistema.
     </p>
 @endsection

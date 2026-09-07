@@ -52,7 +52,7 @@ final class AdminUsersController extends Controller
         }
 
         return view('admin.users', [
-            'pageTitle' => 'Tabla de usuarios - Exacto',
+            'pageTitle' => 'Tabla de usuarios - Anlux',
             'nombreTecnico' => htmlspecialchars((string) (session('nombre_tecnico') ?? $user->nombre_tecnico ?? ''), ENT_QUOTES, 'UTF-8'),
             'nav_admin_activo' => 'usuarios',
             'tieneNombreUsuario' => Schema::hasColumn('login', 'nombre_usuario'),

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Services\ExactoVaultService;
+use App\Services\AnluxVaultService;
 use App\Services\EquipoEntregaResolver;
 use App\Services\FolioSequenceService;
 use App\Services\OrdenEditLockService;
@@ -12,7 +12,7 @@ use App\Services\OrdenPolicyService;
 use App\Services\PdfCondicionesService;
 use App\Services\RegistrarOrdenService;
 use App\Services\SersopCatalogService;
-use App\Support\ExactoAuthContext;
+use App\Support\AnluxAuthContext;
 use App\Support\MaterialesOrdenClassifier;
 use App\Support\OrderStatus;
 use App\Support\TipoServicioCatalog;
@@ -25,7 +25,7 @@ use Illuminate\View\View;
 class OrderFormController extends Controller
 {
     public function __construct(
-        private readonly ExactoVaultService $vault,
+        private readonly AnluxVaultService $vault,
         private readonly OrdenPolicyService $policy,
         private readonly SersopCatalogService $sersopCatalog,
         private readonly PdfCondicionesService $pdfCondiciones,
@@ -71,7 +71,7 @@ class OrderFormController extends Controller
 
     private function renderForm(Request $request, int $idEditar): View|RedirectResponse
     {
-        $user = ExactoAuthContext::currentUser();
+        $user = AnluxAuthContext::currentUser();
         abort_unless($user !== null, 403);
 
         if ($request->routeIs('orden_servicio.create') && $request->filled('id')) {
@@ -109,7 +109,7 @@ class OrderFormController extends Controller
                 }
                 // Quien abre la orden queda en Involucrados (si no es el mismo del último registro).
                 try {
-                    $nombreApertura = ExactoAuthContext::nombreTecnicoSesionActual($user);
+                    $nombreApertura = AnluxAuthContext::nombreTecnicoSesionActual($user);
                     if ($nombreApertura !== '') {
                         $this->registrarOrden->registrarInvolucradoSiCambio(
                             $idEditar,
@@ -340,20 +340,20 @@ class OrderFormController extends Controller
         $nombreTecnico = htmlspecialchars((string) (session('nombre_tecnico') ?? $user->nombre_tecnico ?? ''), ENT_QUOTES, 'UTF-8');
 
         $pageTitle = $soloLecturaEntregado
-            ? 'Orden entregada (solo lectura) - Exacto'
-            : ($modoSoloCompletar ? 'Completar orden - Exacto' : 'Orden de Servicio Técnico - Exacto');
+            ? 'Orden entregada (solo lectura) - Anlux'
+            : ($modoSoloCompletar ? 'Completar orden - Anlux' : 'Orden de Servicio Técnico - Anlux');
         $pageHeadExtra = '
     <script>
-        window.EXACTO_ORDEN_FIRMAS_DESHABILITADAS = '.(! empty($firmasDeshabilitadas) ? 'true' : 'false').';
-        window.EXACTO_ORDEN_SOLO_LECTURA = '.($soloLecturaEntregado ? 'true' : 'false').';
-        window.EXACTO_ORDEN_MODO_COMPLETAR = '.($modoSoloCompletar ? 'true' : 'false').';
-        window.EXACTO_REGISTRAR_ORDEN_URL = '.json_encode($registrarOrdenUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
-        window.EXACTO_REENVIAR_URL = '.json_encode($reenviarOrdenUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
-        window.EXACTO_SALIDA_TEMPORAL_URL = '.json_encode($salidaTemporalUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
-        window.EXACTO_REGRESO_TEMPORAL_URL = '.json_encode($regresoTemporalUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
-        window.EXACTO_SALIDA_TEMPORAL_ACTIVA = '.($salidaTemporalActiva ? 'true' : 'false').';
-        window.EXACTO_SERVICIOS_SERSOP = '.json_encode($serviciosSersopActivos, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
-        window.EXACTO_TIPOS_SERVICIO = '.json_encode(TipoServicioCatalog::values(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
+        window.ANLUX_ORDEN_FIRMAS_DESHABILITADAS = '.(! empty($firmasDeshabilitadas) ? 'true' : 'false').';
+        window.ANLUX_ORDEN_SOLO_LECTURA = '.($soloLecturaEntregado ? 'true' : 'false').';
+        window.ANLUX_ORDEN_MODO_COMPLETAR = '.($modoSoloCompletar ? 'true' : 'false').';
+        window.ANLUX_REGISTRAR_ORDEN_URL = '.json_encode($registrarOrdenUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
+        window.ANLUX_REENVIAR_URL = '.json_encode($reenviarOrdenUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
+        window.ANLUX_SALIDA_TEMPORAL_URL = '.json_encode($salidaTemporalUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
+        window.ANLUX_REGRESO_TEMPORAL_URL = '.json_encode($regresoTemporalUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
+        window.ANLUX_SALIDA_TEMPORAL_ACTIVA = '.($salidaTemporalActiva ? 'true' : 'false').';
+        window.ANLUX_SERVICIOS_SERSOP = '.json_encode($serviciosSersopActivos, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
+        window.ANLUX_TIPOS_SERVICIO = '.json_encode(TipoServicioCatalog::values(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE).';
     </script>
 ';
 

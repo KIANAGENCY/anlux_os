@@ -1,4 +1,4 @@
-EXACTO — Archivos para subir al servidor
+ANLUX — Archivos para subir al servidor
 Generado: 2026-08-12
 
 CAMBIO: modo de mantenimiento controlado por administradores
@@ -24,7 +24,7 @@ resources/views/admin/index.blade.php
 resources/views/maintenance.blade.php
 app/Services/OrderWhatsappService.php
 app/Services/RegistrarOrdenService.php
-app/Console/Commands/ExactoWipeDominioCommand.php
+app/Console/Commands/AnluxWipeDominioCommand.php
 resources/views/index.blade.php
 resources/views/partials/header-flujo-tres.blade.php
 resources/views/partials/nav-app.blade.php
@@ -34,7 +34,7 @@ public/docheck.php
 database/migrations/2026_07_31_193000_drop_whatsapp_chat_tables.php
 
 (si aún no subiste el fix de técnico al conectar cuenta)
-app/Support/ExactoAuthContext.php
+app/Support/AnluxAuthContext.php
 
 ARCHIVOS A BORRAR EN EL SERVIDOR (si existen)
 --------------------------------------------

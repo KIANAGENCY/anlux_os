@@ -24,7 +24,7 @@ class CatalogoSersopController extends Controller
 
     public function index(): View
     {
-        $guest = (bool) config('exacto.catalogo_sersop_guest');
+        $guest = (bool) config('anlux.catalogo_sersop_guest');
         $user = Auth::user();
         if (! $guest) {
             abort_unless($user, 403);
@@ -53,7 +53,7 @@ class CatalogoSersopController extends Controller
         }
 
         return view('admin.catalogo_sersop', [
-            'pageTitle' => 'Catálogo SERSOP - Exacto',
+            'pageTitle' => 'Catálogo SERSOP - Anlux',
             'nombreTecnico' => htmlspecialchars((string) $nombre, ENT_QUOTES, 'UTF-8'),
             'nav_admin_activo' => 'catalogo_sersop',
             'catalogo' => $catalogo,
@@ -150,7 +150,7 @@ class CatalogoSersopController extends Controller
 
     public function syncPreciosSinIva(): RedirectResponse
     {
-        $guest = (bool) config('exacto.catalogo_sersop_guest');
+        $guest = (bool) config('anlux.catalogo_sersop_guest');
         $user = Auth::user();
         if (! $guest) {
             abort_unless($user instanceof User && $this->policy->userIsAdmin($user), 403);

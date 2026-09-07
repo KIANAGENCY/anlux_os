@@ -1,29 +1,34 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Profile') }}
-        </h2>
-    </x-slot>
+@extends('layouts.anlux_app')
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    @include('profile.partials.update-profile-information-form')
-                </div>
-            </div>
-
-            <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    @include('profile.partials.update-password-form')
-                </div>
-            </div>
-
-            <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    @include('profile.partials.delete-user-form')
-                </div>
-            </div>
-        </div>
+@section('content')
+<body class="bg-blue-50">
+    @php
+        $nombreTecnico = session('nombre_tecnico') ?: ($user->nombre_tecnico ?? '');
+    @endphp
+    <div class="mx-auto max-w-5xl px-3 py-4 sm:px-6">
+        @include('partials.nav-app')
+        <div id="profile-react-root"></div>
     </div>
-</x-app-layout>
+    <script type="application/json" id="react-page-props">
+        {!! json_encode([
+            'csrf' => csrf_token(),
+            'name' => old('name', $user->name ?? $user->nombre_tecnico ?? ''),
+            'email' => old('email', $user->email ?? $user->correo ?? ''),
+            'profileAction' => route('profile.update'),
+            'passwordAction' => route('password.update'),
+            'destroyAction' => route('profile.destroy'),
+            'ordenesUrl' => route('ordenes.index'),
+            'status' => session('status'),
+            'errors' => [
+                'name' => $errors->first('name') ?: null,
+                'email' => $errors->first('email') ?: null,
+                'current_password' => optional($errors->getBag('updatePassword'))->first('current_password') ?: null,
+                'password' => optional($errors->getBag('updatePassword'))->first('password') ?: null,
+                'password_confirmation' => optional($errors->getBag('updatePassword'))->first('password_confirmation') ?: null,
+                'delete_password' => optional($errors->getBag('userDeletion'))->first('password') ?: null,
+            ],
+        ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}
+    </script>
+    @vite(['resources/js/profile/main.tsx'])
+</body>
+@endsection

@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 /**
- * Genera docs/Informe_Global_Practicas_Exacto.docx
+ * Genera docs/Informe_Global_Practicas_Anlux.docx
  * Ejecutar: php scripts/generar-informe-global.php
  */
 
 $root = dirname(__DIR__);
-$outFile = $root.DIRECTORY_SEPARATOR.'docs'.DIRECTORY_SEPARATOR.'Informe_Global_Practicas_Exacto.docx';
+$outFile = $root.DIRECTORY_SEPARATOR.'docs'.DIRECTORY_SEPARATOR.'Informe_Global_Practicas_Anlux.docx';
 
 if (! is_dir(dirname($outFile))) {
     mkdir(dirname($outFile), 0755, true);
@@ -85,7 +85,7 @@ $body .= headingXml('1.- NOMBRE DE LA EMPRESA:', 1);
 $body .= fieldLineXml('DOMICILIO:', 'Los Cabos, Baja California Sur, México.');
 $body .= fieldLineXml('SERVICIOS QUE PRESTA (LA EMPRESA):', 'Reparación y mantenimiento de equipos de cómputo, venta de refacciones, desarrollo de software a la medida y soporte técnico especializado para empresas y particulares de la región.');
 $body .= paragraphXml('');
-$body .= fieldLineXml('NOMBRE DE LA EMPRESA:', 'Expertos en Administración y en Cómputo, S.A. de C.V. (Exacto LP).');
+$body .= fieldLineXml('NOMBRE DE LA EMPRESA:', 'Anlux.');
 $body .= fieldLineXml('NOMBRE DEL ALUMNO:', '[Completar con su nombre]');
 $body .= fieldLineXml('NÚMERO DE CONTROL:', '[Completar]');
 $body .= fieldLineXml('ESPECIALIDAD:', 'Técnico en Programación');
@@ -97,16 +97,16 @@ $body .= pageBreakXml();
 // Sección 2 — Presentación
 $body .= headingXml('2.- PRESENTACIÓN (INTRODUCCIÓN)', 1);
 $body .= paragraphXml(
-    'El presente informe global documenta las actividades desarrolladas durante las prácticas profesionales realizadas en Expertos en Administración y en Cómputo, S.A. de C.V., conocida comercialmente como Exacto LP, empresa dedicada al servicio técnico de equipos de cómputo y al desarrollo de soluciones informáticas para la gestión de su operación diaria.'
+    'El presente informe global documenta las actividades desarrolladas durante las prácticas profesionales realizadas en Anlux, conocida comercialmente como Anlux, empresa dedicada al servicio técnico de equipos de cómputo y al desarrollo de soluciones informáticas para la gestión de su operación diaria.'
 );
 $body .= paragraphXml(
-    'La práctica se enmarca en el proyecto de modernización del sistema interno Exacto, plataforma utilizada por los técnicos del taller para registrar órdenes de servicio, dar seguimiento al estatus de reparaciones, generar comprobantes en PDF y comunicarse con los clientes. Históricamente, el sistema operaba sobre PHP tradicional con arquitectura monolítica; a partir del 30 de marzo de 2026 se inició formalmente la migración y ampliación del mismo hacia el framework Laravel, con despliegue en el subdominio soporte.exactolp.mx, con el fin de mejorar la seguridad, el mantenimiento del código y la capacidad de integración con servicios externos como correo electrónico y WhatsApp Business.'
+    'La práctica se enmarca en el proyecto de modernización del sistema interno Anlux, plataforma utilizada por los técnicos del taller para registrar órdenes de servicio, dar seguimiento al estatus de reparaciones, generar comprobantes en PDF y comunicarse con los clientes. Históricamente, el sistema operaba sobre PHP tradicional con arquitectura monolítica; a partir del 30 de marzo de 2026 se inició formalmente la migración y ampliación del mismo hacia el framework Laravel, con despliegue en el subdominio soporte.anlux.mx, con el fin de mejorar la seguridad, el mantenimiento del código y la capacidad de integración con servicios externos como correo electrónico y WhatsApp Business.'
 );
 $body .= paragraphXml(
     'Durante el periodo de práctica se trabajó de manera colaborativa con el asesor empresarial y el equipo técnico de la empresa, aplicando conocimientos adquiridos en el bachillerato tecnológico en materias como programación orientada a objetos, bases de datos, redes de computadoras y desarrollo web. El entorno de desarrollo local se configuró con Laragon en Windows, utilizando PHP 8.3, MySQL, Composer y Git para el control de versiones. La base de datos existente del sistema legacy se conservó para garantizar continuidad operativa y compatibilidad con los registros históricos de órdenes de servicio.'
 );
 $body .= paragraphXml(
-    'El proyecto Exacto Laravel representa una evolución significativa respecto al sistema anterior. Se adoptaron patrones de diseño propios del ecosistema Laravel —controladores, servicios, políticas, jobs en cola, migraciones y vistas Blade— manteniendo la interfaz familiar para los técnicos mediante la reutilización selectiva de activos JavaScript y CSS del sistema previo. Esta estrategia de migración gradual, documentada en el plan de cutover del proyecto, permitió validar cada módulo antes de su uso en producción y contar con un mecanismo de rollback en caso de incidencias.'
+    'El proyecto Anlux Laravel representa una evolución significativa respecto al sistema anterior. Se adoptaron patrones de diseño propios del ecosistema Laravel —controladores, servicios, políticas, jobs en cola, migraciones y vistas Blade— manteniendo la interfaz familiar para los técnicos mediante la reutilización selectiva de activos JavaScript y CSS del sistema previo. Esta estrategia de migración gradual, documentada en el plan de cutover del proyecto, permitió validar cada módulo antes de su uso en producción y contar con un mecanismo de rollback en caso de incidencias.'
 );
 $body .= paragraphXml(
     'A lo largo de las semanas de trabajo se abordaron módulos críticos para la operación del taller: autenticación de personal, captura y edición de órdenes, listado con filtros, historial de servicios, generación de PDF, panel de administración, notificaciones automáticas y un módulo de soporte por WhatsApp. Asimismo, se elaboraron páginas legales exigidas por Meta para la integración con WhatsApp Cloud API, y se documentó el proceso de despliegue en hosting compartido con cPanel. Este informe sintetiza el alcance, las actividades, los resultados y las conclusiones de dicho proyecto.'
@@ -115,7 +115,7 @@ $body .= paragraphXml(
 // Sección 3 — Objetivo y periodo
 $body .= headingXml('3.- OBJETIVO DE LA PRÁCTICA', 1);
 $body .= paragraphXml(
-    'El objetivo general de la práctica profesional consistió en participar en el desarrollo, migración y puesta en operación del sistema web Exacto sobre Laravel, contribuyendo a la digitalización y mejora de los procesos de gestión de órdenes de servicio de la empresa Exacto LP.'
+    'El objetivo general de la práctica profesional consistió en participar en el desarrollo, migración y puesta en operación del sistema web Anlux sobre Laravel, contribuyendo a la digitalización y mejora de los procesos de gestión de órdenes de servicio de la empresa Anlux.'
 );
 $body .= paragraphXml(
     'Los objetivos específicos fueron los siguientes:'
@@ -127,7 +127,7 @@ $body .= paragraphXml(
     ."• Integrar la generación de comprobantes PDF y su visualización en línea desde el navegador.\n"
     ."• Configurar notificaciones automáticas por correo electrónico y WhatsApp al cambiar el estatus de una orden (Recepción, Terminado, Entregado).\n"
     ."• Implementar el módulo de chat de soporte WhatsApp para que los técnicos respondan mensajes de clientes desde el sistema.\n"
-    ."• Desplegar la aplicación en el entorno de producción soporte.exactolp.mx y documentar procedimientos operativos."
+    ."• Desplegar la aplicación en el entorno de producción soporte.anlux.mx y documentar procedimientos operativos."
 );
 $body .= headingXml('PERÍODO DE REALIZACIÓN', 2);
 $body .= paragraphXml(
@@ -149,7 +149,7 @@ $body .= paragraphXml(
 );
 $body .= headingXml('4.1 Migración de PHP legacy a Laravel', 2);
 $body .= paragraphXml(
-    'Se analizó el código fuente del sistema PHP anterior y se estableció una tabla de equivalencias entre rutas legacy (ordenes.php, orden_servicio.php, historial_ordenes.php, admin_destino.php, entre otras) y las nuevas rutas Laravel (/ordenes, /orden_servicio, /historial, /admin). Se configuraron variables de entorno EXACTO_* para el cutover gradual, incluyendo banner informativo para usuarios y enlace de escape hacia el sistema anterior durante la fase piloto. Se preservó la compatibilidad con la cookie «recordar» del login legacy mediante LegacyRememberMiddleware.'
+    'Se analizó el código fuente del sistema PHP anterior y se estableció una tabla de equivalencias entre rutas legacy (ordenes.php, orden_servicio.php, historial_ordenes.php, admin_destino.php, entre otras) y las nuevas rutas Laravel (/ordenes, /orden_servicio, /historial, /admin). Se configuraron variables de entorno ANLUX_* para el cutover gradual, incluyendo banner informativo para usuarios y enlace de escape hacia el sistema anterior durante la fase piloto. Se preservó la compatibilidad con la cookie «recordar» del login legacy mediante LegacyRememberMiddleware.'
 );
 $body .= headingXml('4.2 Gestión de órdenes de servicio', 2);
 $body .= paragraphXml(
@@ -157,7 +157,7 @@ $body .= paragraphXml(
 );
 $body .= headingXml('4.3 Seguridad y cifrado de datos sensibles', 2);
 $body .= paragraphXml(
-    'Se integró ExactoVaultService para cifrar en reposo el teléfono y domicilio del cliente mediante prefijo v1: en base de datos, utilizando secreto configurado en .env (EXACTO_TELEFONO_SECRET). Se implementaron políticas de acceso (OrdenPolicyService, OrderPolicy), middleware de cabeceras de seguridad, registro de actividad en SecurityActivityLogger y módulo de seguridad en /admin/seguridad. Se desarrolló OrdenEditLockService para evitar que dos técnicos editen la misma orden simultáneamente, con heartbeat y liberación de bloqueo vía API.'
+    'Se integró AnluxVaultService para cifrar en reposo el teléfono y domicilio del cliente mediante prefijo v1: en base de datos, utilizando secreto configurado en .env (ANLUX_TELEFONO_SECRET). Se implementaron políticas de acceso (OrdenPolicyService, OrderPolicy), middleware de cabeceras de seguridad, registro de actividad en SecurityActivityLogger y módulo de seguridad en /admin/seguridad. Se desarrolló OrdenEditLockService para evitar que dos técnicos editen la misma orden simultáneamente, con heartbeat y liberación de bloqueo vía API.'
 );
 $body .= headingXml('4.4 Generación de PDF e historial', 2);
 $body .= paragraphXml(
@@ -173,27 +173,27 @@ $body .= paragraphXml(
 );
 $body .= headingXml('4.7 Administración y despliegue', 2);
 $body .= paragraphXml(
-    'El panel /admin concentra el registro de nuevos técnicos (AdminRegistroController), gestión de usuarios con cambio de contraseña y activación/desactivación (AdminUsersController), catálogo SERSOP de tipos de servicio (CatalogoSersopController) y consulta de actividad de seguridad. Se documentó el despliegue en cPanel (OPERACION_EXACTO.md): subdominio soporte.exactolp.mx, document root en public/, migraciones, worker de colas y cron para queue:work. Se publicaron páginas legales (/terminos-y-condiciones, /aviso-de-privacidad, /eliminar-datos) requeridas para la revisión de la aplicación en Meta.'
+    'El panel /admin concentra el registro de nuevos técnicos (AdminRegistroController), gestión de usuarios con cambio de contraseña y activación/desactivación (AdminUsersController), catálogo SERSOP de tipos de servicio (CatalogoSersopController) y consulta de actividad de seguridad. Se documentó el despliegue en cPanel (OPERACION_ANLUX.md): subdominio soporte.anlux.mx, document root en public/, migraciones, worker de colas y cron para queue:work. Se publicaron páginas legales (/terminos-y-condiciones, /aviso-de-privacidad, /eliminar-datos) requeridas para la revisión de la aplicación en Meta.'
 );
 $body .= pageBreakXml();
 
 // Sección 5 — Metas
 $body .= headingXml('5.- METAS ALCANZADAS', 1);
 $body .= paragraphXml(
-    'Al término del periodo de prácticas se cumplieron las metas planificadas para la primera fase del proyecto Exacto Laravel. A continuación se detalla el grado de cumplimiento de cada meta:'
+    'Al término del periodo de prácticas se cumplieron las metas planificadas para la primera fase del proyecto Anlux Laravel. A continuación se detalla el grado de cumplimiento de cada meta:'
 );
 $body .= paragraphXml(
-    "• Meta 1 — Sistema operativo en Laravel: CUMPLIDA. El front principal del taller funciona en soporte.exactolp.mx con login, listado, captura, historial y PDF.\n"
+    "• Meta 1 — Sistema operativo en Laravel: CUMPLIDA. El front principal del taller funciona en soporte.anlux.mx con login, listado, captura, historial y PDF.\n"
     ."• Meta 2 — Compatibilidad con base de datos legacy: CUMPLIDA. Las órdenes históricas y la tabla login se reutilizan sin pérdida de información; los técnicos existentes acceden con sus credenciales.\n"
-    ."• Meta 3 — Cifrado de datos sensibles: CUMPLIDA. Teléfono y domicilio del cliente se almacenan cifrados cuando EXACTO_TELEFONO_SECRET está configurado.\n"
+    ."• Meta 3 — Cifrado de datos sensibles: CUMPLIDA. Teléfono y domicilio del cliente se almacenan cifrados cuando ANLUX_TELEFONO_SECRET está configurado.\n"
     ."• Meta 4 — Notificaciones por correo en cola: CUMPLIDA. Los correos de cambio de estatus se encolan y no bloquean el guardado de la orden.\n"
     ."• Meta 5 — Integración WhatsApp (envío automático): CUMPLIDA a nivel de software. El código, plantillas, colas y PDF firmado están listos; el envío en producción depende de que el hosting habilite salida HTTPS hacia graph.facebook.com (bloqueo de red identificado y documentado).\n"
     ."• Meta 6 — Chat de soporte WhatsApp: CUMPLIDA. Los técnicos reciben y responden mensajes de clientes desde /soporte/whatsapp con actualización automática y avisos en navbar.\n"
     ."• Meta 7 — Panel de administración: CUMPLIDA. Registro de técnicos, usuarios, catálogo y seguridad operativos con control de rol admin.\n"
-    ."• Meta 8 — Documentación operativa: CUMPLIDA. Se elaboraron OPERACION_EXACTO.md, MIGRATION_CUTOVER.md y documentos de diagnóstico WhatsApp para el equipo y el proveedor de hosting."
+    ."• Meta 8 — Documentación operativa: CUMPLIDA. Se elaboraron OPERACION_ANLUX.md, MIGRATION_CUTOVER.md y documentos de diagnóstico WhatsApp para el equipo y el proveedor de hosting."
 );
 $body .= paragraphXml(
-    'Como evidencia tangible del avance, el sistema procesó órdenes de prueba en producción (folios OS-2026-020, 021, 022 y posteriores), validando el flujo completo de registro, cambio de estatus y encolado de notificaciones. Las pruebas automatizadas de Laravel (php artisan test) se ejecutaron en el entorno de desarrollo para validar controladores críticos como WhatsappWebhookController. La interfaz de usuario fue refinada con modales propios (exactoUiModal), firma digital en canvas y estilos responsivos en las vistas principales.'
+    'Como evidencia tangible del avance, el sistema procesó órdenes de prueba en producción (folios OS-2026-020, 021, 022 y posteriores), validando el flujo completo de registro, cambio de estatus y encolado de notificaciones. Las pruebas automatizadas de Laravel (php artisan test) se ejecutaron en el entorno de desarrollo para validar controladores críticos como WhatsappWebhookController. La interfaz de usuario fue refinada con modales propios (anluxUiModal), firma digital en canvas y estilos responsivos en las vistas principales.'
 );
 $body .= paragraphXml(
     'En el ámbito formativo, la práctica permitió consolidar competencias del perfil de egreso del técnico en programación: análisis de requerimientos, modelado de datos, programación backend con PHP y Laravel, consumo e implementación de APIs REST, integración con servicios de terceros (Meta WhatsApp Cloud API), manejo de colas y jobs asíncronos, y despliegue en servidor web con restricciones de hosting compartido. Asimismo, se fortalecieron habilidades transversales como la documentación técnica, la comunicación con el asesor empresarial y la resolución sistemática de incidentes en producción.'
@@ -203,7 +203,7 @@ $body .= pageBreakXml();
 // Sección 6 — Conclusiones
 $body .= headingXml('6.- CONCLUSIONES', 1);
 $body .= paragraphXml(
-    'La práctica profesional en Exacto LP constituyó una experiencia formativa de alto valor, al participar en un proyecto real de migración y modernización de un sistema de gestión que soporta la operación diaria de un taller de servicio técnico. El trabajo iniciado el 30 de marzo de 2026 evolucionó desde el análisis del sistema legacy hasta un despliegue funcional en producción, abarcando módulos de negocio, seguridad, comunicación con clientes y administración.'
+    'La práctica profesional en Anlux constituyó una experiencia formativa de alto valor, al participar en un proyecto real de migración y modernización de un sistema de gestión que soporta la operación diaria de un taller de servicio técnico. El trabajo iniciado el 30 de marzo de 2026 evolucionó desde el análisis del sistema legacy hasta un despliegue funcional en producción, abarcando módulos de negocio, seguridad, comunicación con clientes y administración.'
 );
 $body .= paragraphXml(
     'La adopción de Laravel como framework principal demostró ser una decisión acertada para la empresa: el código resultante es más modular, testeable y mantenible que el PHP procedural anterior. Los servicios dedicados (RegistrarOrdenService, OrdenListService, OrderWhatsappService, WhatsappChatService, entre otros) encapsulan la lógica de negocio y facilitan futuras extensiones sin afectar la estabilidad del sistema. La estrategia de cutover gradual, con coexistencia temporal del sistema legacy, redujo el riesgo operativo y permitió validar cada entrega con usuarios reales del taller.'
@@ -218,7 +218,7 @@ $body .= paragraphXml(
     'Se recomienda para fases posteriores del proyecto: (1) migrar el hosting a un VPS o plan que permita salida HTTPS hacia Meta, para activar el envío automático de WhatsApp; (2) continuar la sustitución progresiva de JavaScript legacy por componentes modernos; (3) ampliar la cobertura de pruebas automatizadas; (4) implementar monitoreo de colas y alertas operativas; y (5) capacitar al personal en el uso del módulo de chat y las nuevas funcionalidades del panel administrativo.'
 );
 $body .= paragraphXml(
-    'En conclusión, las prácticas profesionales en Expertos en Administración y en Cómputo, S.A. de C.V. cumplieron su propósito de vincular la formación académica del CBTis 062 con la solución de problemas reales de la industria del software y los servicios de TI. El informe global aquí presentado refleja un periodo de tres meses de trabajo constante, con entregables concretos desplegados en soporte.exactolp.mx y documentación que permitirá al equipo de la empresa continuar el desarrollo y la operación del sistema Exacto con bases técnicas sólidas.'
+    'En conclusión, las prácticas profesionales en Anlux cumplieron su propósito de vincular la formación académica del CBTis 062 con la solución de problemas reales de la industria del software y los servicios de TI. El informe global aquí presentado refleja un periodo de tres meses de trabajo constante, con entregables concretos desplegados en soporte.anlux.mx y documentación que permitirá al equipo de la empresa continuar el desarrollo y la operación del sistema Anlux con bases técnicas sólidas.'
 );
 $body .= paragraphXml('');
 $body .= paragraphXml('La Paz, Baja California Sur, a 29 de junio de 2026.');

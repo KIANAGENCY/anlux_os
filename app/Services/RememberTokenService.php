@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
-use App\Support\ExactoAuthContext;
+use App\Support\AnluxAuthContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
@@ -16,7 +16,7 @@ final class RememberTokenService
 {
     private function cookieName(): string
     {
-        return (string) config('exacto.remember_cookie', 'recuerdame');
+        return (string) config('anlux.remember_cookie', 'recuerdame');
     }
 
     private function tokenPart(int $bytes = 32): string
@@ -28,7 +28,7 @@ final class RememberTokenService
     {
         $selector = $this->tokenPart(12);
         $validator = $this->tokenPart(32);
-        $expiresAt = now()->addDays((int) config('exacto.remember_days', 30))->format('Y-m-d H:i:s');
+        $expiresAt = now()->addDays((int) config('anlux.remember_days', 30))->format('Y-m-d H:i:s');
         try {
             DB::insert(
                 'INSERT INTO login_remember_tokens (selector, token_hash, id_tecnico, expires_at) VALUES (?, ?, ?, ?)',
@@ -41,7 +41,7 @@ final class RememberTokenService
         }
         $value = $selector.':'.$validator;
         $secure = app(Request::class)->secure();
-        Cookie::queue($this->cookieName(), $value, (int) config('exacto.remember_days', 30) * 24 * 60, '/', null, $secure, true, false, 'Lax');
+        Cookie::queue($this->cookieName(), $value, (int) config('anlux.remember_days', 30) * 24 * 60, '/', null, $secure, true, false, 'Lax');
     }
 
     public function forget(?string $cookieValue = null): void
@@ -101,7 +101,7 @@ final class RememberTokenService
         }
         Auth::login($user);
         Session::regenerate();
-        ExactoAuthContext::syncSessionForUser($user);
+        AnluxAuthContext::syncSessionForUser($user);
         app(UserSessionLockService::class)->ensureSessionClaimed($user, Session::getId());
         app(UserPresenceService::class)->touch($user);
         DB::delete('DELETE FROM login_remember_tokens WHERE selector = ?', [$selector]);

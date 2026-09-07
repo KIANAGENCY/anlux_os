@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Services\AnluxVaultService;
+use App\Services\BrandingService;
 use App\Services\EquipoEntregaResolver;
-use App\Services\ExactoVaultService;
 use App\Services\OrdenPolicyService;
 use App\Services\PdfCondicionesService;
+use App\Support\EquiposOrdenEntregaSchema;
 use App\Support\MaterialesOrdenClassifier;
 use App\Support\TipoServicioCatalog;
 use Dompdf\Dompdf;
@@ -22,10 +24,11 @@ use Illuminate\Support\Facades\Gate;
 class OrderPdfController extends Controller
 {
     public function __construct(
-        private readonly ExactoVaultService $vault,
+        private readonly AnluxVaultService $vault,
         private readonly OrdenPolicyService $policy,
         private readonly PdfCondicionesService $pdfCondiciones,
-        private readonly EquipoEntregaResolver $entregaResolver
+        private readonly EquipoEntregaResolver $entregaResolver,
+        private readonly BrandingService $branding,
     ) {}
 
     private function normalizeTipoServicio(string $value): string
@@ -265,8 +268,8 @@ class OrderPdfController extends Controller
             throw new \InvalidArgumentException('ID de orden inválido para PDF.');
         }
 
-        if (class_exists(\App\Support\EquiposOrdenEntregaSchema::class)) {
-            \App\Support\EquiposOrdenEntregaSchema::ensure();
+        if (class_exists(EquiposOrdenEntregaSchema::class)) {
+            EquiposOrdenEntregaSchema::ensure();
         }
 
         $orden = DB::selectOne(
@@ -566,11 +569,17 @@ class OrderPdfController extends Controller
                 .'</div>';
         }
 
-        $logoPath = public_path('legacy/public/img/logo.jpeg');
+        $logoPath = $this->branding->logoAbsolutePath();
         $logoData = '';
         if (File::exists($logoPath)) {
-            $logoData = 'data:image/jpeg;base64,'.base64_encode((string) File::get($logoPath));
+            $logoData = 'data:'.$this->branding->logoMime().';base64,'.base64_encode((string) File::get($logoPath));
         }
+        $brandColors = $this->branding->colors();
+        $brandPrimary = $brandColors['primary'];
+        $brandSecondary = $brandColors['secondary'];
+        $brandPale = $brandColors['background'];
+        $brandText = $brandColors['text'];
+        $brandFont = $this->branding->pdfFont();
 
         $obs = trim((string) ($o['observaciones'] ?? ''));
         $obsHtml = $obs !== '' ? nl2br(e($obs)) : '-';
@@ -615,21 +624,21 @@ class OrderPdfController extends Controller
 
         $html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><style>
 @page { size: letter portrait; margin: 5mm 5mm; }
-body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;text-transform:uppercase;text-align:center;margin:0;padding:0;}
+body{font-family:"'.$brandFont.'",Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;text-transform:uppercase;text-align:center;margin:0;padding:0;color:'.$brandText.';}
 .header-table{width:100%;border-collapse:collapse;margin:0 0 3px;table-layout:fixed}.header-table td{vertical-align:top;padding:0 4px 0 0}
 .header-col-logo{width:22%}.header-col-title{width:28%}.header-col-client{width:50%}
 .logo img{max-width:96px;height:auto;display:block;margin:0 auto} h1{margin:0 0 1px;font-size:13px;line-height:1.08} h2{font-size:10.5px;margin:5px 0 3px}
 .info,.section{width:100%;margin:0 0 2px;border-collapse:collapse;table-layout:fixed}.info td,.section th,.section td{border:1px solid #999;padding:1.7px 3.5px;vertical-align:middle}
 .info td,.section th,.section td{text-align:center}
-.section th{background:#e6eef7;font-size:7.8px}.td-num{text-align:center!important;white-space:nowrap}.status{display:inline-block;padding:0 3px;border-radius:2px;color:#fff;font-weight:bold;font-size:7.8px}
+.section th{background:'.$brandPale.';color:'.$brandSecondary.';font-size:7.8px}.td-num{text-align:center!important;white-space:nowrap}.status{display:inline-block;padding:0 3px;border-radius:2px;color:#fff;font-weight:bold;font-size:7.8px}
 .status-recepcion{background:#dc2626}.status-proceso{background:#ea580c}.status-terminado{background:#eab308;color:#000}.status-entregado{background:#16a34a}
 .saldo-row td{background:#dc2626;color:#fff;font-weight:bold}
 .totales-sep td{padding:0;border-left:none;border-right:none;border-top:3px solid #111;border-bottom:3px solid #111;background:#111;height:5px;line-height:0;font-size:0;}
 .totales-sep td + td{border-left:none;}
-.cond-panel{border-left:4px solid #1e3a8a;background:#dbeafe;padding:5px 8px 5px 10px;margin:6px 0 0;width:100%;max-width:100%;box-sizing:border-box;text-align:left;text-transform:uppercase}
-.cond-panel-head{color:#1e3a8a;font-weight:bold;font-size:7.6px;margin:0 0 4px;line-height:1.1;text-align:left}
-.cond-panel-icon{display:inline-block;width:9px;height:9px;line-height:9px;border-radius:50%;background:#1d4ed8;color:#fff;font-size:6px;font-weight:bold;text-align:center;font-style:normal;margin:0 4px 0 0;vertical-align:middle}
-.cond-panel-body{color:#1e40af;font-style:italic;font-size:5.9px;line-height:1.12;margin:0;padding:0}
+.cond-panel{border-left:4px solid '.$brandSecondary.';background:'.$brandPale.';padding:5px 8px 5px 10px;margin:6px 0 0;width:100%;max-width:100%;box-sizing:border-box;text-align:left;text-transform:uppercase}
+.cond-panel-head{color:'.$brandSecondary.';font-weight:bold;font-size:7.6px;margin:0 0 4px;line-height:1.1;text-align:left}
+.cond-panel-icon{display:inline-block;width:9px;height:9px;line-height:9px;border-radius:50%;background:'.$brandPrimary.';color:#fff;font-size:6px;font-weight:bold;text-align:center;font-style:normal;margin:0 4px 0 0;vertical-align:middle}
+.cond-panel-body{color:'.$brandSecondary.';font-style:italic;font-size:5.9px;line-height:1.12;margin:0;padding:0}
 .cond-par{margin:0 0 2px;padding:0}
 .cond-par:last-child{margin-bottom:0}
 .sig-outer{width:100%;max-width:100%;margin:4px 0;text-align:center}
@@ -637,7 +646,7 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;tex
 .signature-grid td{border:1px solid #999;padding:3px;vertical-align:top;width:50%;height:58px;text-align:center;box-sizing:border-box}
 .signature-grid-eq td{height:78px}
 .sig-label{height:14px;margin:2px 0 0;font-size:6.4px;line-height:1.05;overflow:hidden;text-align:center}
-.sig-equipo{margin:3px 2px 0;padding:3px 2px;border:1px solid #1e3a8a;background:#eff6ff;font-size:8px;line-height:1.2;text-align:center;font-weight:bold;color:#1e3a8a}
+.sig-equipo{margin:3px 2px 0;padding:3px 2px;border:1px solid '.$brandSecondary.';background:'.$brandPale.';font-size:8px;line-height:1.2;text-align:center;font-weight:bold;color:'.$brandSecondary.'}
 .sig-box{border:1px solid #333;height:38px;line-height:38px;padding:0;background:#fff;margin:0 auto;width:100%;max-width:100%;text-align:center;box-sizing:border-box;overflow:hidden}
 .sig-box img{display:inline-block;margin:0 auto;max-height:34px;max-width:95%;width:auto;height:auto;vertical-align:middle;object-fit:contain}
 </style></head><body><table class="header-table"><tr><td class="header-col-logo"><div class="logo">'.($logoData !== '' ? '<img src="'.$logoData.'" alt="Logo">' : '&nbsp;').'</div></td><td class="header-col-title"><h1>Orden de Servicio</h1><div><strong>Folio:</strong> '.e((string) ($o['folio'] ?? '')).'</div></td><td class="header-col-client"><div><strong>Cliente:</strong> '.$this->short((string) ($o['nombre_cliente'] ?? ''), 80).'</div><div><strong>Atención (recepción):</strong> '.$this->short($tecnicoAtiende, 55).'</div><div><strong>Entrega al cliente:</strong> '.$this->short($tecnicoEntregaPdf, 55).'</div></td></tr></table>
@@ -722,7 +731,7 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:8.1px;line-height:1.06;tex
             'X-Accel-Expires' => '0',
             'Vary' => '*',
             // Para verificar en DevTools → Network que el servidor ya tiene este PHP.
-            'X-Exacto-Pdf-Ver' => 'v35-entrega-resuelta',
+            'X-Anlux-Pdf-Ver' => 'v35-entrega-resuelta',
         ]);
         $response->headers->remove('ETag');
         $response->setPrivate();

@@ -3,13 +3,13 @@
 declare(strict_types=1);
 
 /**
- * Genera og-exacto.jpg (1200x630) con el logo centrado para Meta / Open Graph.
+ * Genera og-anlux.jpg (1200x630) con el logo centrado para Meta / Open Graph.
  * Ejecutar: php scripts/make_og_image.php
  */
 
 $imgDir = dirname(__DIR__).'/public/legacy/public/img';
 $logoPath = $imgDir.'/logo.jpeg';
-$outPath = $imgDir.'/og-exacto.jpg';
+$outPath = $imgDir.'/og-anlux.jpg';
 
 if (! is_file($logoPath)) {
     fwrite(STDERR, "No se encontro: {$logoPath}\n");

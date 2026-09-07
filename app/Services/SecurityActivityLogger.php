@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Support\ExactoAuthContext;
+use App\Support\AnluxAuthContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Schema;
@@ -17,7 +17,7 @@ final class SecurityActivityLogger
             return;
         }
 
-        $user = ExactoAuthContext::currentUser();
+        $user = AnluxAuthContext::currentUser();
         $usuario = null;
         if ($user !== null) {
             $usuario = trim((string) $user->nombre_tecnico);

@@ -24,7 +24,7 @@ final class EnsureApplicationIsAvailable
             return $next($request);
         }
 
-        if ($request->routeIs('maintenance.show', 'logout')) {
+        if ($request->routeIs('maintenance.show', 'logout', 'branding.logo')) {
             return $next($request);
         }
 

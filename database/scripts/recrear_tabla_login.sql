@@ -1,6 +1,6 @@
 -- =============================================================================
 -- RECREAR tabla login (compatible cPanel / MariaDB antiguo)
--- Base: joses16_exacto
+-- Base: anlux_os
 --
 -- Si phpMyAdmin marca error al pegar TODO junto, usa:
 --   recrear_tabla_login_paso_a_paso.sql  (un bloque por ejecución)
@@ -57,7 +57,7 @@ INSERT INTO `login` (
   1,
   'v1:2UxQTlrz+yf06TjgYMKFptKM6SELRMLwX7OOsNcEgqxOM/xH7iVfGcM=',
   'd3c5a0c27207b17c2a10c24ff907d6d5bf8bb690f847298958c96417f890c732',
-  'admin@soporte.exactolp.mx',
+  'admin@soporte.anlux.mx',
   '$2y$12$P9m13vmJVZ8HsY5KHnUWneNW1XbjyOsV5VILqyE03VkDWgkSLtoAq',
   'b2fc5567fafa882d5e172b9efd791ba8847eca01dc351a13b5fc01ee3ad1e1dd',
   'administrador',
@@ -67,7 +67,7 @@ INSERT INTO `login` (
 ALTER TABLE `login` AUTO_INCREMENT = 2;
 
 -- ----- BLOQUE E: secuencia de IDs -----
-CREATE TABLE IF NOT EXISTS `exacto_login_sequences` (
+CREATE TABLE IF NOT EXISTS `anlux_login_sequences` (
   `sequence_key` VARCHAR(80) NOT NULL,
   `next_id` BIGINT UNSIGNED NOT NULL,
   `created_at` TIMESTAMP NULL DEFAULT NULL,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS `exacto_login_sequences` (
   PRIMARY KEY (`sequence_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
-INSERT INTO `exacto_login_sequences` (`sequence_key`, `next_id`, `created_at`, `updated_at`)
+INSERT INTO `anlux_login_sequences` (`sequence_key`, `next_id`, `created_at`, `updated_at`)
 VALUES ('login_id_tecnico', 2, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
   `next_id` = VALUES(`next_id`),
@@ -84,4 +84,4 @@ ON DUPLICATE KEY UPDATE
 -- ----- BLOQUE F: verificar -----
 SHOW COLUMNS FROM `login`;
 SELECT * FROM `login`;
-SELECT * FROM `exacto_login_sequences`;
+SELECT * FROM `anlux_login_sequences`;

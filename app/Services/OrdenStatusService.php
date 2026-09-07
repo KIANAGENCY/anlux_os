@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
-use App\Support\ExactoAuthContext;
+use App\Support\AnluxAuthContext;
 use App\Support\OrderStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Schema;
 final class OrdenStatusService
 {
     public function __construct(
-        private readonly ExactoVaultService $vault,
+        private readonly AnluxVaultService $vault,
         private readonly OrdenPolicyService $policy,
         private readonly OrdenAuditService $audit,
         private readonly OrderEmailService $orderEmail,
@@ -148,8 +148,8 @@ final class OrdenStatusService
 
         $nuevoEstatus = OrderStatus::map($estatusInput);
         $now = now()->format('Y-m-d H:i:s');
-        $nombreRecepcion = ExactoAuthContext::nombreTecnicoParaRegistro($user);
-        $nombreInvolucrado = ExactoAuthContext::nombreTecnicoSesionActual($user);
+        $nombreRecepcion = AnluxAuthContext::nombreTecnicoParaRegistro($user);
+        $nombreInvolucrado = AnluxAuthContext::nombreTecnicoSesionActual($user);
 
         $filaActual = DB::selectOne('SELECT folio, estatus FROM orden_servicio_c WHERE id_orden_c = ?', [$id]);
         if (! $filaActual) {
@@ -245,7 +245,7 @@ final class OrdenStatusService
         // Solo notifica al cambiar estatus (no al reconfirmar el mismo). Entrega por equipo Terminado no pasa por aquí.
         if ($cambiaEstatus && in_array($nuevoEstatus, ['Recepción', 'Terminado', 'Entregado'], true)) {
             $this->orderEmail->sendForStatus($id, $nuevoEstatus);
-            if (config('exacto.whatsapp_notifications_enabled', false)
+            if (config('anlux.whatsapp_notifications_enabled', false)
                 && filter_var(config('services.whatsapp.enabled', false), FILTER_VALIDATE_BOOL)) {
                 $this->orderWhatsapp->queueForStatusWithResult(
                     $id,
