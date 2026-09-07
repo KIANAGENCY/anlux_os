@@ -1,1 +1,3 @@
 *.sqlite*
+!vercel.sqlite
+!.gitignore
