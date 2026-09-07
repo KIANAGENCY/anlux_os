@@ -23,4 +23,19 @@ foreach ($dirs as $dir) {
     }
 }
 
+// SQLite embebida para demo en Vercel (MySQL externo sigue siendo lo ideal).
+$seedDb = dirname(__DIR__).DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'vercel.sqlite';
+$runtimeDb = '/tmp/anlux.sqlite';
+if (is_file($seedDb)) {
+    if (! is_file($runtimeDb) || (int) filesize($runtimeDb) < 1024) {
+        @copy($seedDb, $runtimeDb);
+    }
+    putenv('DB_CONNECTION=sqlite');
+    putenv('DB_DATABASE='.$runtimeDb);
+    $_ENV['DB_CONNECTION'] = 'sqlite';
+    $_ENV['DB_DATABASE'] = $runtimeDb;
+    $_SERVER['DB_CONNECTION'] = 'sqlite';
+    $_SERVER['DB_DATABASE'] = $runtimeDb;
+}
+
 require __DIR__.'/../public/index.php';
