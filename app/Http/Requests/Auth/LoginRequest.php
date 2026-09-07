@@ -8,10 +8,10 @@ use App\Services\RememberTokenService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use App\Support\SafeSchema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -55,7 +55,7 @@ class LoginRequest extends FormRequest
             : $login;
 
         $userQuery = User::query()->where('correo', $correoLookup);
-        if (Schema::hasColumn('login', 'nombre_usuario')) {
+        if (SafeSchema::hasColumn('login', 'nombre_usuario')) {
             $userQuery->orWhereRaw('LOWER(TRIM(nombre_usuario)) = ?', [$nombreUsuario]);
         }
         $user = $userQuery->first();
@@ -76,7 +76,7 @@ class LoginRequest extends FormRequest
 
         if (
             $user
-            && Schema::hasColumn('login', 'activo')
+            && SafeSchema::hasColumn('login', 'activo')
             && $user->activo === false
         ) {
             RateLimiter::hit($this->throttleKey());

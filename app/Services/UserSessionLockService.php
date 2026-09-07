@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\SafeSchema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -26,8 +27,8 @@ final class UserSessionLockService
         }
 
         return Schema::hasTable('login')
-            && Schema::hasColumn('login', 'active_session_id')
-            && Schema::hasColumn('login', 'active_session_at');
+            && SafeSchema::hasColumn('login', 'active_session_id')
+            && SafeSchema::hasColumn('login', 'active_session_at');
     }
 
     /**

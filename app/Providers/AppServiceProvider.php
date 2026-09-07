@@ -87,7 +87,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         try {
-            if (class_exists(EquiposOrdenEntregaSchema::class)) {
+            if (class_exists(EquiposOrdenEntregaSchema::class) && ! $this->runningOnVercel()) {
                 EquiposOrdenEntregaSchema::ensure();
             }
         } catch (\Throwable $e) {

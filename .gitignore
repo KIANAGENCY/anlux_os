@@ -35,3 +35,7 @@ Thumbs.db
 .env*
 
 !/database/vercel.sqlite
+
+/storage/logs/*
+!/storage/logs/.gitignore
+

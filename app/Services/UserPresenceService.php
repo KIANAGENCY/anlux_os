@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\SafeSchema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -23,13 +24,13 @@ final class UserPresenceService
 
     public function trackingEnabled(): bool
     {
-        return Schema::hasTable('login') && Schema::hasColumn('login', 'last_seen_at');
+        return Schema::hasTable('login') && SafeSchema::hasColumn('login', 'last_seen_at');
     }
 
     /** SQL seguro si la columna `activo` aún no existe (sin migración). */
     private function activoEnabledSql(): string
     {
-        return Schema::hasColumn('login', 'activo') ? 'COALESCE(activo, 1) = 1' : '1 = 1';
+        return SafeSchema::hasColumn('login', 'activo') ? 'COALESCE(activo, 1) = 1' : '1 = 1';
     }
 
     public function touch(User $user): void
@@ -99,7 +100,7 @@ final class UserPresenceService
             ->whereNotNull('last_seen_at')
             ->where('last_seen_at', '>=', now()->subMinutes($this->onlineMinutes()));
 
-        if (Schema::hasColumn('login', 'activo')) {
+        if (SafeSchema::hasColumn('login', 'activo')) {
             $query->where(function ($active): void {
                 $active->where('activo', 1)->orWhereNull('activo');
             });
@@ -129,7 +130,7 @@ final class UserPresenceService
             ->whereNotNull('last_seen_at')
             ->where('last_seen_at', '>=', now()->subMinutes($this->onlineMinutes()));
 
-        if (Schema::hasColumn('login', 'activo')) {
+        if (SafeSchema::hasColumn('login', 'activo')) {
             $query->where(function ($active): void {
                 $active->where('activo', 1)->orWhereNull('activo');
             });
