@@ -6,6 +6,11 @@
  */
 declare(strict_types=1);
 
+// Evita que Laravel tome /api como basePath (rompe rutas /api/* y genera /api/login).
+$_SERVER['SCRIPT_NAME'] = '/index.php';
+$_SERVER['PHP_SELF'] = '/index.php';
+$_SERVER['SCRIPT_FILENAME'] = dirname(__DIR__).'/public/index.php';
+
 $storage = '/tmp/storage';
 $dirs = [
     $storage.'/app/public',

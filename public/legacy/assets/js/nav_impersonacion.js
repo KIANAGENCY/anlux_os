@@ -729,7 +729,9 @@
 
         if (!res.ok || !data.success) {
 
-            if (select.options.length <= 1 && typeof window.anluxShowAlert === 'function') {
+            if (select.options.length <= 1 && typeof window.anluxShowAlert === 'function' && !window.__anluxCuentasAlertShown) {
+
+                window.__anluxCuentasAlertShown = true;
 
                 const msg = data.message
 
@@ -742,6 +744,8 @@
             return;
 
         }
+
+        window.__anluxCuentasAlertShown = false;
 
 
 

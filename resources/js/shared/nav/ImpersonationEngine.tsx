@@ -190,6 +190,7 @@ export function ImpersonationEngine({
   }, [applySessionAndReload, lastValue, persistToken, showAlert, stopRequesterPoll, updateLoadingMessage]);
 
   const accountsCountRef = useRef(initialAccounts.length);
+  const cuentasAlertShownRef = useRef(false);
 
   const loadAccountsSelect = useCallback(async () => {
     if (!canSwitchAccount) return;
@@ -199,7 +200,8 @@ export function ImpersonationEngine({
     const previous = selectValue || lastValue;
 
     if (!res.ok || !data.success) {
-      if (accountsCountRef.current <= 1) {
+      if (accountsCountRef.current <= 1 && !cuentasAlertShownRef.current) {
+        cuentasAlertShownRef.current = true;
         const msg =
           data.message ||
           (res.status === 500 ? 'Error del servidor al cargar cuentas.' : 'No se pudieron cargar las cuentas.');
@@ -207,6 +209,8 @@ export function ImpersonationEngine({
       }
       return;
     }
+
+    cuentasAlertShownRef.current = false;
 
     const list = Array.isArray(data.data) ? data.data : [];
     if (list.length === 0) return;
