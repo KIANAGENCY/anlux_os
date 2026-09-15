@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
 import { abrirPdfOrdenSinCache, anluxUrl, fetchOrdenes, updateOrdenEstatus } from './api';
 import { asBool } from './helpers';
-import { statusToRadio } from './status';
+import { estatusRadioRank, statusToRadio } from './status';
 import type { EstatusFiltro, EstatusRadio, OrdenListItem, SortOrdenes } from './types';
 import { AlertModal } from './components/AlertModal';
 import { EditStatusModal } from './components/EditStatusModal';
-import { FilterModal } from './components/FilterModal';
 import { OrdersTable } from './components/OrdersTable';
+import { IconCaretLeft, IconCaretRight, IconMagnifyingGlass, IconSort } from '../shared/icons';
+
+const STATUS_CHIPS: { value: EstatusFiltro; label: string }[] = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'rojo', label: 'Recepción' },
+  { value: 'naranja', label: 'En proceso' },
+  { value: 'amarillo', label: 'Terminado' },
+  { value: 'verde', label: 'Entregado' },
+];
 
 export default function App() {
   const [searchInput, setSearchInput] = useState('');
@@ -22,7 +30,6 @@ export default function App() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterOpen, setFilterOpen] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const [alert, setAlert] = useState<{ title: string; message: string } | null>(null);
   const [edit, setEdit] = useState<{
@@ -30,7 +37,7 @@ export default function App() {
     folio: string;
     selected: EstatusRadio;
     origen: EstatusRadio;
-    firmasOk: boolean;
+    salidaTemporalActiva: boolean;
   } | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -106,23 +113,16 @@ export default function App() {
     <div className="anlux-page-card">
       <header className="anlux-page-header">
         <div>
-          <p className="anlux-eyebrow">Anlux · Operación</p>
-          <h1 className="anlux-page-title">Órdenes registradas</h1>
-          <p className="anlux-page-description">Consulta, filtra y continúa el trabajo de las órdenes de servicio.</p>
+          <p className="anlux-eyebrow">Cola de trabajo</p>
+          <h1 className="anlux-page-title">Órdenes</h1>
+          <p className="anlux-page-description">Busca, abre y continúa el servicio. El PDF y el estatus son acciones secundarias.</p>
         </div>
-        <a href={anluxUrl('/orden_servicio')} className="anlux-btn-primary">
-          <i className="fas fa-plus" aria-hidden="true" />
-          Nueva orden de servicio
-        </a>
       </header>
-      <div className="p-4 sm:p-5">
-      <section className="anlux-panel-muted">
-        <h2 className="mb-3 flex items-center text-base font-semibold text-slate-900">
-          <i className="mr-3 text-blue-700 fas fa-search" />
-          BÚSQUEDA Y FILTROS
-        </h2>
-        <div className="flex flex-col gap-3 md:flex-row">
+      <div className="space-y-3 p-4">
+        <div className="flex flex-col gap-2 md:flex-row">
+          <label className="sr-only" htmlFor="ordenes-search">Buscar cliente o folio</label>
           <input
+            id="ordenes-search"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => {
@@ -131,106 +131,105 @@ export default function App() {
                 applySearch();
               }
             }}
-            placeholder="Buscar cliente o folio..."
+            placeholder="Buscar cliente o folio"
             className="anlux-control flex-1"
           />
-          <button
-            type="button"
-            onClick={applySearch}
-            className="anlux-btn-primary md:w-auto"
-          >
-            <i className="fas fa-search" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterOpen(true)}
-            className="anlux-btn-secondary md:w-auto"
-          >
-            <i className="fas fa-filter" />
+          <button type="button" onClick={applySearch} className="anlux-btn-primary">
+            <span className="anlux-icon-box"><IconMagnifyingGlass size={20} /></span>
+            Buscar
           </button>
         </div>
-      </section>
 
-      <section className="mt-4">
-        <h2 className="mb-3 flex items-center text-lg font-semibold text-slate-900">
-          <i className="mr-3 text-blue-600 fas fa-list" />
-          ÓRDENES DE SERVICIO
-        </h2>
-        <div className="anlux-table-wrap">
-          <table className="anlux-table" style={{ width: '100%', minWidth: '100%', tableLayout: 'auto' }}>
-            <thead>
-              <tr>
-                <th className="whitespace-nowrap border p-3 text-left">NO. ORDEN</th>
-                <th className="min-w-[10rem] border p-3 text-left">CLIENTE</th>
-                <th className="whitespace-nowrap border p-3 text-left">ENTRADA</th>
-                <th className="whitespace-nowrap border p-3 text-left">TERMINADA</th>
-                <th className="whitespace-nowrap border p-3 text-left">ENTREGA</th>
-                <th className="min-w-[8rem] border p-3 text-center" title="Aviso si el equipo salió temporalmente del taller">
-                  SALIDA TEMP.
-                </th>
-                <th className="min-w-[12rem] border p-3 text-left">TECNICO</th>
-                <th className="min-w-[16rem] border p-3 text-left">INVOLUCRADOS</th>
-                <th className="min-w-[9rem] border p-3 text-center">
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    <span>ESTATUS</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSort((s) => (s === 'estatus' ? 'fecha' : 'estatus'));
-                        setPage(1);
-                      }}
-                      className={
-                        sort === 'estatus'
-                          ? 'inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-blue-600 bg-blue-600 px-2 py-1 text-xs font-semibold text-white shadow-sm hover:bg-blue-700'
-                          : 'inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-blue-300 bg-white px-2 py-1 text-xs font-semibold text-blue-800 shadow-sm hover:border-blue-500 hover:bg-blue-50'
-                      }
-                      title={
-                        sort === 'estatus'
-                          ? 'Orden: flujo de estatus. Clic para ordenar por fecha.'
-                          : 'Orden: fecha. Clic para ordenar por estatus.'
-                      }
-                      aria-label="Ordenar por estatus o fecha"
-                      aria-pressed={sort === 'estatus'}
-                    >
-                      <i className={`fas ${sort === 'estatus' ? 'fa-sort-amount-down' : 'fa-sort'}`} aria-hidden="true" />
-                    </button>
-                  </div>
-                </th>
-                <th className="whitespace-nowrap border p-3 text-center">ACCIONES</th>
-              </tr>
-            </thead>
-            <OrdersTable
-              ordenes={ordenes}
-              loading={loading}
-              error={error}
-              onOpenOrden={openOrden}
-              onBlocked={(nombre) => {
-                void showAlert(`Esta orden está en edición por ${nombre}. Espera a que termine.`, 'Orden en uso');
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por estatus">
+          {STATUS_CHIPS.map((chip) => (
+            <button
+              key={chip.value}
+              type="button"
+              className="anlux-chip"
+              aria-pressed={estatus === chip.value}
+              onClick={() => {
+                setEstatus(chip.value);
+                setPage(1);
+                setReloadToken((n) => n + 1);
               }}
-              onEditStatus={(orden) => {
-                const radio = statusToRadio(orden.estatus);
-                const selected = radio === 'verde' ? 'amarillo' : radio;
-                setEdit({
-                  id: String(orden.id_orden_c),
-                  folio: String(orden.folio || ''),
-                  selected,
-                  origen: selected,
-                  firmasOk: asBool(orden.firmas_recepcion_ok),
-                });
+            >
+              {chip.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="anlux-chip"
+            aria-pressed={sort === 'estatus'}
+            onClick={() => {
+              setSort((s) => (s === 'estatus' ? 'fecha' : 'estatus'));
+              setPage(1);
+            }}
+          >
+            <span className="anlux-icon-box"><IconSort size={16} /></span>
+            {sort === 'estatus' ? 'Orden: estatus' : 'Orden: fecha'}
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <label className="flex min-h-11 items-center gap-2 text-sm text-slate-700">
+            Desde
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setPage(1);
+                setReloadToken((n) => n + 1);
               }}
-              onPdf={(id) => void abrirPdfOrdenSinCache(id, true)}
-              onDownload={(id) => void abrirPdfOrdenSinCache(id, false)}
+              className="anlux-control min-h-11"
             />
-          </table>
+          </label>
+          <label className="flex min-h-11 items-center gap-2 text-sm text-slate-700">
+            Hasta
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setPage(1);
+                setReloadToken((n) => n + 1);
+              }}
+              className="anlux-control min-h-11"
+            />
+          </label>
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <OrdersTable
+          ordenes={ordenes}
+          loading={loading}
+          error={error}
+          onOpenOrden={openOrden}
+          onBlocked={(nombre) => {
+            void showAlert(`Esta orden está en edición por ${nombre}. Espera a que termine.`, 'Orden en uso');
+          }}
+          onEditStatus={(orden) => {
+            const origen = statusToRadio(orden.estatus);
+            if (origen === 'verde') return;
+            const selected = origen;
+            setEdit({
+              id: String(orden.id_orden_c),
+              folio: String(orden.folio || ''),
+              selected,
+              origen,
+              salidaTemporalActiva: asBool(orden.salida_temporal_activa),
+            });
+          }}
+          onPdf={(id) => void abrirPdfOrdenSinCache(id, true)}
+          onDownload={(id) => void abrirPdfOrdenSinCache(id, false)}
+        />
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-slate-600">
             {loading && ordenes.length === 0
-              ? 'Cargando órdenes...'
+              ? 'Cargando órdenes…'
               : total === 0
-                ? 'No hay ordenes para mostrar'
-                : `Mostrando ${from}-${to} de ${total} ordenes`}
+                ? 'No hay órdenes para mostrar'
+                : `Mostrando ${from}–${to} de ${total} órdenes`}
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <label htmlFor="perPageReact" className="text-sm text-slate-600">Mostrar</label>
@@ -241,7 +240,7 @@ export default function App() {
                 setPerPage(Number(e.target.value) || 10);
                 setPage(1);
               }}
-              className="rounded-lg border border-blue-200 px-3 py-2 text-sm"
+              className="anlux-control w-20"
             >
               <option value={10}>10</option>
               <option value={25}>25</option>
@@ -251,44 +250,28 @@ export default function App() {
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-lg bg-blue-100 px-3 py-2 text-blue-700 hover:bg-blue-200 disabled:cursor-not-allowed disabled:opacity-50"
+              className="anlux-btn-secondary"
             >
+              <IconCaretLeft size={18} />
               Anterior
             </button>
-            <span className="text-sm font-semibold text-blue-900">
+            <span className="text-sm font-semibold text-slate-900">
               {page}
-              {' '}
-              /
-              {' '}
+              {' / '}
               {totalPages}
             </span>
             <button
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-lg bg-blue-100 px-3 py-2 text-blue-700 hover:bg-blue-200 disabled:cursor-not-allowed disabled:opacity-50"
+              className="anlux-btn-secondary"
             >
               Siguiente
+              <IconCaretRight size={18} />
             </button>
           </div>
         </div>
-      </section>
-
-      <FilterModal
-        open={filterOpen}
-        startDate={startDate}
-        endDate={endDate}
-        estatus={estatus}
-        onClose={() => setFilterOpen(false)}
-        onApply={(next) => {
-          setStartDate(next.startDate);
-          setEndDate(next.endDate);
-          setEstatus(next.estatus);
-          setFilterOpen(false);
-          setPage(1);
-          setReloadToken((n) => n + 1);
-        }}
-      />
+      </div>
 
       <EditStatusModal
         open={Boolean(edit)}
@@ -296,23 +279,31 @@ export default function App() {
         folio={edit?.folio || ''}
         selected={edit?.selected || 'rojo'}
         origen={edit?.origen || 'rojo'}
-        firmasRecepcionOk={edit?.firmasOk || false}
+        salidaTemporalActiva={edit?.salidaTemporalActiva || false}
         saving={saving}
         onChange={(v) => setEdit((prev) => (prev ? { ...prev, selected: v } : prev))}
         onClose={() => setEdit(null)}
         onSave={() => {
           if (!edit) return;
           void (async () => {
-            if (
-              (edit.selected === 'naranja' || edit.selected === 'amarillo')
-              && !edit.firmasOk
-              && edit.selected !== edit.origen
-            ) {
+            if (edit.salidaTemporalActiva && edit.selected === 'amarillo' && edit.selected !== edit.origen) {
               await showAlert(
-                'No se puede poner en En proceso ni en Terminado sin las firmas de Cliente y Técnico. Abre la orden de servicio, completa esa sección y guarda.',
-                'Validación requerida',
+                'No puedes pasar a Terminado mientras haya salida temporal activa. Registra el regreso del equipo en la orden.',
+                'Salida temporal',
               );
               return;
+            }
+            if (estatusRadioRank(edit.selected) < estatusRadioRank(edit.origen)) {
+              const msg =
+                'Vas a retroceder el estatus de la orden (corrección de error). ¿Confirmas el cambio?';
+              const ok =
+                typeof window.anluxShowConfirm === 'function'
+                  ? await window.anluxShowConfirm(msg, {
+                      title: 'Confirmar corrección',
+                      icon: 'warning',
+                    })
+                  : window.confirm(msg);
+              if (!ok) return;
             }
             setSaving(true);
             try {
@@ -339,7 +330,6 @@ export default function App() {
         message={alert?.message || ''}
         onClose={() => setAlert(null)}
       />
-      </div>
     </div>
   );
 }

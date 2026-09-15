@@ -71,7 +71,7 @@ final class RepeatTerminadoStatusTest extends TestCase
 
         $result = app(OrdenStatusService::class)->updateStatus($user, 600, 'amarillo');
 
-        $this->assertTrue($result['success']);
+        $this->assertTrue($result['success'], $result['message']);
         $this->assertDatabaseHas('orden_servicio_c', [
             'id_orden_c' => 600,
             'estatus' => 'Terminado',
@@ -80,5 +80,27 @@ final class RepeatTerminadoStatusTest extends TestCase
         // Reconfirmar Terminado en historial no reenvía plantilla.
         $this->assertDatabaseCount('order_whatsapp_notifications', 1);
         Bus::assertNothingDispatched();
+    }
+
+    public function test_intermediate_statuses_do_not_require_signatures(): void
+    {
+        $user = User::factory()->administrador()->create();
+        DB::table('orden_servicio_c')->insert([
+            'id_orden_c' => 601,
+            'folio' => 'OS-2026-601',
+            'nombre_cliente' => 'Cliente Sin Firma',
+            'fecha_entrada' => '2026-08-01 09:00:00',
+            'estatus' => 'Recepción',
+        ]);
+
+        $enProceso = app(OrdenStatusService::class)->updateStatus($user, 601, 'naranja');
+        $this->assertTrue($enProceso['success'], $enProceso['message']);
+
+        $terminado = app(OrdenStatusService::class)->updateStatus($user, 601, 'amarillo');
+        $this->assertTrue($terminado['success'], $terminado['message']);
+        $this->assertDatabaseHas('orden_servicio_c', [
+            'id_orden_c' => 601,
+            'estatus' => 'Terminado',
+        ]);
     }
 }

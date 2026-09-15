@@ -174,13 +174,6 @@ final class OrdenStatusService
 
         $estatusActualCanon = OrderStatus::map($estatusActual);
         $cambiaEstatus = ($estatusActualCanon !== $nuevoEstatus);
-        if (
-            $cambiaEstatus
-            && in_array($nuevoEstatus, ['En proceso', 'Terminado'], true)
-            && ! $this->tieneFirmasRecepcionEquipo($id)
-        ) {
-            return ['success' => false, 'message' => 'No se puede poner en En proceso ni en Terminado sin las firmas de Cliente y Técnico. Abre la orden de servicio, completa esa sección y guarda antes de cambiar el estatus aquí.'];
-        }
 
         DB::beginTransaction();
         try {

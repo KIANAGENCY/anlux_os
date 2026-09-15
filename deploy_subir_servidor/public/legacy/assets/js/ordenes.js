@@ -268,13 +268,9 @@
             document.getElementById('editActualEsEntregado').value = entregado ? '1' : '0';
             const radioValue = statusToRadio(estatus);
             document.getElementById('editEstatusOrigen').value = radioValue;
-            const firmasRecOk = document.getElementById('editFirmasRecepcionOk').value === '1';
             document.querySelectorAll('input[name="editEstatus"]').forEach((input) => {
                 input.checked = input.value === radioValue;
                 let dis = (input.value === 'verde') || (entregado && input.value !== 'verde');
-                if (!firmasRecOk && (input.value === 'naranja' || input.value === 'amarillo') && input.value !== radioValue) {
-                    dis = true;
-                }
                 input.disabled = dis;
             });
             abrirModal('modalEdit');
@@ -289,11 +285,6 @@
             }
             if (estatus === 'verde' && document.getElementById('editFirmasEntregaOk').value !== '1') {
                 alert('No se puede marcar como Entregado: faltan la firma de recibido del cliente y/o la firma de entrega del tecnico en la orden. Abre la orden (icono del ojo), completa las firmas de cierre y guarda antes de cambiar el estatus aqui.');
-                return;
-            }
-            const origenRadio = document.getElementById('editEstatusOrigen').value;
-            if ((estatus === 'naranja' || estatus === 'amarillo') && document.getElementById('editFirmasRecepcionOk').value !== '1' && estatus !== origenRadio) {
-                alert('No se puede poner en En proceso ni en Terminado sin las firmas de FIRMAS DE RECIBIDO DEL EQUIPO (entrega del cliente y recepcion del tecnico). Abre la orden de servicio, completa esa seccion y guarda.');
                 return;
             }
             const formData = new FormData();

@@ -539,9 +539,12 @@ final class RegistrarOrdenService
             && filter_var(config('services.whatsapp.enabled', false), FILTER_VALIDATE_BOOL);
 
         if (! $featureOn) {
+            // Feature off is expected on local; do not treat as a hard failure.
+            $level = app()->environment('local', 'testing') ? 'warning' : 'error';
+
             return [
                 'message' => '✖ WhatsApp no enviado. Activa ANLUX_WHATSAPP_NOTIFICATIONS=true o WHATSAPP_CLOUD_ENABLED=true en el servidor.',
-                'level' => 'error',
+                'level' => $level,
             ];
         }
 
@@ -787,8 +790,8 @@ final class RegistrarOrdenService
         if (! $row) {
             return ['success' => false, 'message' => 'Orden no encontrada.'];
         }
-        if (! OrderStatus::isEnProceso((string) ($row->estatus ?? ''))) {
-            return ['success' => false, 'message' => 'La salida temporal solo aplica cuando la orden está en En proceso.'];
+        if (! OrderStatus::permiteSalidaTemporal((string) ($row->estatus ?? ''))) {
+            return ['success' => false, 'message' => 'La salida temporal solo aplica en Recepción o En proceso.'];
         }
         if ((int) ($row->salida_temporal_activa ?? 0) === 1) {
             return ['success' => false, 'message' => 'Esta orden ya tiene una salida temporal activa. Registra el regreso primero.'];
@@ -800,12 +803,16 @@ final class RegistrarOrdenService
         if ($idEquipo <= 0) {
             return ['success' => false, 'message' => 'Selecciona el equipo que tendrá la salida temporal.'];
         }
-        $equipo = DB::selectOne(
-            'SELECT id_equipo, marca, modelo, serie FROM equipos_orden WHERE id_orden_c = ? AND id_equipo = ? LIMIT 1',
-            [$idOrdenC, $idEquipo]
-        );
+        $equipoSql = 'SELECT id_equipo, marca, modelo, serie FROM equipos_orden WHERE id_orden_c = ? AND id_equipo = ? LIMIT 1';
+        if (Schema::hasColumn('equipos_orden', 'acciones')) {
+            $equipoSql = 'SELECT id_equipo, marca, modelo, serie, acciones FROM equipos_orden WHERE id_orden_c = ? AND id_equipo = ? LIMIT 1';
+        }
+        $equipo = DB::selectOne($equipoSql, [$idOrdenC, $idEquipo]);
         if (! $equipo) {
             return ['success' => false, 'message' => 'El equipo seleccionado no pertenece a esta orden.'];
+        }
+        if (Schema::hasColumn('equipos_orden', 'acciones') && (int) ($equipo->acciones ?? 0) >= 2) {
+            return ['success' => false, 'message' => 'Ese equipo ya fue entregado. No se puede sacar del taller.'];
         }
 
         $folio = (string) ($row->folio ?? ('orden_'.$idOrdenC));
@@ -908,7 +915,7 @@ final class RegistrarOrdenService
         if (! $this->hasSalidaTemporalColumns() || $idOrdenC <= 0) {
             return false;
         }
-        if (! OrderStatus::isEnProceso($estatusCanon)) {
+        if (! OrderStatus::permiteSalidaTemporal($estatusCanon)) {
             return false;
         }
 
@@ -1813,14 +1820,6 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
         ) {
             return ['success' => false, 'message' => 'Para guardar como Entregado, el saldo pendiente debe quedar liquidado en $0.00.'];
         }
-        if ($idOrdenEditar <= 0 && in_array($estatusCanon, ['En proceso', 'Terminado', 'Entregado'], true)) {
-            if (
-                ! $this->firmaDataUrlTieneTrazos($request->input('firmaClienteInicial'))
-                || ! $this->firmaDataUrlTieneTrazos($request->input('firmaTecnicoInicial'))
-            ) {
-                return ['success' => false, 'message' => 'No se puede guardar la orden en ese estatus sin las firmas de Cliente y Técnico.'];
-            }
-        }
         if ($idOrdenEditar <= 0 && $estatusCanon === 'Entregado') {
             if (
                 ! $this->firmaDataUrlTieneTrazos($request->input('firmaCliente'))
@@ -1997,6 +1996,22 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
                 'id_equipo' => $idEquipoEntregaResuelto,
                 'equipo_indice' => $equipoIndiceEntrega,
             ]);
+            if (
+                $this->hasSalidaTemporalColumns()
+                && $this->isSalidaTemporalActiva($idOrdenEditar)
+                && Schema::hasColumn('orden_servicio_c', 'salida_temporal_id_equipo')
+            ) {
+                $idEquipoFuera = (int) (DB::scalar(
+                    'SELECT salida_temporal_id_equipo FROM orden_servicio_c WHERE id_orden_c = ?',
+                    [$idOrdenEditar]
+                ) ?? 0);
+                if ($idEquipoFuera > 0 && $idEquipoFuera === $idEquipoEntregaResuelto) {
+                    return [
+                        'success' => false,
+                        'message' => 'Ese equipo está fuera del taller. Regístralo de regreso antes de terminarlo o entregarlo.',
+                    ];
+                }
+            }
         }
 
         if ($this->editLocks->tableExists() && ! $this->editLocks->assertHolder($idOrdenEditar, null, $user)) {
@@ -2171,14 +2186,6 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
         $cambiaEstatusOrden = ($actCanon !== $nuevCanon);
         if ($tecnicoRecibidoUpdate === '' && in_array($nuevCanon, ['En proceso', 'Terminado', 'Entregado'], true)) {
             $tecnicoRecibidoUpdate = $tecnicoRecepcion;
-        }
-        if ($cambiaEstatusOrden && in_array($nuevCanon, ['En proceso', 'Terminado'], true)) {
-            if (
-                ! $this->firmaGuardadaTieneTrazos($firmaClienteInicialPlano)
-                || ! $this->firmaGuardadaTieneTrazos($firmaTecnicoInicialPlano)
-            ) {
-                return ['success' => false, 'message' => 'No se puede poner en En proceso o Terminado sin las firmas de Cliente y Técnico. Complétalas en la orden y guarda.'];
-            }
         }
         if ($nuevCanon === 'Entregado' || ($entregaPorEquipo && $estatusEquipoSolicitado === 'Entregado')) {
             if (

@@ -479,17 +479,11 @@
         const abrirEdit = (id, estatus, folio, firmasRecepcionOk) => {
             document.getElementById('editId').value = id;
             document.getElementById('editFolio').value = folio != null ? String(folio) : '';
-            document.getElementById('editFirmasRecepcionOk').value = firmasRecepcionOk === '1' || firmasRecepcionOk === 1 ? '1' : '0';
             const radioValue = statusToRadio(estatus);
             document.getElementById('editEstatusOrigen').value = radioValue;
-            const firmasRecOk = document.getElementById('editFirmasRecepcionOk').value === '1';
             document.querySelectorAll('input[name="editEstatus"]').forEach((input) => {
                 input.checked = input.value === radioValue;
-                let dis = false;
-                if (!firmasRecOk && (input.value === 'naranja' || input.value === 'amarillo') && input.value !== radioValue) {
-                    dis = true;
-                }
-                input.disabled = dis;
+                input.disabled = false;
             });
             abrirModal('modalEdit');
         };
@@ -502,11 +496,6 @@
                 return;
             }
             const estatus = seleccionado.value;
-            const origenRadio = document.getElementById('editEstatusOrigen').value;
-            if ((estatus === 'naranja' || estatus === 'amarillo') && document.getElementById('editFirmasRecepcionOk').value !== '1' && estatus !== origenRadio) {
-                await mostrarAvisoOrdenes('No se puede poner en En proceso ni en Terminado sin las firmas de Cliente y Técnico. Abre la orden de servicio, completa esa sección y guarda.', 'Validación requerida');
-                return;
-            }
             const formData = new FormData();
             formData.append('id', id);
             formData.append('estatus', estatus);

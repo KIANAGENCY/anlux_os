@@ -1799,14 +1799,6 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
         ) {
             return ['success' => false, 'message' => 'Para guardar como Entregado, el saldo pendiente debe quedar liquidado en $0.00.'];
         }
-        if ($idOrdenEditar <= 0 && in_array($estatusCanon, ['En proceso', 'Terminado', 'Entregado'], true)) {
-            if (
-                ! $this->firmaDataUrlTieneTrazos($request->input('firmaClienteInicial'))
-                || ! $this->firmaDataUrlTieneTrazos($request->input('firmaTecnicoInicial'))
-            ) {
-                return ['success' => false, 'message' => 'No se puede guardar la orden en ese estatus sin las firmas de Cliente y Técnico.'];
-            }
-        }
         if ($idOrdenEditar <= 0 && $estatusCanon === 'Entregado') {
             if (
                 ! $this->firmaDataUrlTieneTrazos($request->input('firmaCliente'))
@@ -2157,14 +2149,6 @@ $saldoPagadoConfirmado = (string) $request->input('saldo_pagado_confirmado', '')
         $cambiaEstatusOrden = ($actCanon !== $nuevCanon);
         if ($tecnicoRecibidoUpdate === '' && in_array($nuevCanon, ['En proceso', 'Terminado', 'Entregado'], true)) {
             $tecnicoRecibidoUpdate = $tecnicoRecepcion;
-        }
-        if ($cambiaEstatusOrden && in_array($nuevCanon, ['En proceso', 'Terminado'], true)) {
-            if (
-                ! $this->firmaGuardadaTieneTrazos($firmaClienteInicialPlano)
-                || ! $this->firmaGuardadaTieneTrazos($firmaTecnicoInicialPlano)
-            ) {
-                return ['success' => false, 'message' => 'No se puede poner en En proceso o Terminado sin las firmas de Cliente y Técnico. Complétalas en la orden y guarda.'];
-            }
         }
         if ($nuevCanon === 'Entregado' || ($entregaPorEquipo && $estatusEquipoSolicitado === 'Entregado')) {
             if (

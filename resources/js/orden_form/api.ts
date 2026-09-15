@@ -156,5 +156,7 @@ export async function pollWhatsappEstado(
 
 export async function abrirPdfOrden(pdfUrl: string): Promise<void> {
   if (!pdfUrl) return;
-  await abrirPdfSinCache(pdfUrl);
+  const url = new URL(pdfUrl, window.location.origin);
+  url.searchParams.set('inline', '1');
+  await abrirPdfSinCache(url.toString());
 }
