@@ -9,8 +9,10 @@ type Props = {
   tiposServicio: string[];
   readOnly: boolean;
   showAcciones: boolean;
+  salidaIdEquipo?: number;
   onChange: (next: EquipoForm[]) => void;
   onEntregarEquipo?: (indice1Based: number) => void;
+  onRegresarAlTaller?: () => void;
 };
 
 function tipoServicioKey(valor: string): string {
@@ -61,12 +63,12 @@ function resolveTipoValue(tipos: string[], valorGuardado: string): string {
 function estatusInfo(acciones: number): { text: string; className: string } {
   const a = Math.max(0, Number(acciones) || 0);
   if (a >= 2) {
-    return { text: 'Entregado', className: 'bg-emerald-600 text-white' };
+    return { text: 'Entregado', className: 'bg-emerald-100 text-emerald-950 ring-1 ring-emerald-300' };
   }
   if (a >= 1) {
-    return { text: 'Terminado', className: 'bg-amber-500 text-gray-900' };
+    return { text: 'Terminado', className: 'bg-amber-100 text-amber-950 ring-1 ring-amber-300' };
   }
-  return { text: 'Pendiente', className: 'bg-slate-500 text-white' };
+  return { text: 'Pendiente', className: 'bg-slate-100 text-slate-800 ring-1 ring-slate-300' };
 }
 
 export default function EquiposSection({
@@ -74,8 +76,10 @@ export default function EquiposSection({
   tiposServicio,
   readOnly,
   showAcciones,
+  salidaIdEquipo = 0,
   onChange,
   onEntregarEquipo,
+  onRegresarAlTaller,
 }: Props) {
   const { showAlert } = useAnluxDialog();
   const update = (idx: number, patch: Partial<EquipoForm>) => {
@@ -97,8 +101,8 @@ export default function EquiposSection({
   return (
     <section className="rounded-r-lg border-l-4 border-blue-500 bg-blue-50 p-4 sm:pl-6">
       <h2 className="mb-6 flex items-center text-xl font-bold text-blue-900 sm:text-2xl">
-        <i className="fas fa-list-ul mr-3 text-blue-500" />
-        DESCRIPCION DE EQUIPOS
+        <i className="fas fa-list-ul mr-3 text-blue-500" aria-hidden="true" />
+        DESCRIPCIÓN DE EQUIPOS
       </h2>
 
       {showAcciones ? (
@@ -109,17 +113,17 @@ export default function EquiposSection({
       ) : null}
 
       <div className="mb-4 overflow-x-auto rounded-lg border border-blue-100">
-        <table className="w-full border-collapse text-sm" style={{ minWidth: showAcciones ? 1080 : 980 }}>
+        <table className="w-full border-collapse text-sm" style={{ minWidth: showAcciones ? 1180 : 980 }}>
           <thead>
             <tr className="bg-blue-600 text-white">
               <th className="border p-3 text-left">ID</th>
               <th className="border p-3 text-left">MARCA</th>
-              <th className="border p-3 text-left">MODELO O DESCRIPCION DEL EQUIPO</th>
-              <th className="border p-3 text-left">N.O SERIE</th>
-              <th className="border p-3 text-left">DESCRIPCION DE FALLA</th>
+              <th className="border p-3 text-left">MODELO O DESCRIPCIÓN DEL EQUIPO</th>
+              <th className="border p-3 text-left">N.° DE SERIE</th>
+              <th className="border p-3 text-left">DESCRIPCIÓN DE FALLA</th>
               <th className="border p-3 text-left">TIPO DE SERVICIO</th>
               {showAcciones ? <th className="border p-3 text-center">ESTATUS</th> : null}
-              <th className="border p-3 text-center"> </th>
+              <th className="border p-3 text-center">ACCIONES</th>
             </tr>
           </thead>
           <tbody>
@@ -127,14 +131,18 @@ export default function EquiposSection({
               const info = estatusInfo(eq.acciones);
               const tipoOpts = resolveTipoServicioOptions(tiposServicio, eq.tipoServicio);
               const tipoValue = resolveTipoValue(tipoOpts, eq.tipoServicio);
+              const idEquipo = Number(eq.id_equipo) || 0;
+              const fueraDelTaller = salidaIdEquipo > 0 && idEquipo === salidaIdEquipo;
+              const rowLocked = readOnly || fueraDelTaller;
               return (
-                <tr key={idx} className="equipo-row hover:bg-blue-100">
+                <tr key={idx} className={`equipo-row hover:bg-blue-100 ${fueraDelTaller ? 'bg-orange-50' : ''}`}>
                   <td className="border p-2 text-center font-semibold text-blue-900">{idx + 1}</td>
                   <td className="border p-2">
                     <input
                       className={cellInput}
-                      disabled={readOnly}
+                      disabled={rowLocked}
                       value={eq.marca}
+                      aria-label={`Marca del equipo ${idx + 1}`}
                       data-anlux-field={`equipo.${idx}.marca`}
                       onChange={(e) => update(idx, { marca: e.target.value.toUpperCase() })}
                       placeholder="Marca"
@@ -143,8 +151,9 @@ export default function EquiposSection({
                   <td className="border p-2">
                     <input
                       className={cellInput}
-                      disabled={readOnly}
+                      disabled={rowLocked}
                       value={eq.modelo}
+                      aria-label={`Modelo del equipo ${idx + 1}`}
                       data-anlux-field={`equipo.${idx}.modelo`}
                       onChange={(e) => update(idx, { modelo: e.target.value.toUpperCase() })}
                       placeholder="Modelo"
@@ -153,8 +162,9 @@ export default function EquiposSection({
                   <td className="border p-2">
                     <input
                       className={cellInput}
-                      disabled={readOnly}
+                      disabled={rowLocked}
                       value={eq.serie}
+                      aria-label={`Serie del equipo ${idx + 1}`}
                       data-anlux-field={`equipo.${idx}.serie`}
                       onChange={(e) => update(idx, { serie: e.target.value.toUpperCase() })}
                       placeholder="Serie"
@@ -163,22 +173,24 @@ export default function EquiposSection({
                   <td className="border p-2">
                     <input
                       className={cellInput}
-                      disabled={readOnly}
+                      disabled={rowLocked}
                       value={eq.descripcionFalla}
+                      aria-label={`Descripción de falla del equipo ${idx + 1}`}
                       data-anlux-field={`equipo.${idx}.descripcionFalla`}
                       onChange={(e) => update(idx, { descripcionFalla: e.target.value.toUpperCase() })}
-                      placeholder="Descripcion de falla"
+                      placeholder="Descripción de falla"
                     />
                   </td>
                   <td className="border p-2">
                     <select
                       className={cellInput}
-                      disabled={readOnly}
+                      disabled={rowLocked}
                       value={tipoValue}
+                      aria-label={`Tipo de servicio del equipo ${idx + 1}`}
                       data-anlux-field={`equipo.${idx}.tipoServicio`}
                       onChange={(e) => update(idx, { tipoServicio: e.target.value })}
                     >
-                      <option value="">-</option>
+                      <option value="">Seleccionar...</option>
                       {tipoOpts.map((t) => (
                         <option key={t} value={t}>
                           {t}
@@ -188,13 +200,19 @@ export default function EquiposSection({
                   </td>
                   {showAcciones ? (
                     <td className="border p-2 text-center">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${info.className}`}>
-                        {info.text}
-                      </span>
+                      {fueraDelTaller ? (
+                        <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-950 ring-1 ring-orange-300">
+                          Fuera del taller
+                        </span>
+                      ) : (
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${info.className}`}>
+                          {info.text}
+                        </span>
+                      )}
                     </td>
                   ) : null}
                   <td className="border p-2 text-center whitespace-nowrap">
-                    {showAcciones && !readOnly ? (
+                    {showAcciones && !readOnly && !fueraDelTaller ? (
                       <button
                         type="button"
                         disabled={Number(eq.acciones) >= 2}
@@ -214,7 +232,7 @@ export default function EquiposSection({
                         }
                         onClick={() => onEntregarEquipo?.(idx + 1)}
                       >
-                        <i className={`fas ${Number(eq.acciones) >= 2 ? 'fa-check-circle' : 'fa-truck'}`} />
+                        <i className={`fas ${Number(eq.acciones) >= 2 ? 'fa-check-circle' : 'fa-truck'}`} aria-hidden="true" />
                         {Number(eq.acciones) >= 2
                           ? 'Entregado'
                           : Number(eq.acciones) === 1
@@ -222,19 +240,42 @@ export default function EquiposSection({
                             : 'Gestionar equipo'}
                       </button>
                     ) : null}
-                    {!readOnly && idx === equipos.length - 1 ? (
-                      <button type="button" className="font-bold text-blue-600 hover:text-blue-800" onClick={add} title="Agregar equipo">
-                        <i className="fas fa-plus" />
-                      </button>
+                    {fueraDelTaller && !showAcciones ? (
+                      <span className="mr-2 inline-flex items-center rounded-full bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-950 ring-1 ring-orange-300">
+                        Fuera del taller
+                      </span>
                     ) : null}
-                    {!readOnly && equipos.length > 1 ? (
+                    {fueraDelTaller && !readOnly ? (
                       <button
                         type="button"
-                        className="ml-2 font-bold text-red-600 hover:text-red-800"
-                        onClick={() => remove(idx)}
-                        title="Quitar equipo"
+                        className="mr-2 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-orange-400 bg-orange-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-orange-700"
+                        title="Registrar el regreso de este equipo al taller"
+                        onClick={() => onRegresarAlTaller?.()}
                       >
-                        <i className="fas fa-trash" />
+                        <i className="fas fa-undo" aria-hidden="true" />
+                        Regresar
+                      </button>
+                    ) : null}
+                    {!readOnly && idx === equipos.length - 1 ? (
+                      <button
+                        type="button"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-blue-300 bg-white text-blue-600 shadow-sm transition-colors duration-150 hover:bg-blue-50 hover:text-blue-800"
+                        onClick={add}
+                        title="Agregar equipo"
+                        aria-label="Agregar equipo"
+                      >
+                        <i className="fas fa-plus" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                    {!readOnly && equipos.length > 1 && !fueraDelTaller ? (
+                      <button
+                        type="button"
+                        className="ml-1.5 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-300 bg-white text-red-600 shadow-sm transition-colors duration-150 hover:bg-red-50 hover:text-red-800"
+                        onClick={() => remove(idx)}
+                        title={`Quitar equipo ${idx + 1}`}
+                        aria-label={`Quitar equipo ${idx + 1}`}
+                      >
+                        <i className="fas fa-trash" aria-hidden="true" />
                       </button>
                     ) : null}
                   </td>

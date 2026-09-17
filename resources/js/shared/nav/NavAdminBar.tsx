@@ -1,4 +1,6 @@
+import { useCallback, useState } from 'react';
 import { ImpersonationEngine } from './ImpersonationEngine';
+import { LogoutModal } from './LogoutModal';
 import { DialogProvider } from './ui';
 import type { AdminNavLink, NavAdminBootstrap } from './types';
 
@@ -16,9 +18,19 @@ function AdminLink({ link, active }: { link: AdminNavLink; active: boolean }) {
 }
 
 /**
- * Logo card (como Exacto) + nav admin en una fila en lg.
+ * Logo card + nav admin.
  */
 export function NavAdminBar(props: NavAdminBootstrap) {
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const openLogout = useCallback(() => {
+    setLogoutOpen(true);
+    document.body.style.overflow = 'hidden';
+  }, []);
+  const closeLogout = useCallback(() => {
+    setLogoutOpen(false);
+    document.body.style.overflow = '';
+  }, []);
+
   return (
     <DialogProvider>
       <div className="mb-4">
@@ -60,33 +72,20 @@ export function NavAdminBar(props: NavAdminBootstrap) {
                 <i className="fas fa-arrow-left" aria-hidden="true" />
                 Órdenes
               </a>
-              <form
-                method="POST"
-                action={props.logoutUrl}
-                className="inline shrink-0"
-                onSubmit={() => {
-                  try {
-                    if (typeof window.anluxPermitirSalidaOrdenForm === 'function') {
-                      window.anluxPermitirSalidaOrdenForm();
-                    }
-                  } catch {
-                    /* ignore */
-                  }
-                }}
+              <button
+                type="button"
+                id="navBtnCerrarSesion"
+                className="anlux-btn-danger shrink-0"
+                onClick={openLogout}
               >
-                <input type="hidden" name="_token" value={props.csrf} />
-                <button
-                  type="submit"
-                  className="anlux-btn-danger"
-                >
-                  <i className="fas fa-sign-out-alt" aria-hidden="true" />
-                  Cerrar sesión
-                </button>
-              </form>
+                <i className="fas fa-sign-out-alt" aria-hidden="true" />
+                Cerrar sesión
+              </button>
             </div>
           </div>
         </nav>
       </div>
+      <LogoutModal open={logoutOpen} logoutUrl={props.logoutUrl} csrf={props.csrf} onClose={closeLogout} />
     </DialogProvider>
   );
 }

@@ -96,10 +96,11 @@ export default function TotalesBar({
           <button
             type="button"
             onClick={() => onLiquidarSaldo()}
-            className="inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-red-700"
+            aria-label="Liquidar saldo pendiente por equipo"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors duration-150 hover:bg-red-700"
             title="Liquida el saldo pendiente por equipo"
           >
-            <i className="fas fa-cash-register mr-2" />
+            <i className="fas fa-cash-register mr-2" aria-hidden="true" />
             Liquidar Saldo
           </button>
         </div>

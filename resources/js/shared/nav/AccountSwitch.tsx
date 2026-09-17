@@ -73,6 +73,11 @@ export function AccountSwitch({
         }}
       >
         <option value="">— Cambiar de cuenta —</option>
+        {accounts.length === 0 ? (
+          <option value="" disabled>
+            No hay técnicos registrados — créalos en Admin → Registro
+          </option>
+        ) : null}
         {accounts.map((acc) => {
           const status = acc.status;
           const label = acc.status_label ? ` — ${acc.status_label}` : '';
@@ -124,11 +129,8 @@ export function AccountSwitch({
 export function TechnicianName({ nombre }: { nombre: string }) {
   if (!nombre) return null;
   return (
-    <p className="mb-0 flex min-h-11 shrink-0 items-center text-sm font-bold text-slate-800 sm:text-right">
-      <span className="font-semibold text-slate-600">Técnico:</span>
-      <span className="text-blue-600">
-        <i className="fas fa-user-circle ml-1 mr-1" aria-hidden="true" />
-      </span>
+    <p className="mb-0 flex min-h-11 shrink-0 items-center gap-1 text-sm font-semibold text-slate-800 sm:text-right">
+      <span className="font-medium text-slate-600">Técnico:</span>
       {nombre}
     </p>
   );
@@ -142,15 +144,16 @@ export function ImpersonationBanner({
   onExit: () => void;
 }) {
   return (
-    <div className="w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 sm:w-auto">
-      <i className="fas fa-user-secret mr-1" aria-hidden="true" />
-      Actuando como:
-      {' '}
-      <strong>{nombreTecnico}</strong>
+    <div className="flex w-full flex-wrap items-center gap-2 text-sm font-semibold text-amber-950">
+      <span>
+        Actuando como:
+        {' '}
+        <strong>{nombreTecnico}</strong>
+      </span>
       <button
         type="button"
         id="navBtnSalirImpersonacion"
-        className="ml-2 inline-flex items-center rounded border border-amber-500 bg-white px-2 py-0.5 text-xs font-bold text-amber-800 hover:bg-amber-100"
+        className="inline-flex min-h-9 items-center rounded-lg border border-amber-500 bg-white px-2.5 text-xs font-bold text-amber-900 hover:bg-amber-100"
         onClick={onExit}
       >
         Volver a mi cuenta

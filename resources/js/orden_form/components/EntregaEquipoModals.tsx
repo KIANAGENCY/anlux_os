@@ -60,7 +60,7 @@ export function EntregaConfirmModal({
         setShowSaldoWarn(true);
         setChkTerminado(false);
         await showAlert(
-          `Queda un saldo pendiente de ${saldoPendiente.toFixed(2)}. Liquidalo antes de marcar Terminado.`,
+          `Queda un saldo pendiente de ${saldoPendiente.toFixed(2)}. Liquídalo antes de marcar Terminado.`,
           { title: 'Saldo pendiente', icon: 'warning' },
         );
         return;
@@ -95,7 +95,7 @@ export function EntregaConfirmModal({
         return;
       }
       if (chkEntregado && !puedeEntregar) {
-        await showAlert('Primero marca Terminado (uso interno). Luego podras marcar Entregado.', {
+        await showAlert('Primero marca Terminado (uso interno). Luego podrás marcar Entregado.', {
           title: 'Estatus',
           icon: 'warning',
         });
@@ -304,7 +304,7 @@ export function EntregaFirmasModal({
       return;
     }
     if (quien === 'tercero') {
-      const ok = await showConfirm(`¿Confirmas que ${nombre} recogera este equipo como tercero?`, {
+      const ok = await showConfirm(`¿Confirmas que ${nombre} recogerá este equipo como tercero?`, {
         title: 'Confirmar tercero',
         icon: 'warning',
         confirmText: 'Sí, confirmar',
@@ -313,7 +313,7 @@ export function EntregaFirmasModal({
       if (!ok) return;
     }
     if (!firmaClienteRef.current?.hasStroke() || !firmaTecnicoRef.current?.hasStroke()) {
-      await showAlert('Se requieren las firmas de quien recibe y del tecnico.', {
+      await showAlert('Se requieren las firmas de quien recibe y del técnico.', {
         title: 'Firmas requeridas',
         icon: 'warning',
       });
@@ -340,14 +340,14 @@ export function EntregaFirmasModal({
         <div className="flex shrink-0 flex-col gap-3 bg-blue-600 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="flex items-center gap-2 text-lg font-bold text-white">
-              <i className="fas fa-file-signature" />
+              <i className="fas fa-file-signature" aria-hidden="true" />
               Firmas de Entrega
             </h3>
             <p className="mt-0.5 text-xs text-blue-100 sm:text-sm">Confirma la entrega y registra las firmas.</p>
           </div>
           <div className="inline-flex max-w-full items-center gap-2 self-start rounded-lg border border-blue-400 px-3 py-2 text-xs text-white" style={{ background: 'rgba(29,78,216,.62)' }}>
             <span className="shrink-0 font-semibold text-blue-100">
-              <i className="fas fa-microchip mr-1" />
+              <i className="fas fa-microchip mr-1" aria-hidden="true" />
               Equipo:
             </span>
             <span className="min-w-0 truncate font-bold">
@@ -362,7 +362,7 @@ export function EntregaFirmasModal({
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <p className="mb-2 text-sm font-bold text-slate-800">¿Quien recoge el equipo?</p>
+                <p className="mb-2 text-sm font-bold text-slate-800">¿Quién recoge el equipo?</p>
                 <div className="flex gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1">
                   <label className={`flex flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-2 text-sm font-bold ${quien === 'cliente' ? 'bg-white text-blue-700 shadow' : 'text-slate-600'}`}>
                     <input
@@ -407,8 +407,8 @@ export function EntregaFirmasModal({
                 />
                 {quien === 'tercero' ? (
                   <p className="mt-1.5 text-xs font-medium text-amber-700">
-                    <i className="fas fa-circle-info mr-1" />
-                    Captura el nombre completo del tercero; se confirmara antes de guardar.
+                    <i className="fas fa-circle-info mr-1" aria-hidden="true" />
+                    Captura el nombre completo del tercero; se confirmará antes de guardar.
                   </p>
                 ) : null}
               </div>
@@ -422,32 +422,36 @@ export function EntregaFirmasModal({
                 <button
                   type="button"
                   disabled={busy}
-                  className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600"
+                  aria-label="Limpiar firma de quien recibe"
+                  title="Limpiar firma de quien recibe"
+                  className="inline-flex min-h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors duration-150 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                   onClick={() => firmaClienteRef.current?.clear()}
                 >
-                  <i className="fas fa-eraser mr-1" />
+                  <i className="fas fa-eraser mr-1.5" aria-hidden="true" />
                   Limpiar
                 </button>
               </div>
               <div className="p-2">
-                <SignaturePad ref={firmaClienteRef} minHeight={176} hideClear disabled={busy} />
+                <SignaturePad ref={firmaClienteRef} label="Quien recibe" minHeight={176} hideClear disabled={busy} />
               </div>
             </div>
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="flex min-h-[3rem] items-center justify-between gap-3 border-b border-slate-200 bg-blue-50 px-4 py-2.5">
-                <span className="text-sm font-bold text-blue-900">Firma del Tecnico</span>
+                <span className="text-sm font-bold text-blue-900">Firma del técnico</span>
                 <button
                   type="button"
                   disabled={busy}
-                  className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600"
+                  aria-label="Limpiar firma del técnico"
+                  title="Limpiar firma del técnico"
+                  className="inline-flex min-h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors duration-150 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                   onClick={() => firmaTecnicoRef.current?.clear()}
                 >
-                  <i className="fas fa-eraser mr-1" />
+                  <i className="fas fa-eraser mr-1.5" aria-hidden="true" />
                   Limpiar
                 </button>
               </div>
               <div className="p-2">
-                <SignaturePad ref={firmaTecnicoRef} minHeight={176} hideClear disabled={busy} />
+                <SignaturePad ref={firmaTecnicoRef} label="Técnico" minHeight={176} hideClear disabled={busy} />
               </div>
             </div>
           </div>
@@ -458,7 +462,7 @@ export function EntregaFirmasModal({
             type="button"
             disabled={busy}
             onClick={onCancel}
-            className="min-h-[2.75rem] rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            className="min-h-[2.75rem] rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors duration-150 hover:bg-slate-100"
           >
             Cancelar
           </button>
@@ -466,13 +470,13 @@ export function EntregaFirmasModal({
             type="button"
             disabled={busy}
             onClick={() => void submit()}
-            className="inline-flex min-h-[2.75rem] items-center justify-center gap-2 rounded-lg bg-green-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-green-700 disabled:opacity-50"
+            className="inline-flex min-h-[2.75rem] items-center justify-center gap-2 rounded-lg bg-green-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-colors duration-150 hover:bg-green-700 disabled:opacity-50"
           >
-            {busy ? <i className="fas fa-spinner fa-spin" /> : null}
+            {busy ? <i className="fas fa-spinner fa-spin" aria-hidden="true" /> : null}
             <span>Guardar y Enviar</span>
             <span className="ml-1 inline-flex items-center gap-1.5 border-l border-green-500 pl-3">
-              <i className="fab fa-whatsapp" />
-              <i className="far fa-envelope" />
+              <i className="fab fa-whatsapp" aria-hidden="true" />
+              <i className="far fa-envelope" aria-hidden="true" />
             </span>
           </button>
         </div>

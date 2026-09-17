@@ -1,4 +1,4 @@
-/** Registro de flush para inputs neto c/IVA (paridad Exacto al guardar). */
+/** Registro de flush para inputs neto c/IVA al guardar. */
 
 const flushers = new Set<() => void>();
 

@@ -8,8 +8,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { isAuthFailureMessage, isLoggingOut, redirectToLoginSilently } from '../sessionGuard';
 
-type DialogIcon = 'success' | 'error' | 'warning' | 'info' | undefined;
+export type DialogIcon = 'success' | 'error' | 'warning' | 'info' | 'question' | undefined;
 
 export type AlertOptions = {
   title?: string;
@@ -56,6 +57,9 @@ function iconClasses(icon: DialogIcon): { circle: string; icon: string } {
   }
   if (icon === 'warning') {
     return { circle: 'bg-amber-100', icon: 'fas fa-exclamation text-2xl text-amber-600' };
+  }
+  if (icon === 'question') {
+    return { circle: 'bg-blue-100', icon: 'fas fa-question text-2xl text-blue-700' };
   }
   return { circle: 'bg-blue-100', icon: 'fas fa-info-circle text-2xl text-blue-600' };
 }
@@ -167,18 +171,36 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   const [dialog, setDialog] = useState<DialogState>(null);
 
   const showAlert = useCallback((message: string, options: AlertOptions = {}) => {
+    if (isLoggingOut() || isAuthFailureMessage(message) || isAuthFailureMessage(options.title)) {
+      redirectToLoginSilently();
+      return Promise.resolve();
+    }
     return new Promise<void>((resolve) => {
+      // Defensa extra: nunca encolar Unauthenticated en el modal.
+      if (isAuthFailureMessage(message)) {
+        resolve();
+        redirectToLoginSilently();
+        return;
+      }
       setDialog({ kind: 'alert', message, options, resolve });
     });
   }, []);
 
   const showConfirm = useCallback((message: string, options: ConfirmOptions = {}) => {
+    if (isLoggingOut() || isAuthFailureMessage(message)) {
+      redirectToLoginSilently();
+      return Promise.resolve(false);
+    }
     return new Promise<boolean>((resolve) => {
       setDialog({ kind: 'confirm', message, options, resolve });
     });
   }, []);
 
   const showPrompt = useCallback((message: string, options: PromptOptions = {}) => {
+    if (isLoggingOut()) {
+      redirectToLoginSilently();
+      return Promise.resolve(null);
+    }
     return new Promise<string | null>((resolve) => {
       setDialog({ kind: 'prompt', message, options, resolve });
     });
@@ -192,7 +214,9 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   return (
     <DialogContext.Provider value={value}>
       {children}
-      {dialog ? <DialogModal dialog={dialog} onClose={() => setDialog(null)} /> : null}
+      {dialog && !isAuthFailureMessage(dialog.message) && !isLoggingOut() ? (
+        <DialogModal dialog={dialog} onClose={() => setDialog(null)} />
+      ) : null}
     </DialogContext.Provider>
   );
 }

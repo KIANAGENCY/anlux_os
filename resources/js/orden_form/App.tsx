@@ -23,7 +23,13 @@ import SalidaTemporalModal from './components/SalidaTemporalModal';
 import TotalesBar, { calcTotalesFromForm } from './components/TotalesBar';
 import TrabajosSection, { emptyTrabajo } from './components/TrabajosSection';
 import { DialogProvider, useAnluxDialog, type DialogContextValue } from '../shared/nav/ui';
-import { abonoParaLiquidarSaldo, anluxMontoConIva } from './lib/iva';
+import { ErrorSummary, type FormFieldError } from '../shared/ErrorSummary';
+import { StatusBadge } from '../shared/StatusBadge';
+import { IconFilePdf, IconFloppy, IconLock, IconSpinner, IconWhatsApp } from '../shared/icons';
+import { abonoParaLiquidarSaldo } from './lib/iva';
+import { alertErroresOrden } from './lib/alertErroresOrden';
+import { focusAnluxField } from './lib/focusField';
+import { mensajeCampoObligatorio } from './lib/requiredField';
 import {
   borrarBorrador,
   borradorStorageKey,
@@ -34,7 +40,6 @@ import {
   leerBorrador,
   recolectarBorrador,
 } from './lib/ordenDraft';
-import { focusAnluxField } from './lib/focusField';
 import { flushAllNetoInputs } from './lib/netoFlush';
 import {
   validarAnticipos,
@@ -52,7 +57,6 @@ import type {
   MaterialForm,
   OrdenFormBootstrap,
   SalidaTemporalPayload,
-  ServicioSersop,
   SignaturePadHandle,
   TrabajoForm,
 } from './types';
@@ -77,7 +81,7 @@ function hayNumerosNegativos(
 }
 
 /**
- * Paridad con anluxConfirmarSaldoLiquidadoAlGuardar (modales Anlux, no navegador).
+ * Paridad con anluxConfirmarSaldoLiquidadoAlGuardar (modales Anlux).
  */
 async function confirmarSaldoAlGuardar(
   dialogs: Pick<DialogContextValue, 'showAlert' | 'showConfirm'>,
@@ -264,15 +268,6 @@ function normalizeEstatus(raw: string, flujo: string[]): string {
   return flujo.includes(canon) ? canon : (flujo[0] || 'Recepcion');
 }
 
-function getSersop01(servicios: ServicioSersop[]): ServicioSersop {
-  const found = servicios.find((s) => String(s.clave || '').trim().toUpperCase() === 'SERSOP01');
-  return found || {
-    clave: 'SERSOP01',
-    descripcion: 'REVISION / DIAGNOSTICO',
-    precio: 603.45,
-  };
-}
-
 type NotificationResult = { message: string; level: string; status: string; settled: boolean };
 
 async function waitWhatsappSettled(rootUrl: string, notificationId: number, csrf: string): Promise<NotificationResult> {
@@ -350,7 +345,7 @@ export default function App({ bootstrap }: Props) {
 }
 
 function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
-  const { showAlert, showConfirm, showPrompt } = useAnluxDialog();
+  const { showAlert, showConfirm } = useAnluxDialog();
   const initial = useMemo(() => buildInitialState(bootstrap), [bootstrap]);
   const [cliente, setCliente] = useState(initial.cliente);
   const [equipos, setEquipos] = useState(initial.equipos);
@@ -367,16 +362,33 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
   const [firmasReactivadas, setFirmasReactivadas] = useState(false);
   const [formDirty, setFormDirty] = useState(false);
   const [draftBanner, setDraftBanner] = useState('');
-  const [sersop01Hidden, setSersop01Hidden] = useState<TrabajoForm | null>(null);
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
   const [salidaActiva, setSalidaActiva] = useState(bootstrap.flags.salida_temporal_activa);
+  const [salidaIdEquipo, setSalidaIdEquipo] = useState(Number(bootstrap.flags.salida_temporal_id_equipo || 0));
   const [salidaModalOpen, setSalidaModalOpen] = useState(false);
+  const [salidaModalEquipoId, setSalidaModalEquipoId] = useState(0);
   const [entregaIdx, setEntregaIdx] = useState(0);
   const [entregaConfirmOpen, setEntregaConfirmOpen] = useState(false);
   const [entregaFirmasOpen, setEntregaFirmasOpen] = useState(false);
   const [clienteExpandido, setClienteExpandido] = useState(false);
   const [lockLost, setLockLost] = useState(false);
+  const [formErrors, setFormErrors] = useState<FormFieldError[]>([]);
+
+  const clienteFieldErrors = useMemo(() => {
+    const out: Partial<Record<'nombreCliente' | 'poblacion' | 'correo', string>> = {};
+    for (const err of formErrors) {
+      if (err.focus === 'cliente.nombreCliente') out.nombreCliente = err.message;
+      if (err.focus === 'cliente.poblacion' || err.id === 'poblacion-formato') out.poblacion = err.message;
+      if (err.focus === 'cliente.correo') out.correo = err.message;
+    }
+    return out;
+  }, [formErrors]);
+
+  const observacionFieldError = useMemo(
+    () => formErrors.find((e) => e.focus?.startsWith('observacion.'))?.message,
+    [formErrors],
+  );
 
   const firmaClienteInicialRef = useRef<SignaturePadHandle | null>(null);
   const firmaTecnicoInicialRef = useRef<SignaturePadHandle | null>(null);
@@ -429,17 +441,14 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
   }, [bootstrap.meta.id_orden_c]);
 
   const modo = bootstrap.meta.modo;
-  const readOnly = modo === 'solo_lectura' || salidaActiva || lockLost;
+  const readOnly = modo === 'solo_lectura' || lockLost;
+
   const idOrden = bootstrap.meta.id_orden_c;
   const estatusEntregado = /entreg/i.test(cliente.estatus);
   const mostrarTaller =
     modo === 'completar'
     || modo === 'solo_lectura'
     || (modo === 'editar' && !/recep/i.test(cliente.estatus));
-  const sersop01Info = useMemo(
-    () => getSersop01(bootstrap.catalogs.servicios_sersop),
-    [bootstrap.catalogs.servicios_sersop],
-  );
   const showFirmasInicial = (modo === 'nueva' && !estatusEntregado) || (firmasReactivadas && modo !== 'completar');
   const showFirmasEntrega = estatusEntregado || (firmasReactivadas && modo === 'completar');
   const estatusKey = cliente.estatus
@@ -450,20 +459,15 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
   const ordenEnProceso = estatusKey === 'en proceso' || estatusKey === 'proceso';
   const ordenTerminada = estatusKey === 'terminado';
   const showAcciones = idOrden > 0 && (ordenEnProceso || ordenTerminada);
-  const puedeRegistrarSalida =
-    idOrden > 0
-    && ordenEnProceso
-    && !salidaActiva
-    && !readOnly
-    && !!bootstrap.urls.salida_temporal;
   const showClienteSection = modo !== 'completar' || clienteExpandido;
   const salidaEquipo = equipos.find(
-    (equipo) => Number(equipo.id_equipo) === Number(bootstrap.flags.salida_temporal_id_equipo || 0),
+    (equipo) => Number(equipo.id_equipo) === Number(salidaIdEquipo || bootstrap.flags.salida_temporal_id_equipo || 0),
   );
   const totales = useMemo(
     () => calcTotalesFromForm(trabajos, materiales, anticipos, abonoSaldo),
     [trabajos, materiales, anticipos, abonoSaldo],
   );
+  const estatusOpcionesBloqueadasSalida = salidaActiva ? ['Terminado', 'Entregado'] : undefined;
 
   useEffect(() => {
     if (idOrden <= 0 || modo === 'solo_lectura') return;
@@ -683,15 +687,6 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
       setAbonoSaldo(Number(draft.abono_saldo) || 0);
       if (draft.abono_saldo_equipos) setAbonoSaldoEquipos(draft.abono_saldo_equipos);
       setSaldoPagadoConfirmadoFlag(String(draft.saldo_pagado_confirmado) === '1');
-      if (draft.sersop01 && draft.sersop01.clave) {
-        setSersop01Hidden({
-          clave: String(draft.sersop01.clave),
-          descripcion: String(draft.sersop01.descripcion || '').toUpperCase(),
-          importe: String(draft.sersop01.importe || ''),
-          ticket: String(draft.sersop01.ticket || ''),
-          id_equipo: String(draft.sersop01.id_equipo || ''),
-        });
-      }
       const firmas = draft.firmas || { firma_c_e: '', firma_t_r: '', firma_c_r: '', firma_t_e: '' };
       window.setTimeout(() => {
         void (async () => {
@@ -726,7 +721,7 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
         abonoSaldoEquipos,
         saldoPagadoConfirmado: saldoPagadoConfirmadoFlag,
         comentariosTecnico,
-        sersop01: sersop01Hidden,
+        sersop01: null,
         firmas: {
           firma_c_e: firmaClienteInicialRef.current?.hasStroke()
             ? firmaClienteInicialRef.current.getDataUrl()
@@ -760,7 +755,7 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
         abonoSaldoEquipos,
         saldoPagadoConfirmado: saldoPagadoConfirmadoFlag,
         comentariosTecnico,
-        sersop01: sersop01Hidden,
+        sersop01: null,
         firmas: {
           firma_c_e: firmaClienteInicialRef.current?.hasStroke()
             ? firmaClienteInicialRef.current.getDataUrl()
@@ -802,7 +797,6 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
     abonoSaldoEquipos,
     saldoPagadoConfirmadoFlag,
     comentariosTecnico,
-    sersop01Hidden,
   ]);
 
   const appendTrabajosMaterialesAnticipos = useCallback(
@@ -845,7 +839,6 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
     firmaClienteOverride?: string;
     firmaTecnicoOverride?: string;
     abonoOverride?: number;
-    sersopHidden?: TrabajoForm | null;
     /** Solo tras confirmación explícita del técnico (paridad legacy). */
     saldoPagadoConfirmado?: boolean;
     permitirNegativos?: boolean;
@@ -881,13 +874,7 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
       if (eq.id_equipo) fd.append(`equipos[${i}][id_equipo]`, String(eq.id_equipo));
     });
 
-    const sersop = opts?.sersopHidden ?? sersop01Hidden;
-    const trabajosOut =
-      mostrarTaller
-        ? trabajos
-        : sersop
-          ? [sersop]
-          : [];
+    const trabajosOut = mostrarTaller ? trabajos : [];
     const matsOut = mostrarTaller ? materiales : [];
     const antsOut = mostrarTaller ? anticipos : [];
     if (trabajosOut.length || matsOut.length || antsOut.length) {
@@ -959,7 +946,6 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
     firmasOff,
     showFirmasInicial,
     showFirmasEntrega,
-    sersop01Hidden,
     appendTrabajosMaterialesAnticipos,
   ]);
 
@@ -973,7 +959,7 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
     whatsapp_notice_level?: string;
     whatsapp_notification_id?: number | null;
     whatsapp_applicable?: boolean;
-  }, salidaPayload: SalidaTemporalPayload | null) => {
+  }, salidaPayload: SalidaTemporalPayload | null, opts?: { pdfEquipoIndice?: number }) => {
     const idGuardada = Number(data.idOrden || data.id_orden_c || idOrden || 0);
     permitirSalirRef.current = true;
     limpiarDirty();
@@ -1025,77 +1011,41 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
     }
 
     if (idGuardada > 0 && bootstrap.urls.pdf) {
-      const pdfUrl = bootstrap.urls.pdf.includes('{id}')
+      let pdfUrl = bootstrap.urls.pdf.includes('{id}')
         ? bootstrap.urls.pdf.replace('{id}', String(idGuardada))
         : bootstrap.urls.pdf.replace(/\/\d+(\?|$)/, `/${idGuardada}$1`);
+      const eqIdx = Number(opts?.pdfEquipoIndice || 0);
+      if (eqIdx > 0) {
+        pdfUrl += `${pdfUrl.includes('?') ? '&' : '?'}eq=${eqIdx}`;
+      }
       void abrirPdfOrden(pdfUrl);
     }
 
-    if (modo === 'editar' || modo === 'completar') {
-      window.location.reload();
-    } else {
-      window.location.href = bootstrap.urls.ordenes_index || '/ordenes';
-    }
-  };
-
-  const prepareSersop01IfNeeded = async (): Promise<{ ok: boolean; hidden: TrabajoForm | null; abonoExtra: number }> => {
-    if (modo !== 'nueva') return { ok: true, hidden: null, abonoExtra: 0 };
-    const yaTiene = trabajos.some((t) => String(t.clave || '').trim().toUpperCase() === 'SERSOP01' && (Number(t.importe) || 0) > 0);
-    if (yaTiene) return { ok: true, hidden: null, abonoExtra: 0 };
-
-    const servicio = getSersop01(bootstrap.catalogs.servicios_sersop);
-    const precioSinIva = Number(servicio.precio || 603.45);
-    const precioConIva = anluxMontoConIva(precioSinIva);
-    const clientePago = await showConfirm(
-      `SERSOP01 — ${servicio.descripcion}\n`
-        + `$${precioSinIva.toFixed(2)} sin IVA ($${precioConIva.toFixed(2)} con IVA).\n\n`
-        + `¿El cliente ya pagó este cobro de revisión?\n\n`
-        + `• Aceptar: se pedirá ticket/factura y se registrará SERSOP01.\n`
-        + `• Cancelar: no se registrará SERSOP01.`,
-      {
-        title: 'Cobro por defecto en esta orden nueva',
-        icon: 'warning',
-        confirmText: 'Sí, ya pagó',
-        cancelText: 'No registrar SERSOP01',
-      },
-    );
-    if (!clientePago) return { ok: true, hidden: null, abonoExtra: 0 };
-
-    const ticket = await showPrompt('Captura el ticket / factura del pago de SERSOP01:', {
-      title: 'Ticket / factura',
-      confirmText: 'Registrar',
-      cancelText: 'Cancelar',
-      placeholder: 'Ej. TICKET-001',
-    });
-    if (ticket === null) {
-      await showAlert('Guardado cancelado. Sin ticket/factura no se registra el cobro SERSOP01.', {
-        title: 'Operación cancelada',
-        icon: 'warning',
-      });
-      return { ok: false, hidden: null, abonoExtra: 0 };
-    }
-    const ticketNorm = String(ticket || '').trim().toUpperCase();
-    if (!ticketNorm) {
-      await showAlert('Debes capturar ticket o factura para registrar SERSOP01.', {
-        title: 'Dato requerido',
-        icon: 'warning',
-      });
-      return { ok: false, hidden: null, abonoExtra: 0 };
-    }
-    return {
-      ok: true,
-      hidden: {
-        clave: 'SERSOP01',
-        descripcion: String(servicio.descripcion || 'REVISION').toUpperCase(),
-        importe: String(precioSinIva),
-        ticket: ticketNorm,
-        id_equipo: '',
-      },
-      abonoExtra: precioSinIva,
+    const navigateAfterSave = () => {
+      if (modo === 'editar' || modo === 'completar') {
+        window.location.reload();
+      } else {
+        window.location.href = bootstrap.urls.ordenes_index || '/ordenes';
+      }
     };
+    if (opts?.pdfEquipoIndice && opts.pdfEquipoIndice > 0) {
+      window.setTimeout(navigateAfterSave, 800);
+    } else {
+      navigateAfterSave();
+    }
   };
 
-  const runSave = async (salidaPayload: SalidaTemporalPayload | null) => {
+  const debeOfrecerSalidaAlGuardar =
+    idOrden > 0
+    && !salidaActiva
+    && !readOnly
+    && ordenEnProceso
+    && !!bootstrap.urls.salida_temporal;
+
+  const runSave = async (
+    salidaPayload: SalidaTemporalPayload | null,
+    opts?: { skipSalidaPrompt?: boolean },
+  ) => {
     if (readOnly) return;
     if (saving) {
       await showAlert('La orden ya se está guardando. Espera a que termine el envío.', {
@@ -1105,96 +1055,90 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
       return;
     }
     flushAllNetoInputs();
+    const errors: FormFieldError[] = [];
+    const pushError = (id: string, message: string, focus?: string) => {
+      errors.push({ id, message, focus });
+    };
+
     if (!cliente.nombreCliente.trim() && modo !== 'completar') {
-      await showAlert('Captura el nombre del cliente.', { title: 'Dato requerido', icon: 'warning' });
-      focusAnluxField('cliente.nombreCliente');
-      return;
+      pushError(
+        'nombre',
+        mensajeCampoObligatorio('Nombre o razón social'),
+        'cliente.nombreCliente',
+      );
     }
     if (!cliente.poblacion.trim() && modo !== 'completar') {
-      await showAlert('Captura la poblacion/ciudad.', { title: 'Dato requerido', icon: 'warning' });
-      focusAnluxField('cliente.poblacion');
-      return;
+      pushError('poblacion', mensajeCampoObligatorio('Población/Ciudad'), 'cliente.poblacion');
     }
 
-    const vEq = validarEquipos(equipos);
-    if (!vEq.ok) {
-      await showAlert(vEq.message, { title: vEq.title || 'Faltan datos en la orden', icon: 'warning' });
-      focusAnluxField(vEq.focus);
-      return;
+    if (modo !== 'completar') {
+      const vEq = validarEquipos(equipos);
+      if (!vEq.ok) pushError('equipos', vEq.message, vEq.focus);
     }
 
-    // Observaciones: bloquear pronto en orden nueva (antes de firmas / SERSOP / pagos).
+    if (salidaActiva && /terminado|entregado/i.test(cliente.estatus)) {
+      pushError(
+        'estatus-salida',
+        'Con salida temporal activa no puedes poner la orden en Terminado ni Entregado hasta registrar el regreso del equipo.',
+        'estatusOrdenExterno',
+      );
+    }
+
     const vObsEarly = validarObservaciones(modo, idOrden, observaciones);
-    if (!vObsEarly.ok) {
-      await showAlert(vObsEarly.message, { title: vObsEarly.title || 'Observaciones', icon: 'warning' });
-      focusAnluxField(vObsEarly.focus);
-      return;
-    }
+    if (!vObsEarly.ok) pushError('observaciones', vObsEarly.message, vObsEarly.focus);
 
     if (!firmasOff) {
       if (showFirmasInicial) {
         if (!firmaClienteInicialRef.current?.hasStroke() || !firmaTecnicoInicialRef.current?.hasStroke()) {
-          await showAlert('Debes firmar en Cliente y Tecnico (firmas iniciales).', {
-            title: 'Firmas requeridas',
-            icon: 'warning',
-          });
-          return;
+          pushError('firmas-recepcion', 'Faltan las firmas de recepción del cliente y del técnico.', 'firmas-recepcion');
         }
       }
       if (showFirmasEntrega) {
         if (!firmaClienteRef.current?.hasStroke() || !firmaTecnicoRef.current?.hasStroke()) {
-          await showAlert('Debes firmar en Cliente y Tecnico (firmas de entrega).', {
-            title: 'Firmas requeridas',
-            icon: 'warning',
-          });
-          return;
+          pushError('firmas-entrega', 'Faltan las firmas de entrega del cliente y del técnico.', 'firmas-entrega');
         }
       }
     }
 
-    const sersopPrep = await prepareSersop01IfNeeded();
-    if (!sersopPrep.ok) return;
-    if (sersopPrep.hidden) setSersop01Hidden(sersopPrep.hidden);
+    if (errors.length > 0) {
+      setFormErrors(errors);
+      await alertErroresOrden(showAlert, errors);
+      focusAnluxField(errors[0].focus);
+      return;
+    }
 
-    const trabajosCalc = mostrarTaller
-      ? trabajos
-      : sersopPrep.hidden
-        ? [sersopPrep.hidden]
-        : sersop01Hidden
-          ? [sersop01Hidden]
-          : [];
+    const trabajosCalc = mostrarTaller ? trabajos : [];
     const matsCalc = mostrarTaller ? materiales : [];
     const antsCalc = mostrarTaller ? anticipos : [];
-    let abonoWorking = abonoSaldo + (sersopPrep.abonoExtra || 0);
+    let abonoWorking = abonoSaldo;
 
     if (mostrarTaller) {
       const vSer = validarServiciosExtra(trabajos, bootstrap.catalogs.servicios_sersop);
-      if (!vSer.ok) {
-        await showAlert(vSer.message, { title: vSer.title || 'Faltan datos en la orden', icon: 'warning' });
-        focusAnluxField(vSer.focus);
-        return;
-      }
+      if (!vSer.ok) pushError('trabajos', vSer.message, vSer.focus);
       const vMat = validarMateriales(materiales);
-      if (!vMat.ok) {
-        await showAlert(vMat.message, { title: vMat.title || 'Faltan datos en la orden', icon: 'warning' });
-        focusAnluxField(vMat.focus);
-        return;
-      }
+      if (!vMat.ok) pushError('materiales', vMat.message, vMat.focus);
       const vAnt = validarAnticipos(anticipos);
-      if (!vAnt.ok) {
-        await showAlert(vAnt.message, { title: vAnt.title || 'Faltan datos en la orden', icon: 'warning' });
-        focusAnluxField(vAnt.focus);
-        return;
-      }
+      if (!vAnt.ok) pushError('anticipos', vAnt.message, vAnt.focus);
     }
 
     const totPre = calcTotalesFromForm(trabajosCalc.length ? trabajosCalc : trabajos, matsCalc, antsCalc, abonoWorking);
-
     const vEnt = validarEntregadoLiquidado(cliente.estatus, totPre.saldoPendiente);
-    if (!vEnt.ok) {
-      await showAlert(vEnt.message, { title: vEnt.title || 'Saldo pendiente', icon: 'warning' });
+    if (!vEnt.ok) pushError('saldo', vEnt.message, 'entrega-saldo');
+
+    const vPob = validarPoblacion(cliente.poblacion, modo);
+    if (!vPob.ok) pushError('poblacion-formato', vPob.message, vPob.focus);
+    const correoNorm = String(cliente.correo || '').trim().toLowerCase();
+    if (correoNorm !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoNorm)) {
+      pushError('correo', 'Correo electrónico no válido.', 'cliente.correo');
+    }
+
+    if (errors.length > 0) {
+      setFormErrors(errors);
+      await alertErroresOrden(showAlert, errors);
+      focusAnluxField(errors[0].focus);
       return;
     }
+    setFormErrors([]);
 
     const saldoConfirm = await confirmarSaldoAlGuardar(
       { showAlert, showConfirm },
@@ -1219,56 +1163,36 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
     const matsNeg = matsCalc.length ? matsCalc : materiales;
     const antsNeg = antsCalc.length ? antsCalc : anticipos;
     const tieneNegativos = hayNumerosNegativos(trabajosNeg, matsNeg, antsNeg);
-    if (tieneNegativos) {
-      const okNeg = await showConfirm(
-        'La orden contiene números negativos. ¿Deseas aceptar y guardar la orden así?',
-        {
-          title: 'Confirmar importes',
-          icon: 'warning',
-          confirmText: 'Sí, guardar',
-          cancelText: 'Revisar',
-        },
-      );
-      if (!okNeg) return;
-    }
-
     const totPost = calcTotalesFromForm(
       trabajosCalc.length ? trabajosCalc : trabajos,
       matsCalc,
       antsCalc,
       abonoWorking,
     );
-    let permitirSaldoNegativo = false;
-    if (totPost.saldoPendiente < -0.009) {
-      const okSaldoNeg = await showConfirm(
-        'El saldo pendiente queda en número negativo. ¿Deseas aceptar y guardar la orden así?',
-        {
-          title: 'Confirmar saldo negativo',
-          icon: 'warning',
-          confirmText: 'Sí, guardar',
-          cancelText: 'Revisar',
-        },
-      );
-      if (!okSaldoNeg) return;
-      permitirSaldoNegativo = true;
-    }
+    const permitirSaldoNegativo = totPost.saldoPendiente < -0.009;
 
-    const vPob = validarPoblacion(cliente.poblacion, modo);
-    if (!vPob.ok) {
-      await showAlert(vPob.message, { title: vPob.title || 'Faltan datos en la orden', icon: 'warning' });
-      focusAnluxField(vPob.focus);
-      return;
-    }
-    const correoNorm = String(cliente.correo || '').trim().toLowerCase();
-    if (correoNorm !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoNorm)) {
-      await showAlert('Correo electrónico no válido.', { title: 'Faltan datos en la orden', icon: 'warning' });
-      focusAnluxField('cliente.correo');
-      return;
-    }
-    // Normalizar población (paridad Exacto).
     const poblacionNorm = cliente.poblacion.trim().replace(/\s+/g, ' ');
     if (poblacionNorm !== cliente.poblacion || correoNorm !== cliente.correo) {
       setCliente((c) => ({ ...c, poblacion: poblacionNorm, correo: correoNorm }));
+    }
+
+    if (
+      !opts?.skipSalidaPrompt
+      && !salidaPayload
+      && debeOfrecerSalidaAlGuardar
+    ) {
+      const quiereSalida = await showConfirm('¿El equipo saldrá temporalmente del taller?', {
+        title: 'Salida temporal',
+        icon: 'question',
+        confirmText: 'Sí',
+        cancelText: 'No',
+      });
+      if (quiereSalida) {
+        saveAfterSalidaRef.current = true;
+        setSalidaModalEquipoId(0);
+        setSalidaModalOpen(true);
+        return;
+      }
     }
 
     setSaving(true);
@@ -1277,9 +1201,8 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
       const data = await registrarOrden(
         bootstrap.urls.registrar,
         buildFormData({
-          sersopHidden: sersopPrep.hidden,
           abonoOverride: abonoWorking,
-          saldoPagadoConfirmado: saldoConfirm.saldoPagadoConfirmado || saldoPagadoConfirmadoFlag,
+          saldoPagadoConfirmado: saldoPagadoConfirmadoFlag || saldoConfirm.saldoPagadoConfirmado,
           permitirNegativos: tieneNegativos,
           permitirSaldoNegativo,
         }),
@@ -1313,37 +1236,44 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
 
   const onSave = async () => {
     if (readOnly) return;
-    const ofrecerSalida =
-      idOrden > 0
-      && !salidaActiva
-      && cliente.estatus === 'En proceso'
-      && !!bootstrap.urls.salida_temporal;
-
-    if (ofrecerSalida) {
-      const quiereSalida = await showConfirm(
-        '¿Deseas registrar una salida temporal del equipo despues de guardar?',
-        {
-          title: 'Salida temporal',
-          icon: 'warning',
-          confirmText: 'Sí, registrar salida',
-          cancelText: 'Solo guardar',
-        },
-      );
-      if (quiereSalida) {
-        saveAfterSalidaRef.current = true;
-        setSalidaModalOpen(true);
-        return;
-      }
-    }
     await runSave(null);
+  };
+
+  const registrarSalidaDirecta = async (payload: SalidaTemporalPayload) => {
+    if (!bootstrap.urls.salida_temporal) return;
+    setSaving(true);
+    setStatusMsg('Registrando salida temporal...');
+    try {
+      const url = bootstrap.urls.salida_temporal.includes('{id}')
+        ? bootstrap.urls.salida_temporal.replace('{id}', String(idOrden))
+        : bootstrap.urls.salida_temporal;
+      const res = await salidaTemporal(url, payload, bootstrap.meta.csrf);
+      await showAlert(res.message || (res.success ? 'Salida temporal registrada.' : 'No se pudo registrar la salida.'), {
+        title: res.success ? 'Listo' : 'Error',
+        icon: res.success ? 'success' : 'error',
+      });
+      if (res.success) {
+        setSalidaActiva(true);
+        setSalidaIdEquipo(payload.id_equipo);
+        window.location.reload();
+      }
+    } catch (err) {
+      await showAlert(err instanceof Error ? err.message : 'Error de red', { title: 'Error', icon: 'error' });
+    } finally {
+      setSaving(false);
+      setStatusMsg('');
+    }
   };
 
   const onSalidaModalConfirm = (payload: SalidaTemporalPayload) => {
     setSalidaModalOpen(false);
+    setSalidaModalEquipoId(0);
     if (saveAfterSalidaRef.current) {
       saveAfterSalidaRef.current = false;
-      void runSave(payload);
+      void runSave(payload, { skipSalidaPrompt: true });
+      return;
     }
+    void registrarSalidaDirecta(payload);
   };
 
   const onRegreso = async () => {
@@ -1439,7 +1369,6 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
     setComentariosTecnico('');
     setAbonoSaldo(0);
     setAbonoSaldoEquipos({});
-    setSersop01Hidden(null);
     setSaldoPagadoConfirmadoFlag(false);
     window.setTimeout(() => {
       if (modo === 'completar') {
@@ -1517,7 +1446,7 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
         await showAlert(data.message || 'No se pudo guardar la entrega.', { title: 'Error', icon: 'error' });
         return;
       }
-      await afterSaveSuccess(data, null);
+      await afterSaveSuccess(data, null, { pdfEquipoIndice: entregaIdx });
     } catch (err) {
       await showAlert(err instanceof Error ? err.message : 'Error de red', { title: 'Error', icon: 'error' });
     } finally {
@@ -1526,21 +1455,51 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
   };
 
   return (
-    <div className="anlux-page-card">
-      <header className="anlux-page-header">
-        <div>
+    <form
+      className="anlux-page-card"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSave();
+      }}
+    >
+      <header className="anlux-page-header border-b border-[color:var(--anlux-border-soft)] px-4 py-3 sm:px-5">
+        <div className="min-w-0 flex-1">
           <p className="anlux-eyebrow">Anlux · Orden de servicio</p>
           <h1 className="anlux-page-title">
             {modo === 'nueva' ? 'Nueva orden de servicio' : `Orden ${cliente.folio || ''}`}
           </h1>
-          <p className="anlux-page-description">Captura cliente, equipos, servicio, firmas y cobros sin perder el contexto.</p>
+          <p className="anlux-page-description">
+            Captura cliente, equipos, servicio, firmas y cobros en una sola página.
+          </p>
         </div>
-        <span className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-900">
-          <i className="fas fa-user-cog" aria-hidden="true" />
-          {bootstrap.meta.nombre_tecnico || 'Técnico sin asignar'}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge estatus={cliente.estatus} />
+          <span className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[color:var(--anlux-border-soft)] bg-[color:var(--anlux-pale)] px-4 text-sm font-semibold text-[color:var(--anlux-deep)]">
+            <i className="fas fa-user-cog" aria-hidden="true" />
+            {bootstrap.meta.nombre_tecnico || 'Técnico sin asignar'}
+          </span>
+          {mostrarTaller ? (
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-800">
+              Saldo ${totales.saldoPendiente.toFixed(2)}
+            </span>
+          ) : null}
+          {lockLost ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-900">
+              <IconLock size={14} />
+              Bloqueo perdido
+            </span>
+          ) : null}
+        </div>
       </header>
-      <div className="space-y-5 p-4 sm:p-6">
+
+      <div className="space-y-4 p-4 sm:p-5">
+      <ErrorSummary
+        title="Faltan datos en la orden"
+        errors={formErrors}
+        onJump={(focus) => {
+          window.setTimeout(() => focusAnluxField(focus), 50);
+        }}
+      />
       {draftBanner ? (
         <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900">
           {draftBanner}
@@ -1579,7 +1538,7 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
               El estatus sigue en
               {' '}
               <strong>En proceso</strong>
-              . Registra el regreso cuando el cliente vuelva a dejar el equipo.
+              . Registra el regreso cuando el cliente vuelva a dejar el equipo. No puedes marcar la orden como Terminado ni Entregado mientras dure la salida.
             </p>
             {bootstrap.flags.motivo_salida_temporal ? (
               <p className="mt-2 text-xs sm:text-sm" style={{ margin: '0.5rem 0 0', color: '#7c2d12' }}>
@@ -1607,51 +1566,17 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
         </div>
       ) : null}
 
-      {puedeRegistrarSalida ? (
-        <section className="mb-4 flex flex-col gap-3 rounded-xl border border-orange-300 bg-orange-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="font-bold text-orange-900">
-              <i className="fas fa-truck-loading mr-2" aria-hidden="true" />
-              Salida temporal
-            </p>
-            <p className="mt-1 text-sm text-orange-800">
-              Registra el motivo y las firmas cuando el cliente retire temporalmente un equipo sin cerrar la orden.
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => {
-              saveAfterSalidaRef.current = true;
-              setSalidaModalOpen(true);
-            }}
-            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-orange-600 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-orange-700 disabled:opacity-60"
-          >
-            <i className="fas fa-sign-out-alt" aria-hidden="true" />
-            Registrar salida temporal
-          </button>
-        </section>
-      ) : null}
-
       {modo === 'completar' ? (
-        <div className="mb-6 rounded-lg border-2 border-blue-600 bg-blue-50 p-5 shadow-sm">
+        <div className="rounded-lg border-2 border-[color:var(--anlux-primary)] bg-[color:var(--anlux-pale)] p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0 flex-1 text-left uppercase">
-              <p className="text-base font-bold text-blue-900">Orden ya registrada en la tabla de ordenes</p>
-              <p className="mt-1 text-sm font-semibold text-blue-800">
-                Folio
-                {' '}
-                <strong>{cliente.folio}</strong>
-                {' '}
-                · Cliente
-                {' '}
-                <strong>{cliente.nombreCliente}</strong>
-                {' '}
-                · Estatus
-                {' '}
-                <strong>{cliente.estatus.toUpperCase()}</strong>
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-base font-bold uppercase text-[color:var(--anlux-deep)]">Orden ya registrada en la tabla de ordenes</p>
+              <p className="mt-1 text-sm font-semibold text-[color:var(--anlux-deep)]">
+                Folio <strong>{cliente.folio}</strong>
+                {' '}· Cliente <strong>{cliente.nombreCliente}</strong>
+                {' '}· Estatus <strong>{cliente.estatus.toUpperCase()}</strong>
               </p>
-              <p className="mt-2 text-xs font-semibold normal-case text-blue-700">
+              <p className="mt-2 text-xs font-semibold text-slate-600">
                 Los datos del cliente se visualizan al editar o al imprimir el documento.
               </p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -1670,7 +1595,7 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
                       }
                     }, 50);
                   }}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-800 shadow-sm hover:bg-blue-50"
+                  className="anlux-btn-secondary"
                 >
                   <i className="fas fa-user-edit" />
                   Editar datos del cliente
@@ -1678,26 +1603,24 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
                 <button
                   type="button"
                   onClick={() => void onReenviar()}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border-2 px-4 py-2 text-sm font-bold shadow-sm"
-                  style={{ backgroundColor: '#059669', color: '#ffffff', borderColor: '#047857' }}
+                  className="anlux-btn-secondary"
                 >
-                  <i className="fab fa-whatsapp" />
+                  <span className="anlux-icon-box"><IconWhatsApp size={20} /></span>
                   Reenviar WhatsApp/correo
                 </button>
               </div>
-              <p className="mt-2 text-[11px] font-medium normal-case leading-snug text-blue-700">
+              <p className="mt-2 text-[11px] font-medium leading-snug text-slate-600">
                 Usa «Reenviar» si el WhatsApp o el correo no llegaron (numero o correo equivocado). Se envia de nuevo como recepcion.
               </p>
             </div>
             <div className="w-full shrink-0 lg:w-56">
-              <label className="mb-2 block text-sm font-bold uppercase text-blue-900" htmlFor="estatusOrdenBanner">
-                ESTATUS
-              </label>
+              <label className="anlux-label" htmlFor="estatusOrdenBanner">Estatus</label>
               <EstatusSelect
                 id="estatusOrdenBanner"
                 value={cliente.estatus}
                 options={bootstrap.catalogs.estatus_flujo}
                 disabled={readOnly}
+                disabledOptions={estatusOpcionesBloqueadasSalida}
                 onChange={(estatus) => setCliente((prev) => ({ ...prev, estatus }))}
               />
             </div>
@@ -1705,23 +1628,15 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
         </div>
       ) : null}
 
-      <p className="text-sm text-blue-800">
-        <i className="fas fa-user-cog mr-2" />
-        Tecnico:
-        {' '}
-        <strong>{bootstrap.meta.nombre_tecnico || '—'}</strong>
-      </p>
-
       {modo === 'editar' || modo === 'solo_lectura' ? (
-        <div className="mb-4 max-w-xs">
-          <label className="mb-2 block text-sm font-bold uppercase text-blue-900" htmlFor="estatusOrdenExterno">
-            ESTATUS
-          </label>
+        <div className="max-w-xs">
+          <label className="anlux-label" htmlFor="estatusOrdenExterno">Estatus</label>
           <EstatusSelect
             id="estatusOrdenExterno"
             value={cliente.estatus}
             options={bootstrap.catalogs.estatus_flujo}
             disabled={readOnly}
+            disabledOptions={estatusOpcionesBloqueadasSalida}
             onChange={(estatus) => setCliente((prev) => ({ ...prev, estatus }))}
           />
         </div>
@@ -1732,7 +1647,18 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
           <ClienteSection
             value={cliente}
             readOnly={readOnly}
-            onChange={setCliente}
+            fieldErrors={clienteFieldErrors}
+            onChange={(next) => {
+              setCliente(next);
+              setFormErrors((prev) =>
+                prev.filter(
+                  (e) =>
+                    e.focus !== 'cliente.nombreCliente'
+                    && e.focus !== 'cliente.poblacion'
+                    && e.id !== 'poblacion-formato',
+                ),
+              );
+            }}
           />
         </div>
       ) : null}
@@ -1742,20 +1668,24 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
         tiposServicio={bootstrap.catalogs.tipos_servicio}
         readOnly={readOnly}
         showAcciones={showAcciones}
+        salidaIdEquipo={salidaIdEquipo}
         onChange={setEquipos}
         onEntregarEquipo={(idx) => {
           setEntregaIdx(idx);
           setEntregaConfirmOpen(true);
         }}
+        onRegresarAlTaller={() => {
+          void onRegreso();
+        }}
       />
 
       {bootstrap.catalogs.condiciones_entrega.length > 0 ? (
-        <section className="rounded-r-lg border-l-4 border-blue-500 bg-blue-50 p-4 sm:pl-6">
-          <h2 className="mb-6 flex items-center text-xl font-bold text-blue-900 sm:text-2xl">
-            <i className="fas fa-info-circle mr-3 text-blue-500" />
-            CONDICIONES DE ENTREGA DEL EQUIPO
+        <section className="rounded-r-lg border-l-4 border-[color:var(--anlux-primary)] bg-[color:var(--anlux-pale)] p-4 sm:pl-6">
+          <h2 className="mb-4 flex items-center text-lg font-bold text-[color:var(--anlux-deep)] sm:text-xl">
+            <i className="fas fa-info-circle mr-3 text-[color:var(--anlux-primary)]" />
+            Condiciones de entrega del equipo
           </h2>
-          <div className="space-y-2 text-left text-xs font-normal uppercase italic leading-relaxed text-blue-900 sm:text-sm">
+          <div className="space-y-2 text-left text-xs font-normal uppercase italic leading-relaxed text-[color:var(--anlux-deep)] sm:text-sm">
             {bootstrap.catalogs.condiciones_entrega.map((linea) => (
               <p key={linea} className="mb-0">
                 •
@@ -1772,68 +1702,31 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
           observaciones={observaciones}
           readOnly={readOnly}
           requerido={modo === 'nueva'}
-          onChange={setObservaciones}
+          fieldError={observacionFieldError}
+          onChange={(next) => {
+            setObservaciones(next);
+            setFormErrors((prev) => prev.filter((e) => !e.focus?.startsWith('observacion.')));
+          }}
         />
       ) : null}
 
-      <FirmasSection
-        showInicial={showFirmasInicial}
-        showEntrega={showFirmasEntrega}
-        disabled={readOnly}
-        firmasDeshabilitadas={firmasOff}
-        onReactivarFirmas={() => void onReactivarFirmas()}
-        onDirty={marcarDirty}
-        firmaClienteInicialRef={firmaClienteInicialRef}
-        firmaTecnicoInicialRef={firmaTecnicoInicialRef}
-        firmaClienteRef={firmaClienteRef}
-        firmaTecnicoRef={firmaTecnicoRef}
-        preload={bootstrap.orden?.firmas}
-      />
-
-      {modo === 'nueva' && !mostrarTaller ? (
-        <div className="rounded-lg border-2 border-amber-400 bg-amber-50 p-4 text-left shadow-sm">
-          <p className="text-base font-bold uppercase text-amber-950">
-            <i className="fas fa-receipt mr-2 text-amber-600" />
-            Cobro por defecto en orden nueva
-          </p>
-          <p className="mt-2 text-sm font-semibold uppercase text-amber-900">
-            Se cobra
-            {' '}
-            <strong>SERSOP01</strong>
-            {' '}
-            —
-            {' '}
-            {sersop01Info.descripcion}
-            {' '}
-            —
-            {' '}
-            <strong>
-              $
-              {Number(sersop01Info.precio || 0).toFixed(2)}
-              {' '}
-              sin IVA
-            </strong>
-            {' '}
-            ($
-            {anluxMontoConIva(Number(sersop01Info.precio || 0)).toFixed(2)}
-            {' '}
-            con IVA).
-          </p>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-900">
-            <li>Al guardar, el sistema preguntará si el cliente ya pagó este cobro.</li>
-            <li>
-              <strong>Si no pagó:</strong>
-              {' '}
-              no se registra nada de SERSOP01.
-            </li>
-            <li>
-              <strong>Si pagó:</strong>
-              {' '}
-              pedirá ticket/factura y sí se registra el cobro (sale en trabajos del PDF y en el subtotal).
-            </li>
-          </ul>
+      <div id="firmas-recepcion" data-anlux-field="firmas-recepcion">
+        <div id="firmas-entrega" data-anlux-field="firmas-entrega">
+          <FirmasSection
+            showInicial={showFirmasInicial}
+            showEntrega={showFirmasEntrega}
+            disabled={readOnly}
+            firmasDeshabilitadas={firmasOff}
+            onReactivarFirmas={() => void onReactivarFirmas()}
+            onDirty={marcarDirty}
+            firmaClienteInicialRef={firmaClienteInicialRef}
+            firmaTecnicoInicialRef={firmaTecnicoInicialRef}
+            firmaClienteRef={firmaClienteRef}
+            firmaTecnicoRef={firmaTecnicoRef}
+            preload={bootstrap.orden?.firmas}
+          />
         </div>
-      ) : null}
+      </div>
 
       {mostrarTaller ? (
         <>
@@ -1847,7 +1740,7 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
           <ComentariosTecnicoSection
             comentarios={comentariosTecnico}
             readOnly={readOnly}
-            titulo={modo === 'completar' ? 'COMENTARIOS' : 'COMENTARIOS DEL TECNICO'}
+            titulo={modo === 'completar' ? 'Comentarios' : 'Comentarios del técnico'}
             onChange={setComentariosTecnico}
           />
           <MaterialesSection
@@ -1862,46 +1755,45 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
             readOnly={readOnly}
             onChange={setAnticipos}
           />
-          <TotalesBar
-            trabajos={trabajos}
-            materiales={materiales}
-            anticipos={anticipos}
-            abonoSaldo={abonoSaldo}
-            readOnly={readOnly}
-            onAbonoSaldoChange={setAbonoSaldo}
-            onLiquidarSaldo={onLiquidarSaldo}
-          />
+          <div id="entrega-saldo" data-anlux-field="entrega-saldo">
+            <TotalesBar
+              trabajos={trabajos}
+              materiales={materiales}
+              anticipos={anticipos}
+              abonoSaldo={abonoSaldo}
+              readOnly={readOnly}
+              onAbonoSaldoChange={setAbonoSaldo}
+              onLiquidarSaldo={onLiquidarSaldo}
+            />
+          </div>
         </>
       ) : null}
 
-      <div className="mt-10 flex flex-col items-center gap-4 border-t-2 border-blue-300 pt-8">
-        {statusMsg ? (
-          <div className="w-full max-w-2xl rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-center text-sm text-blue-900">
-            {saving ? <i className="fas fa-spinner fa-spin mr-2" /> : null}
-            {statusMsg}
-          </div>
-        ) : null}
+      </div>
 
+      <div className="anlux-sticky-actions">
+        {statusMsg ? (
+          <p className="mr-auto text-sm text-slate-700">
+            {saving ? <IconSpinner size={16} className="mr-1 inline" /> : null}
+            {statusMsg}
+          </p>
+        ) : null}
         {modo === 'solo_lectura' ? (
-          <div className="flex flex-wrap justify-center gap-3">
-            <a
-              href={bootstrap.urls.ordenes_index || '/ordenes'}
-              className="inline-flex items-center justify-center rounded-lg border-2 border-blue-600 bg-white px-8 py-3 font-bold text-blue-800 hover:bg-blue-50"
-            >
-              <i className="fas fa-arrow-left mr-2" />
-              Volver a ordenes
+          <>
+            <a href={bootstrap.urls.ordenes_index || '/ordenes'} className="anlux-btn-secondary">
+              Volver a órdenes
             </a>
             {bootstrap.urls.pdf ? (
               <button
                 type="button"
-                className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-8 py-3 font-bold text-white hover:bg-indigo-700"
+                className="anlux-btn-secondary"
                 onClick={() => void abrirPdfOrden(bootstrap.urls.pdf)}
               >
-                <i className="fas fa-file-pdf mr-2" />
+                <IconFilePdf size={20} />
                 Ver PDF
               </button>
             ) : null}
-          </div>
+          </>
         ) : (
           <>
             {!readOnly && Math.abs(totales.saldoPendiente) > 0.009 && mostrarTaller ? (
@@ -1909,21 +1801,25 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
                 type="button"
                 disabled={saving}
                 onClick={() => onLiquidarSaldo()}
-                className="inline-flex items-center justify-center rounded-lg bg-red-600 px-6 py-3 font-bold text-white shadow-sm hover:bg-red-700 disabled:opacity-60"
+                className="anlux-btn-danger"
               >
-                <i className="fas fa-cash-register mr-2" />
-                Liquidar Saldo por Equipo
+                Liquidar saldo por equipo
               </button>
             ) : null}
-            <button
-              type="button"
-              disabled={saving || readOnly}
-              onClick={() => void onSave()}
-              className="flex w-full items-center justify-center rounded-lg bg-blue-600 px-8 py-3 font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-            >
-              <i className="fas fa-save mr-2" />
-              {modo === 'completar' ? 'Guardar datos tecnicos' : 'Guardar Orden de Servicio'}
+            <button type="submit" disabled={saving || readOnly} className="anlux-btn-primary">
+              {saving ? <IconSpinner size={20} /> : <IconFloppy size={20} />}
+              {modo === 'completar' ? 'Guardar datos técnicos' : 'Guardar orden de servicio'}
             </button>
+            {bootstrap.urls.pdf && idOrden > 0 ? (
+              <button
+                type="button"
+                className="anlux-btn-secondary"
+                onClick={() => void abrirPdfOrden(bootstrap.urls.pdf)}
+              >
+                <IconFilePdf size={20} />
+                Ver PDF
+              </button>
+            ) : null}
           </>
         )}
       </div>
@@ -1932,8 +1828,10 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
         open={salidaModalOpen}
         busy={saving}
         equipos={equipos}
+        preselectedIdEquipo={salidaModalEquipoId}
         onCancel={() => {
           setSalidaModalOpen(false);
+          setSalidaModalEquipoId(0);
           saveAfterSalidaRef.current = false;
         }}
         onConfirm={onSalidaModalConfirm}
@@ -1985,7 +1883,6 @@ function OrdenFormApp({ bootstrap }: { bootstrap: OrdenFormBootstrap }) {
         }}
         onConfirm={(payload) => void guardarEntregaFirmas(payload)}
       />
-      </div>
-    </div>
+    </form>
   );
 }

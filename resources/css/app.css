@@ -4,10 +4,27 @@
 
 @layer base {
     :root {
-        --anlux-font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        --anlux-font-heading: "Lexend", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+        --anlux-font-family: "Source Sans 3", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        --space-xs: 0.125rem;
+        --space-sm: 0.25rem;
+        --space-md: 0.5rem;
+        --space-lg: 0.75rem;
+        --space-xl: 1rem;
+        --space-2xl: 1.5rem;
+        --space-3xl: 2rem;
+        --color-primary: var(--anlux-primary);
+        --color-on-primary: #ffffff;
+        --color-background: var(--anlux-canvas);
+        --color-foreground: var(--anlux-text);
+        --color-card: var(--anlux-surface);
+        --color-border: var(--anlux-border-soft);
+        --color-destructive: var(--anlux-danger);
+        --color-ring: var(--anlux-primary);
         --anlux-primary: #2563eb;
         --anlux-primary-hover: #1d4ed8;
         --anlux-deep: #1e3a8a;
+        --anlux-accent: #06b6d4;
         --anlux-pale: #eff6ff;
         --anlux-canvas: #f8fafc;
         --anlux-surface: #ffffff;
@@ -15,6 +32,10 @@
         --anlux-text-muted: #64748b;
         --anlux-border: #cbd5e1;
         --anlux-border-soft: #e2e8f0;
+        --anlux-hero-from: #071533;
+        --anlux-hero-via: #1e3a8a;
+        --anlux-hero-to: #2563eb;
+        --anlux-hero-glow: #06b6d4;
         --anlux-success: #16a34a;
         --anlux-warning: #f59e0b;
         --anlux-danger: #dc2626;
@@ -54,10 +75,30 @@
         --anlux-shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px rgb(15 23 42 / 0.06);
     }
 
+    html {
+        scroll-padding-top: 4.75rem;
+        scroll-padding-bottom: 5.5rem;
+    }
+
     body {
         background: var(--anlux-canvas);
         color: var(--anlux-text);
         font-family: var(--anlux-font-family);
+    }
+
+    h1, h2, h3, .anlux-page-title, .anlux-font-heading {
+        font-family: var(--anlux-font-heading);
+    }
+
+    :where(a, button, [role="button"], [role="tab"]):where(:not(:disabled)) {
+        cursor: pointer;
+    }
+
+    .anlux-guest-shell {
+        background:
+            radial-gradient(circle at top left, color-mix(in srgb, var(--anlux-primary) 48%, transparent), transparent 40%),
+            radial-gradient(circle at bottom right, color-mix(in srgb, var(--anlux-accent) 42%, transparent), transparent 35%),
+            linear-gradient(160deg, var(--anlux-hero-from) 0%, var(--anlux-hero-via) 45%, var(--anlux-hero-to) 100%);
     }
 
     :where(a, button, input, select, textarea):focus-visible {
@@ -66,29 +107,63 @@
     }
 }
 
+/* Fuera de @layer: gana a preflight de Tailwind (flechas ↑↓ en number). */
+input[type="number"].anlux-no-spin,
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+input[type="number"].anlux-no-spin::-webkit-outer-spin-button,
+input[type="number"].anlux-no-spin::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0;
+    display: none;
+}
+
 @layer components {
     .anlux-page-shell { @apply mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6; }
-    .anlux-logo-card { @apply inline-flex rounded-xl bg-white p-3 shadow-md ring-1 ring-slate-200/80; }
-    .anlux-page-card { @apply overflow-hidden rounded-2xl border border-slate-200 bg-white; box-shadow: var(--anlux-shadow-card); }
-    .anlux-page-header { @apply flex flex-col gap-3 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:px-6; }
-    .anlux-eyebrow { @apply text-xs font-semibold uppercase tracking-wider text-blue-700; }
-    .anlux-page-title { @apply mt-1 text-2xl font-bold tracking-tight text-slate-900; }
-    .anlux-page-description { @apply mt-1 text-sm leading-5 text-slate-600; }
-    .anlux-panel { @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5; }
-    .anlux-panel-muted { @apply rounded-xl border border-slate-200 bg-slate-50 p-4; }
-    .anlux-label { @apply mb-1.5 block text-[13px] font-semibold leading-[18px] text-slate-700; }
+    .anlux-logo-card { @apply inline-flex rounded-lg bg-white p-2 ring-1 ring-slate-200; }
+    .anlux-page-card { @apply overflow-hidden rounded-xl border border-slate-200 bg-white; }
+    .anlux-page-header { @apply flex flex-col gap-2 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:px-5; }
+    .anlux-eyebrow { @apply text-xs font-semibold uppercase tracking-wider text-slate-500; }
+    .anlux-page-title { @apply mt-0.5 text-xl font-semibold tracking-tight text-slate-900; }
+    .anlux-page-description { @apply mt-0.5 text-sm leading-5 text-slate-600; }
+    .anlux-panel { @apply rounded-lg border border-slate-200 bg-white p-3 sm:p-4; }
+    .anlux-panel-muted { @apply rounded-lg border border-slate-200 bg-slate-50 p-3; }
+    .anlux-label { @apply mb-1 block text-[13px] font-semibold leading-[18px] text-slate-700; }
     .anlux-control { @apply min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 transition duration-150 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-200; }
     .anlux-btn { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition duration-150 disabled:cursor-not-allowed disabled:opacity-50; }
-    .anlux-btn-primary { @apply anlux-btn bg-blue-600 text-white shadow-sm hover:bg-blue-700; }
+    .anlux-btn-primary { @apply anlux-btn bg-blue-600 text-white hover:bg-blue-700; }
     .anlux-btn-secondary { @apply anlux-btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
-    .anlux-btn-success { @apply anlux-btn bg-green-600 text-white shadow-sm hover:bg-green-700; }
+    .anlux-btn-success { @apply anlux-btn bg-green-600 text-white hover:bg-green-700; }
     .anlux-btn-danger { @apply anlux-btn border border-red-300 bg-white text-red-700 hover:bg-red-50; }
-    .anlux-table-wrap { @apply w-full overflow-x-auto rounded-xl border border-slate-200 bg-white; }
+    .anlux-table-wrap { @apply w-full overflow-x-auto rounded-lg border border-slate-200 bg-white; }
     .anlux-table { @apply w-full border-collapse text-sm; }
-    .anlux-table thead { @apply bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-600; }
-    .anlux-table th { @apply whitespace-nowrap border-b border-slate-200 px-3 py-3 text-left; }
-    .anlux-table td { @apply border-b border-slate-200 px-3 py-3; }
-    .anlux-table tbody tr { @apply transition-colors hover:bg-blue-50; }
+    .anlux-table thead { @apply bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600; }
+    .anlux-table th { @apply whitespace-nowrap border-b border-slate-200 px-3 py-2.5 text-left; }
+    .anlux-table td { @apply border-b border-slate-200 px-3 py-2.5; }
+    .anlux-table tbody tr { @apply transition-colors duration-150 hover:bg-slate-50; }
+    .anlux-tech-shell { @apply sticky top-0 z-50 border-b border-slate-200 bg-white; }
+    .anlux-tech-tab { @apply inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-slate-600 transition duration-150 hover:bg-slate-100 hover:text-slate-900; }
+    .anlux-tech-tab[aria-current="page"] { @apply bg-slate-900 text-white hover:bg-slate-800 hover:text-white; }
+    .anlux-chip { @apply inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 transition duration-150 hover:border-slate-400; }
+    .anlux-chip[aria-pressed="true"] { @apply border-slate-900 bg-slate-900 text-white; }
+    .anlux-stage-tab { @apply inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold text-slate-600 transition duration-150 hover:bg-white; }
+    .anlux-stage-tab[aria-current="true"] { @apply bg-white text-slate-900 ring-1 ring-slate-200; }
+    .anlux-error-summary { @apply rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-950; }
+    .anlux-error-summary a { @apply font-semibold text-red-800 underline underline-offset-2; }
+    .anlux-field-attention { outline: 3px solid rgb(220 38 38 / 0.45); outline-offset: 4px; animation: anlux-field-attention 900ms ease-out; scroll-margin-block: 5rem 7rem; }
+    .anlux-sticky-actions { @apply sticky bottom-0 z-40 -mx-4 mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-sm sm:-mx-5 sm:px-5; }
+    .anlux-icon-box { @apply inline-flex h-6 w-6 shrink-0 items-center justify-center; }
+}
+
+@keyframes anlux-field-attention {
+    0% { outline-color: rgb(220 38 38 / 0); }
+    35% { outline-color: rgb(220 38 38 / 0.75); }
+    100% { outline-color: rgb(220 38 38 / 0.45); }
 }
 
 @media (prefers-reduced-motion: reduce) {

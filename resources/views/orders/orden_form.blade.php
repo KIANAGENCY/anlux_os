@@ -1,27 +1,12 @@
-<body
-    class="
-      px-3 py-4 sm:p-6 lg:p-8
-      bg-blue-50
-    "
-  >
-    <div
-      class="
-        max-w-7xl w-full
-
-        mx-auto p-4 sm:p-6 lg:p-8
-        bg-white
-        rounded-lg
-        shadow-lg
-      "
-    >
+<body class="bg-slate-50 px-3 py-4 sm:p-6">
+    <div class="mx-auto w-full max-w-7xl">
         @php
-            $nav_activo = 'orden_servicio';
+            $modoNav = $reactPageProps['meta']['modo'] ?? 'nueva';
+            $nav_activo = ($modoNav === 'nueva') ? 'orden_servicio' : 'ordenes';
         @endphp
         @include('partials.nav-app')
 
         @include('partials.header-flujo-tres')
-
-        <div id="orden-react-root"></div>
 
         <script type="application/json" id="react-page-props">
             {!! json_encode($reactPageProps ?? [
@@ -57,6 +42,8 @@
                 'orden' => null,
             ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}
         </script>
+
+        <div id="orden-react-root" class="mt-3"></div>
 
         @vite(['resources/js/orden_form/main.tsx'])
     </div>

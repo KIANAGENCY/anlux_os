@@ -1,6 +1,5 @@
 /**
- * Port exacto de la lógica IVA de orden_servicio.js (mantener paridad).
- * Fuente: public/legacy/assets/js/orden_servicio.js
+ * Misma lógica IVA que orden_servicio.js (frontend y legacy alineados).
  */
 export const ANLUX_IVA_RATE = 0.16;
 
@@ -80,7 +79,7 @@ export function abonoParaLiquidarSaldo(totalConIva: number, anticiposSinIva: num
   return anluxRound2(Math.max(0, needed));
 }
 
-/** Índice 1-based de equipo en filas de cargos (vacío → 1), paridad Exacto. */
+/** Índice 1-based de equipo en filas de cargos (vacío → 1). */
 export function idEquipoFilaLiquidar(idEquipo: string | number | null | undefined): number {
   return Number(idEquipo) || 1;
 }
@@ -119,7 +118,7 @@ export function calcularSaldoEquipo(input: {
   return anluxMontoConIva(saldoSinIva);
 }
 
-/** Aplica liquidación parcial por equipos seleccionados (paridad exactoAplicarLiquidacionEquipos). */
+/** Aplica liquidación parcial por equipos seleccionados. */
 export function aplicarLiquidacionEquipos(input: {
   items: Array<{ num: number; saldoConIva: number }>;
   saldoPendienteOrden: number;

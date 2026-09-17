@@ -20,6 +20,9 @@ export interface NavBootstrapBase {
   accounts: SwitchAccount[];
   isAdmin: boolean;
   isTechnician: boolean;
+  navActivo?: string;
+  nuevaUrl?: string;
+  historialUrl?: string;
 }
 
 export interface AdminNavLink {

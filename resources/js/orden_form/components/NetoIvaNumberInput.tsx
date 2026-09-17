@@ -13,7 +13,7 @@ type Props = {
 };
 
 /**
- * Paridad Exacto: al enfocar se edita el neto c/IVA; al blur se convierte a sin IVA.
+ * Al enfocar se edita el neto c/IVA; al blur se convierte a sin IVA.
  */
 export default function NetoIvaNumberInput({
   value,
@@ -113,7 +113,7 @@ export default function NetoIvaNumberInput({
     <input
       type="number"
       step="0.01"
-      className={className}
+      className={`anlux-no-spin ${className}`.trim()}
       disabled={disabled}
       value={display}
       placeholder={placeholder}

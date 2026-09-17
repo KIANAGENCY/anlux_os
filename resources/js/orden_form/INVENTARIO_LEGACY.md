@@ -40,7 +40,7 @@ Vista: `resources/views/orders/orden_form.blade.php` (shell React + `#orden-reac
 | Firmas dirty + reactivar/reset | `SignaturePad` + `FirmasSection` | ✅ |
 | Modal salida temporal + firmas | `components/SalidaTemporalModal.tsx` | ✅ |
 | Entrega por equipo (Terminado/Entregado + firmas) | `components/EntregaEquipoModals.tsx` | ✅ |
-| SERSOP01 cobro orden nueva | `App.tsx` | ✅ |
+| SERSOP01 cobro orden nueva | — | ❌ eliminado (spec Word) |
 | Poll WhatsApp post-guardar | `api.ts` + `App.tsx` | ✅ |
 | Guardar + FormData RegistrarOrdenService | `App.tsx` | ✅ |
 | Lock heartbeat 30s + beforeunload release | `App.tsx` | ✅ |
@@ -48,4 +48,4 @@ Vista: `resources/views/orders/orden_form.blade.php` (shell React + `#orden-reac
 
 ## Cómo validar
 
-Crear orden (SERSOP01), editar, firmar, Terminado→Entregado por equipo, PDF, salida temporal + regreso, liquidar por equipo, borrador local en nueva, validaciones al guardar.
+Crear orden (sin SERSOP01 auto), editar, firmar, Terminado→Entregado por equipo, PDF parcial `?eq=`, salida temporal + regreso, liquidar por equipo, borrador local en nueva, validaciones al guardar.

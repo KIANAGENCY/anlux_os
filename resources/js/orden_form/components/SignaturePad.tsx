@@ -254,6 +254,8 @@ const SignaturePad = forwardRef<SignaturePadHandle, Props>(function SignaturePad
         <button
           type="button"
           disabled={disabled}
+          aria-label={label ? `Limpiar firma de ${label}` : 'Limpiar firma'}
+          title={label ? `Limpiar firma de ${label}` : 'Limpiar firma'}
           onClick={() => {
             const canvas = canvasRef.current;
             const ctx = ctxRef.current;
@@ -262,9 +264,9 @@ const SignaturePad = forwardRef<SignaturePadHandle, Props>(function SignaturePad
             strokeRef.current = false;
             onDirtyRef.current?.();
           }}
-          className="mt-2 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-2 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors duration-150 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <i className="fas fa-eraser mr-2" />
+          <i className="fas fa-eraser mr-2" aria-hidden="true" />
           Limpiar
         </button>
       )}

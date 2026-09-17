@@ -33,7 +33,7 @@ export default function FirmasSection({
   onDirty,
   tituloEntrega = 'FIRMAS DE ENTREGA DEL EQUIPO',
   labelClienteEntrega = 'Cliente que recibe',
-  labelTecnicoEntrega = 'Tecnico que entrega',
+  labelTecnicoEntrega = 'Técnico que entrega',
   firmaClienteInicialRef,
   firmaTecnicoInicialRef,
   firmaClienteRef,
@@ -64,18 +64,18 @@ export default function FirmasSection({
     return (
       <section className="rounded-r-lg border border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
         <p>
-          <i className="fas fa-ban mr-2 text-slate-600" />
+          <i className="fas fa-ban mr-2 text-slate-600" aria-hidden="true" />
           <strong>Firmas deshabilitadas:</strong>
           {' '}
-          al guardar se envian imagenes vacias (PNG transparente).
+          al guardar se envían imágenes vacías (PNG transparente).
         </p>
         {onReactivarFirmas && !disabled ? (
           <button
             type="button"
-            className="mt-3 inline-flex items-center rounded-lg border-2 border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-800 hover:bg-blue-50"
+            className="mt-3 inline-flex items-center rounded-lg border-2 border-blue-600 bg-white px-4 py-2 text-sm font-bold text-blue-800 transition-colors duration-150 hover:bg-blue-50"
             onClick={onReactivarFirmas}
           >
-            <i className="fas fa-pen-fancy mr-2" />
+            <i className="fas fa-pen-fancy mr-2" aria-hidden="true" />
             Volver a llenar campos y activar firmas
           </button>
         ) : null}
@@ -88,7 +88,7 @@ export default function FirmasSection({
       {showInicial ? (
         <section className="rounded-r-lg border-l-4 border-blue-700 bg-blue-50 p-4 sm:pl-6">
           <h2 className="mb-8 flex items-center text-xl font-bold text-blue-900 sm:text-2xl">
-            <i className="fas fa-pen-fancy mr-3 text-blue-700" />
+            <i className="fas fa-pen-fancy mr-3 text-blue-700" aria-hidden="true" />
             FIRMAS
           </h2>
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -96,7 +96,7 @@ export default function FirmasSection({
               <SignaturePad ref={firmaClienteInicialRef} disabled={disabled} label="Cliente" minHeight={240} onDirty={onDirty} />
             </div>
             <div className="text-center">
-              <SignaturePad ref={firmaTecnicoInicialRef} disabled={disabled} label="Tecnico" minHeight={240} onDirty={onDirty} />
+              <SignaturePad ref={firmaTecnicoInicialRef} disabled={disabled} label="Técnico" minHeight={240} onDirty={onDirty} />
             </div>
           </div>
         </section>
@@ -105,7 +105,7 @@ export default function FirmasSection({
       {showEntrega ? (
         <section className="rounded-r-lg border-l-4 border-blue-700 bg-blue-50 p-4 sm:pl-6">
           <h2 className="mb-8 flex items-center text-xl font-bold text-blue-900 sm:text-2xl">
-            <i className="fas fa-pen-fancy mr-3 text-blue-700" />
+            <i className="fas fa-pen-fancy mr-3 text-blue-700" aria-hidden="true" />
             {tituloEntrega}
           </h2>
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">

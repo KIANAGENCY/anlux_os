@@ -1,4 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { anluxUrl } from '../http';
+import {
+  clearLoggedOutFlags,
+  isAuthFailureMessage,
+  isAuthFailureResponse,
+  isLoggingOut,
+  redirectToLoginSilently,
+} from '../sessionGuard';
 import {
   aplicarImpersonacion,
   cancelarImpersonacion,
@@ -39,7 +47,27 @@ export function ImpersonationEngine({
   nombreTecnico,
   compact = true,
 }: ImpersonationEngineProps) {
-  const { showAlert, showConfirm } = useAnluxDialog();
+  const dialogs = useAnluxDialog();
+  const showAlert = useCallback(
+    async (message: string, options?: Parameters<typeof dialogs.showAlert>[1]) => {
+      if (isLoggingOut() || isAuthFailureMessage(message)) {
+        redirectToLoginSilently();
+        return;
+      }
+      await dialogs.showAlert(message, options);
+    },
+    [dialogs],
+  );
+  const showConfirm = useCallback(
+    async (message: string, options?: Parameters<typeof dialogs.showConfirm>[1]) => {
+      if (isLoggingOut() || isAuthFailureMessage(message)) {
+        redirectToLoginSilently();
+        return false;
+      }
+      return dialogs.showConfirm(message, options);
+    },
+    [dialogs],
+  );
   const [accounts, setAccounts] = useState<ImpersonationApiAccount[]>(() => enrichAccounts(initialAccounts));
   const [selectValue, setSelectValue] = useState(() => {
     const self = initialAccounts.find((a) => a.status === 'self');
@@ -91,17 +119,36 @@ export function ImpersonationEngine({
   const applySessionAndReload = useCallback(
     async (token: string): Promise<boolean> => {
       applyingSessionRef.current = true;
+      if (pollRequesterTimerRef.current !== null) {
+        window.clearInterval(pollRequesterTimerRef.current);
+        pollRequesterTimerRef.current = null;
+      }
       updateLoadingMessage('Entrando…');
-      const { res, data } = await aplicarImpersonacion(token);
-      if (res.ok && data.success) {
+      window.__anluxApplyingImpersonation = true;
+      let res: Response | undefined;
+      let data: { success?: boolean; message?: string } = {};
+      try {
+        ({ res, data } = await aplicarImpersonacion(token));
+      } catch {
+        /* red / parse */
+      } finally {
+        window.__anluxApplyingImpersonation = false;
+      }
+      if (res?.ok && data.success) {
         clearPersistedToken();
-        window.location.reload();
+        clearLoggedOutFlags();
+        hideLoading();
+        window.__anluxApplyingImpersonation = true;
+        await new Promise((resolve) => window.setTimeout(resolve, 250));
+        window.location.assign(anluxUrl('/ordenes'));
         return true;
       }
       applyingSessionRef.current = false;
+      clearPersistedToken();
+      hideLoading();
       return false;
     },
-    [clearPersistedToken, updateLoadingMessage],
+    [clearPersistedToken, hideLoading, updateLoadingMessage],
   );
 
   const loadAccountsSelectRef = useRef<(() => Promise<void>) | null>(null);
@@ -149,10 +196,12 @@ export function ImpersonationEngine({
     void pollRequesterStatus();
 
     async function pollRequesterStatus() {
+      if (isLoggingOut()) return;
       const token = pollRequesterTokenRef.current;
       if (!token || applyingSessionRef.current) return;
 
       const { res, data } = await fetchEstado(token);
+      if (isAuthFailureResponse(res, data)) return;
 
       if (!res.ok || !data.success) {
         if (data.status === 'invalid' || res.status === 404) {
@@ -166,9 +215,7 @@ export function ImpersonationEngine({
       }
 
       if (data.status === 'pending') {
-        updateLoadingMessage('Entrando…');
-        const ok = await applySessionAndReload(token);
-        if (!ok) await stopRequesterPoll(true);
+        updateLoadingMessage(data.message || 'Esperando confirmación…');
         return;
       }
 
@@ -189,34 +236,22 @@ export function ImpersonationEngine({
     }
   }, [applySessionAndReload, lastValue, persistToken, showAlert, stopRequesterPoll, updateLoadingMessage]);
 
-  const accountsCountRef = useRef(initialAccounts.length);
-  const cuentasAlertShownRef = useRef(false);
-
   const loadAccountsSelect = useCallback(async () => {
-    if (!canSwitchAccount) return;
+    if (!canSwitchAccount || isLoggingOut()) return;
 
     const { res, data } = await fetchCuentas();
+    if (isAuthFailureResponse(res, data) || isLoggingOut()) return;
+
     const current = userId;
     const previous = selectValue || lastValue;
 
-    if (!res.ok || !data.success) {
-      if (accountsCountRef.current <= 1 && !cuentasAlertShownRef.current) {
-        cuentasAlertShownRef.current = true;
-        const msg =
-          data.message ||
-          (res.status === 500 ? 'Error del servidor al cargar cuentas.' : 'No se pudieron cargar las cuentas.');
-        await showAlert(msg, { icon: 'warning', title: 'Selector de cuentas' });
-      }
-      return;
-    }
-
-    cuentasAlertShownRef.current = false;
+    // Nunca mostrar modal por fallos de carga (evita spam "Unauthenticated.").
+    if (!res.ok || !data.success) return;
 
     const list = Array.isArray(data.data) ? data.data : [];
     if (list.length === 0) return;
 
     const enriched = enrichAccounts(list);
-    accountsCountRef.current = enriched.length;
     setAccounts(enriched);
 
     const selfAcc = enriched.find((t) => Number(t.id) === current && t.status === 'self');
@@ -226,7 +261,7 @@ export function ImpersonationEngine({
     } else if (previous && enriched.some((t) => String(t.id) === String(previous))) {
       setSelectValue(previous);
     }
-  }, [canSwitchAccount, lastValue, selectValue, showAlert, userId]);
+  }, [canSwitchAccount, lastValue, selectValue, userId]);
 
   loadAccountsSelectRef.current = loadAccountsSelect;
 
@@ -271,6 +306,7 @@ export function ImpersonationEngine({
         if (!ok) {
           await stopRequesterPoll(true);
           setSelectValue(previous);
+          hideLoading();
           await showAlert('No se pudo entrar a la cuenta.', { icon: 'error' });
         }
         return;
@@ -297,9 +333,10 @@ export function ImpersonationEngine({
   );
 
   const pollTargetInbox = useCallback(async () => {
-    if (isImpersonating) return;
+    if (isImpersonating || isLoggingOut()) return;
 
     const { res, data } = await fetchPendientes();
+    if (isAuthFailureResponse(res, data)) return;
     if (!res.ok || !data.success || !Array.isArray(data.data)) return;
 
     for (const item of data.data) {
@@ -321,10 +358,13 @@ export function ImpersonationEngine({
   }, [isImpersonating, showConfirm]);
 
   const exitImpersonation = useCallback(async () => {
+    if (isLoggingOut()) return;
     showLoading('Volviendo a tu cuenta…');
     const { res, data } = await salirImpersonacion();
+    if (isAuthFailureResponse(res, data)) return;
     if (res.ok && data.success) {
       clearPersistedToken();
+      clearLoggedOutFlags();
       window.location.reload();
       return;
     }
@@ -333,7 +373,7 @@ export function ImpersonationEngine({
   }, [clearPersistedToken, hideLoading, showAlert, showLoading]);
 
   const resumePendingAccessIfAny = useCallback(async () => {
-    if (isImpersonating) return;
+    if (isImpersonating || applyingSessionRef.current) return;
 
     let saved = '';
     try {
@@ -355,11 +395,13 @@ export function ImpersonationEngine({
     void loadAccountsSelect();
     void resumePendingAccessIfAny();
 
+    // Refresh poco frecuente; fallos de auth no muestran modal.
     accountsRefreshTimerRef.current = window.setInterval(() => {
+      if (isLoggingOut()) return;
       if (!pollRequesterTokenRef.current && !applyingSessionRef.current) {
         void loadAccountsSelect();
       }
-    }, 4000);
+    }, 15000);
 
     return () => {
       if (accountsRefreshTimerRef.current !== null) {
@@ -373,6 +415,7 @@ export function ImpersonationEngine({
 
     const pollMs = 3000;
     pollInboxTimerRef.current = window.setInterval(() => {
+      if (isLoggingOut()) return;
       void pollTargetInbox();
     }, pollMs);
     void pollTargetInbox();

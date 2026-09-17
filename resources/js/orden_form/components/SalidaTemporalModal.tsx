@@ -7,11 +7,19 @@ type Props = {
   open: boolean;
   busy?: boolean;
   equipos: EquipoForm[];
+  preselectedIdEquipo?: number;
   onCancel: () => void;
   onConfirm: (payload: SalidaTemporalPayload) => void;
 };
 
-export default function SalidaTemporalModal({ open, busy = false, equipos, onCancel, onConfirm }: Props) {
+export default function SalidaTemporalModal({
+  open,
+  busy = false,
+  equipos,
+  preselectedIdEquipo = 0,
+  onCancel,
+  onConfirm,
+}: Props) {
   const { showAlert } = useAnluxDialog();
   const [motivo, setMotivo] = useState('');
   const [idEquipo, setIdEquipo] = useState(0);
@@ -21,7 +29,9 @@ export default function SalidaTemporalModal({ open, busy = false, equipos, onCan
   useEffect(() => {
     if (!open) return;
     setMotivo('');
-    setIdEquipo(equipos.length === 1 ? Number(equipos[0]?.id_equipo) || 0 : 0);
+    const pre = Number(preselectedIdEquipo) || 0;
+    const unico = equipos.length === 1 ? Number(equipos[0]?.id_equipo) || 0 : 0;
+    setIdEquipo(pre > 0 ? pre : unico);
     const t = window.setTimeout(() => {
       firmaClienteRef.current?.clear();
       firmaTecnicoRef.current?.clear();
@@ -32,7 +42,7 @@ export default function SalidaTemporalModal({ open, busy = false, equipos, onCan
       window.clearTimeout(t);
       document.body.style.overflow = prev;
     };
-  }, [open, equipos]);
+  }, [open, equipos, preselectedIdEquipo]);
 
   if (!open) return null;
 
@@ -48,7 +58,7 @@ export default function SalidaTemporalModal({ open, busy = false, equipos, onCan
         return;
       }
       if (!firmaClienteRef.current?.hasStroke() || !firmaTecnicoRef.current?.hasStroke()) {
-        await showAlert('Se requieren las firmas del cliente y del tecnico.', {
+        await showAlert('Se requieren las firmas del cliente y del técnico.', {
           title: 'Firmas requeridas',
           icon: 'warning',
         });
@@ -89,7 +99,7 @@ export default function SalidaTemporalModal({ open, busy = false, equipos, onCan
             id="salidaTemporalEquipo"
             value={idEquipo || ''}
             onChange={(event) => setIdEquipo(Number(event.target.value) || 0)}
-            disabled={busy}
+            disabled={busy || Number(preselectedIdEquipo) > 0}
             className="mb-3 min-h-11 w-full rounded-lg border-2 border-orange-400 bg-white px-3 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-300"
           >
             <option value="">Selecciona un equipo</option>
@@ -111,7 +121,7 @@ export default function SalidaTemporalModal({ open, busy = false, equipos, onCan
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
             disabled={busy}
-            placeholder="Escribe aqui el motivo de la salida temporal..."
+            placeholder="Escribe aquí el motivo de la salida temporal..."
             className="w-full resize-none rounded-lg border-2 border-orange-400 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
             style={{ height: '3.6rem', minHeight: '3.6rem', maxHeight: '3.6rem' }}
           />
@@ -121,25 +131,31 @@ export default function SalidaTemporalModal({ open, busy = false, equipos, onCan
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="text-center">
               <h4 className="mb-1 text-sm font-bold text-blue-900">Firma del cliente</h4>
-              <SignaturePad ref={firmaClienteRef} minHeight={88} hideClear disabled={busy} />
+              <SignaturePad ref={firmaClienteRef} label="Cliente" minHeight={88} hideClear disabled={busy} />
               <button
                 type="button"
                 disabled={busy}
-                className="mt-2 rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
+                aria-label="Limpiar firma del cliente"
+                title="Limpiar firma del cliente"
+                className="mt-2 inline-flex min-h-10 items-center justify-center rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors duration-150 hover:bg-blue-700 disabled:opacity-50"
                 onClick={() => firmaClienteRef.current?.clear()}
               >
+                <i className="fas fa-eraser mr-1.5" aria-hidden="true" />
                 Limpiar
               </button>
             </div>
             <div className="text-center">
-              <h4 className="mb-1 text-sm font-bold text-blue-900">Firma del tecnico</h4>
-              <SignaturePad ref={firmaTecnicoRef} minHeight={88} hideClear disabled={busy} />
+              <h4 className="mb-1 text-sm font-bold text-blue-900">Firma del técnico</h4>
+              <SignaturePad ref={firmaTecnicoRef} label="Técnico" minHeight={88} hideClear disabled={busy} />
               <button
                 type="button"
                 disabled={busy}
-                className="mt-2 rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
+                aria-label="Limpiar firma del técnico"
+                title="Limpiar firma del técnico"
+                className="mt-2 inline-flex min-h-10 items-center justify-center rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors duration-150 hover:bg-blue-700 disabled:opacity-50"
                 onClick={() => firmaTecnicoRef.current?.clear()}
               >
+                <i className="fas fa-eraser mr-1.5" aria-hidden="true" />
                 Limpiar
               </button>
             </div>
@@ -151,7 +167,7 @@ export default function SalidaTemporalModal({ open, busy = false, equipos, onCan
             type="button"
             disabled={busy}
             onClick={onCancel}
-            className="rounded-lg border-2 border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="min-h-11 rounded-lg border-2 border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors duration-150 hover:bg-slate-50 disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -159,9 +175,9 @@ export default function SalidaTemporalModal({ open, busy = false, equipos, onCan
             type="button"
             disabled={busy}
             onClick={submit}
-            className="inline-flex items-center rounded-lg bg-orange-600 px-5 py-2 text-sm font-bold text-white hover:bg-orange-700 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-orange-600 px-5 py-2 text-sm font-bold text-white shadow-sm transition-colors duration-150 hover:bg-orange-700 disabled:opacity-50"
           >
-            {busy ? <i className="fas fa-spinner fa-spin mr-2" /> : <i className="fas fa-save mr-2" />}
+            {busy ? <i className="fas fa-spinner fa-spin mr-2" aria-hidden="true" /> : <i className="fas fa-save mr-2" aria-hidden="true" />}
             Guardar
           </button>
         </div>

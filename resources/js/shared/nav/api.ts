@@ -1,4 +1,9 @@
 import { anluxUrl, csrfToken } from '../http';
+import {
+  isAuthFailureResponse,
+  isLoggingOut,
+  redirectToLoginSilently,
+} from '../sessionGuard';
 import type {
   ApiSuccessResponse,
   CuentasResponse,
@@ -16,13 +21,34 @@ function jsonHeaders(): Record<string, string> {
   };
 }
 
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<{ res: Response; data: T }> {
+async function fetchJson<T extends { message?: string; success?: boolean }>(
+  url: string,
+  init?: RequestInit,
+): Promise<{ res: Response; data: T }> {
+  if (typeof window !== 'undefined' && window.__anluxApplyingImpersonation) {
+    /* evitar marcar logout por 401 transitorio durante aplicar */
+  } else if (isLoggingOut()) {
+    return {
+      res: new Response(null, { status: 401 }),
+      data: { success: false } as T,
+    };
+  }
+
   const res = await fetch(url, {
     credentials: 'same-origin',
     headers: jsonHeaders(),
     ...init,
   });
   const data = (await res.json().catch(() => ({}))) as T;
+
+  if (isAuthFailureResponse(res, data) && !(typeof window !== 'undefined' && window.__anluxApplyingImpersonation)) {
+    redirectToLoginSilently();
+    return {
+      res,
+      data: { ...data, success: false, message: undefined },
+    };
+  }
+
   return { res, data };
 }
 

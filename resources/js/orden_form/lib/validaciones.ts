@@ -221,14 +221,14 @@ export function validarObservaciones(
   idOrden: number,
   observaciones: string[],
 ): ValidacionResultado {
-  // Obligatorio solo al capturar orden nueva (paridad Exacto: id vacío y no completar).
+  // Obligatorio solo al capturar orden nueva (id vacío y no completar).
   if (modo !== 'nueva' || idOrden > 0) return { ok: true };
   const tieneTexto = observaciones.some((o) => String(o || '').trim() !== '');
   if (tieneTexto) return { ok: true };
   return {
     ok: false,
-    title: 'Observaciones',
-    message: 'Atención: el campo observaciones está vacío. Escriba al menos una observación.',
+    title: TITLE_FALTAN,
+    message: 'Observaciones: este campo es obligatorio.',
     focus: 'observacion.0',
   };
 }
